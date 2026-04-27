@@ -244,7 +244,7 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
   const myEmployee = (profile?.employee_name || "Yaira") as EmpKey;
   const [days, setDays] = useState<Record<string, Apt[]>>({});
   const [activeDate, setActiveDate] = useState<string | null>(null);
-  const [view, setView] = useState<"schedule" | "individual">(isAdmin ? "schedule" : "individual");
+  const [view, setView] = useState<"schedule" | "individual" | "reports">(isAdmin ? "schedule" : "individual");
   const [selectedEmployee, setSelectedEmployee] = useState<EmpKey>(isAdmin ? "Yaira" : myEmployee);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
