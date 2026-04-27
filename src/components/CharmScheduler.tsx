@@ -3,6 +3,7 @@ import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
+import Dashboard from "./Dashboard";
 
 // ─── Employee config ──────────────────────────────────────────────────────
 type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
