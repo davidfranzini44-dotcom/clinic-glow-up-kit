@@ -3,6 +3,7 @@ import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
+import Dashboard from "./Dashboard";
 
 // ─── Employee config ──────────────────────────────────────────────────────
 type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
@@ -243,7 +244,7 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
   const myEmployee = (profile?.employee_name || "Yaira") as EmpKey;
   const [days, setDays] = useState<Record<string, Apt[]>>({});
   const [activeDate, setActiveDate] = useState<string | null>(null);
-  const [view, setView] = useState<"schedule" | "individual">(isAdmin ? "schedule" : "individual");
+  const [view, setView] = useState<"schedule" | "individual" | "reports">(isAdmin ? "schedule" : "individual");
   const [selectedEmployee, setSelectedEmployee] = useState<EmpKey>(isAdmin ? "Yaira" : myEmployee);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -600,6 +601,7 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
               <>
                 <TabBtn active={view === "schedule"} onClick={() => setView("schedule")}>Agenda</TabBtn>
                 <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Individual</TabBtn>
+                <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Reportes</TabBtn>
                 <button onClick={exportAgendaExcel} className="px-3 md:px-4 py-2 text-xs font-label bg-primary text-primary-foreground flex items-center gap-2">
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
                 </button>
@@ -611,6 +613,12 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
                     <Upload size={14} /> <span className="hidden sm:inline">Subir</span>
                   </span>
                 </div>
+              </>
+            )}
+            {!isAdmin && (
+              <>
+                <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Mi agenda</TabBtn>
+                <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Mis reportes</TabBtn>
               </>
             )}
             <button onClick={onSignOut} className="px-2 md:px-3 py-2 text-xs font-label border border-destructive text-destructive flex items-center gap-1" title="Salir">
@@ -879,6 +887,10 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
               </div>
             )}
           </>
+        )}
+
+        {view === "reports" && (
+          <Dashboard profile={profile} isAdmin={isAdmin} />
         )}
       </main>
 
