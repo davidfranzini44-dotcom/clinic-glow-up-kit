@@ -888,6 +888,10 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
             )}
           </>
         )}
+
+        {view === "reports" && (
+          <Dashboard profile={profile} isAdmin={isAdmin} />
+        )}
       </main>
 
       <footer className="text-center py-8 text-xs font-label text-accent">
