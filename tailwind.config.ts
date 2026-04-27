@@ -47,6 +47,26 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        emp: {
+          yaira:  "hsl(var(--emp-yaira))",
+          belkis: "hsl(var(--emp-belkis))",
+          cielo:  "hsl(var(--emp-cielo))",
+          lisa:   "hsl(var(--emp-lisa))",
+        },
+        chip: {
+          "walkin-bg": "hsl(var(--chip-walkin-bg))",
+          "walkin-fg": "hsl(var(--chip-walkin-fg))",
+          "noshow-bg": "hsl(var(--chip-noshow-bg))",
+          "noshow-fg": "hsl(var(--chip-noshow-fg))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
