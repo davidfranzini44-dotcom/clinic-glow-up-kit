@@ -601,6 +601,7 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
               <>
                 <TabBtn active={view === "schedule"} onClick={() => setView("schedule")}>Agenda</TabBtn>
                 <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Individual</TabBtn>
+                <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Reportes</TabBtn>
                 <button onClick={exportAgendaExcel} className="px-3 md:px-4 py-2 text-xs font-label bg-primary text-primary-foreground flex items-center gap-2">
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
                 </button>
