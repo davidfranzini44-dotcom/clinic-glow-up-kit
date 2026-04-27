@@ -615,6 +615,12 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
                 </div>
               </>
             )}
+            {!isAdmin && (
+              <>
+                <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Mi agenda</TabBtn>
+                <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Mis reportes</TabBtn>
+              </>
+            )}
             <button onClick={onSignOut} className="px-2 md:px-3 py-2 text-xs font-label border border-destructive text-destructive flex items-center gap-1" title="Salir">
               <LogOut size={13} />
             </button>
