@@ -2,94 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* ─── Charm Clínica Estética — Design System ────────────────────────── */
+/* All colors HSL. Aesthetic clinic warm-neutral palette. */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Surfaces */
+    --background: 36 36% 93%;          /* #F5EFE6 cream */
+    --foreground: 24 39% 17%;          /* #3E2A1A deep cocoa */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 38 56% 96%;                /* #FBF7F0 ivory */
+    --card-foreground: 24 39% 17%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 38 56% 96%;
+    --popover-foreground: 24 39% 17%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Brand */
+    --primary: 24 39% 17%;             /* deep cocoa */
+    --primary-foreground: 36 36% 93%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 36 28% 75%;           /* #D4C4A8 sand */
+    --secondary-foreground: 24 39% 17%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 36 28% 88%;
+    --muted-foreground: 30 18% 35%;    /* #6B5B47 */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 30 33% 41%;              /* #8B6F47 caramel */
+    --accent-foreground: 38 56% 96%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 43% 44%;          /* #A04040 muted brick */
+    --destructive-foreground: 38 56% 96%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --success: 99 22% 45%;             /* #6B8E5A sage */
+    --success-foreground: 38 56% 96%;
 
-    --radius: 0.5rem;
+    --warning: 27 33% 32%;             /* #6B4423 toasted */
+    --warning-foreground: 38 56% 96%;
 
+    --border: 36 28% 75%;              /* sand */
+    --input: 36 28% 75%;
+    --ring: 24 39% 17%;
+
+    --radius: 0.125rem;
+
+    /* Employee accent colors (HSL) */
+    --emp-yaira:  28 41% 60%;          /* #C8956D */
+    --emp-belkis: 30 33% 41%;          /* #8B6F47 */
+    --emp-cielo:  25 32% 50%;          /* #A67B5B */
+    --emp-lisa:   27 50% 27%;          /* #6B4423 */
+
+    /* Chips */
+    --chip-walkin-bg: 36 50% 83%;      /* #E8D9BF */
+    --chip-walkin-fg: 27 50% 27%;      /* #6B4423 */
+    --chip-noshow-bg: 0 50% 89%;       /* #F0D4D4 */
+    --chip-noshow-fg: 0 43% 44%;
+
+    /* Sidebar (kept default) */
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
@@ -98,8 +73,18 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
+    font-family: 'Lora', Georgia, serif;
+  }
+  .font-display {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 300;
+    letter-spacing: -0.01em;
+  }
+  .font-label {
+    font-family: 'Lora', Georgia, serif;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
   }
 }
