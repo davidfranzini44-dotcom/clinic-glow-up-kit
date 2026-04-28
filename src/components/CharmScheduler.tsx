@@ -1,10 +1,13 @@
-import { useState, useMemo, useEffect } from "react";
-import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
+import { toast } from "sonner";
 import Dashboard from "./Dashboard";
 import SwapRequests, { SwapRequestDialog } from "./SwapRequests";
+import NotificationBell from "./NotificationBell";
+import GlobalSearch from "./GlobalSearch";
 
 // ─── Employee config ──────────────────────────────────────────────────────
 type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
@@ -36,6 +39,7 @@ export type Apt = {
   noShow: boolean;
   walkIn: boolean;
   changed: string;
+  swapLocked: boolean;
 };
 
 // ─── Time helpers ─────────────────────────────────────────────────────────
@@ -189,6 +193,7 @@ const parseExcel = async (file: File): Promise<Record<string, Apt[]>> => {
         noShow: false,
         walkIn: false,
         changed: "",
+        swapLocked: false,
       });
     });
   }
@@ -222,6 +227,7 @@ const rowToApt = (row: any): Apt => ({
   noShow: row.no_show,
   walkIn: row.walk_in,
   changed: row.changed || "",
+  swapLocked: !!row.swap_locked,
 });
 
 const aptToRow = (apt: Apt, dateStr: string) => ({
@@ -236,6 +242,7 @@ const aptToRow = (apt: Apt, dateStr: string) => ({
   no_show: apt.noShow,
   walk_in: apt.walkIn,
   changed: apt.changed || "",
+  swap_locked: apt.swapLocked,
 });
 
 // ─── Main component ───────────────────────────────────────────────────────
@@ -255,6 +262,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const [hasLoaded, setHasLoaded] = useState(false);
   const [swapDialog, setSwapDialog] = useState<{ open: boolean; apt: Apt | null; date: string | null }>({ open: false, apt: null, date: null });
   const [pendingSwaps, setPendingSwaps] = useState(0);
+  const [globalSwapsLocked, setGlobalSwapsLocked] = useState(false);
+  const pendingRef = useRef<Map<string, { apt: Apt; date: string }>>(new Map());
+  const [pendingCount, setPendingCount] = useState(0);
+  const [lastSaveError, setLastSaveError] = useState<string>("");
+  
 
   useEffect(() => {
     if (!isAdmin) {
@@ -346,16 +358,77 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     return () => { supabase.removeChannel(ch); };
   }, [session.user.id]);
 
+  // Load global swap lock + subscribe
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("app_settings").select("swaps_locked").eq("id", 1).maybeSingle();
+      setGlobalSwapsLocked(!!data?.swaps_locked);
+    })();
+    const ch = supabase
+      .channel("app-settings-feed")
+      .on("postgres_changes", { event: "*", schema: "public", table: "app_settings" }, async () => {
+        const { data } = await supabase.from("app_settings").select("swaps_locked").eq("id", 1).maybeSingle();
+        setGlobalSwapsLocked(!!data?.swaps_locked);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
+
+  // Beforeunload guard
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (pendingCount > 0) { e.preventDefault(); e.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [pendingCount]);
+
   const saveApt = async (apt: Apt, dateStr: string) => {
     setSaveStatus("saving");
     try {
       const { error } = await supabase.from("appointments").upsert(aptToRow(apt, dateStr));
       if (error) throw error;
+      // Success — drop from pending
+      if (pendingRef.current.has(apt.id)) {
+        pendingRef.current.delete(apt.id);
+        setPendingCount(pendingRef.current.size);
+      }
       setSaveStatus("saved");
+      setLastSaveError("");
       setTimeout(() => setSaveStatus(""), 1500);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Save error:", e);
+      pendingRef.current.set(apt.id, { apt, date: dateStr });
+      setPendingCount(pendingRef.current.size);
       setSaveStatus("error");
+      setLastSaveError(e?.message || "Error desconocido");
+      toast.error("No se pudo guardar", { description: e?.message || "Pulsa Guardar para reintentar" });
+    }
+  };
+
+  const flushPending = async () => {
+    if (pendingRef.current.size === 0) {
+      toast.success("Todo está guardado");
+      return;
+    }
+    const items = Array.from(pendingRef.current.values());
+    setSaveStatus("saving");
+    let okCount = 0, failCount = 0; let lastErr = "";
+    for (const { apt, date } of items) {
+      const { error } = await supabase.from("appointments").upsert(aptToRow(apt, date));
+      if (error) { failCount++; lastErr = error.message; }
+      else { pendingRef.current.delete(apt.id); okCount++; }
+    }
+    setPendingCount(pendingRef.current.size);
+    if (failCount === 0) {
+      setSaveStatus("saved");
+      setLastSaveError("");
+      toast.success(`${okCount} cambio${okCount === 1 ? "" : "s"} guardado${okCount === 1 ? "" : "s"}`);
+      setTimeout(() => setSaveStatus(""), 1500);
+    } else {
+      setSaveStatus("error");
+      setLastSaveError(lastErr);
+      toast.error(`${failCount} cambio${failCount === 1 ? "" : "s"} no se pudo guardar`, { description: lastErr });
     }
   };
 
@@ -455,7 +528,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       timeMins,
       employee: chosen,
       cabin: EMPLOYEES[chosen].cabin,
-      cancelled: false, noShow: false, walkIn: true, changed: "",
+      cancelled: false, noShow: false, walkIn: true, changed: "", swapLocked: false,
     };
     setDays(prev => ({
       ...prev,
@@ -610,14 +683,50 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     <div className="min-h-screen w-full bg-background">
       <header className="border-b border-border sticky top-0 z-10 bg-card">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-baseline gap-3">
+          <div className="flex items-baseline gap-3 flex-wrap">
             <span className="font-display text-primary" style={{ fontSize: 34, fontWeight: 400, lineHeight: 1 }}>Charm</span>
             <span className="text-xs font-label text-accent hidden sm:inline">{profile?.display_name || profile?.employee_name}</span>
-            {saveStatus === "saving" && <span className="text-xs flex items-center gap-1 italic text-accent"><Save size={11} /> guardando…</span>}
-            {saveStatus === "saved"  && <span className="text-xs flex items-center gap-1 italic text-success"><Check size={11} /> guardado</span>}
-            {saveStatus === "error"  && <span className="text-xs flex items-center gap-1 text-destructive"><AlertCircle size={11} /> error</span>}
+            {pendingCount === 0 && saveStatus === "saving" && <span className="text-xs flex items-center gap-1 italic text-accent"><Save size={11} /> guardando…</span>}
+            {pendingCount === 0 && saveStatus === "saved"  && <span className="text-xs flex items-center gap-1 italic text-success"><Check size={11} /> guardado</span>}
+            {pendingCount > 0 && (
+              <button
+                onClick={flushPending}
+                className="text-xs flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground font-label"
+                title={lastSaveError || "Reintentar guardar"}
+              >
+                <Save size={11} /> Guardar ({pendingCount})
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <GlobalSearch
+              isAdmin={isAdmin}
+              employees={EMP_LIST}
+              onPickDate={(d) => { if (days[d]) setActiveDate(d); else toast("Esa fecha no tiene citas cargadas"); }}
+              onPickEmployee={(e) => { setSelectedEmployee(e); setView("individual"); }}
+              onOpenSwaps={() => setView("swaps")}
+              onOpenUpload={isAdmin ? () => document.getElementById("hidden-upload-input")?.click() : undefined}
+              onAddWalkIn={isAdmin ? () => { setView("schedule"); setWalkInForm({ open: true, time: "", client: "" }); } : undefined}
+              onSignOut={onSignOut}
+              onToggleLock={isAdmin ? async () => {
+                const { error } = await supabase
+                  .from("app_settings")
+                  .update({ swaps_locked: !globalSwapsLocked, updated_by: session.user.id, updated_at: new Date().toISOString() })
+                  .eq("id", 1);
+                if (error) toast.error(error.message);
+                else { setGlobalSwapsLocked(v => !v); toast.success(!globalSwapsLocked ? "Cambios bloqueados" : "Cambios desbloqueados"); }
+              } : undefined}
+            />
+            <NotificationBell
+              userId={session.user.id}
+              onLink={(link) => {
+                if (link === "swaps") setView("swaps");
+                else if (link.startsWith("date:")) {
+                  const d = link.slice(5);
+                  if (days[d]) setActiveDate(d);
+                }
+              }}
+            />
             {isAdmin && (
               <>
                 <TabBtn active={view === "schedule"} onClick={() => setView("schedule")}>Agenda</TabBtn>
@@ -628,7 +737,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
                 </button>
                 <div style={{ position: "relative", display: "inline-block" }}>
-                  <input type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  <input id="hidden-upload-input" type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     onChange={handleUpload}
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", fontSize: 100 }} />
                   <span className="px-3 md:px-4 py-2 text-xs font-label border border-primary text-primary flex items-center gap-2 pointer-events-none">
@@ -649,6 +758,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             </button>
           </div>
         </div>
+        {!profile?.employee_name && !isAdmin && (
+          <div className="bg-destructive/10 border-t border-destructive px-4 md:px-6 py-2 text-xs text-destructive flex items-center gap-2">
+            <AlertCircle size={12} /> Tu cuenta no está vinculada a una empleada. Pide al admin que te asigne para poder editar y solicitar cambios.
+          </div>
+        )}
         <div className="max-w-7xl mx-auto px-4 md:px-6 pb-3 flex items-center gap-1 overflow-x-auto">
           {sortedDates.map(d => (
             <button key={d} onClick={() => setActiveDate(d)}
@@ -775,6 +889,17 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     <div className="flex items-center justify-end gap-1">
                       <ToggleBtn active={a.noShow} onClick={() => updateApt(a.id, { noShow: !a.noShow, cancelled: false })} variant="destructive">NO ASISTIÓ</ToggleBtn>
                       <ToggleBtn active={a.cancelled} onClick={() => updateApt(a.id, { cancelled: !a.cancelled, noShow: false })} variant="accent">CANCELÓ</ToggleBtn>
+                      {isAdmin && (
+                        <button
+                          onClick={() => updateApt(a.id, { swapLocked: !a.swapLocked })}
+                          className="p-1 opacity-60 hover:opacity-100"
+                          title={a.swapLocked ? "Desbloquear cambios para esta cita" : "Bloquear cambios para esta cita"}
+                        >
+                          {a.swapLocked
+                            ? <Lock size={14} className="text-destructive" />
+                            : <Unlock size={14} className="text-muted-foreground" />}
+                        </button>
+                      )}
                       <button onClick={() => removeApt(a.id)} className="p-1 opacity-40 hover:opacity-100" title="Eliminar">
                         <Trash2 size={14} className="text-destructive" />
                       </button>
@@ -884,9 +1009,10 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     {selectedEmployee === myEmployee && a.employee === myEmployee && !a.noShow && (
                       <button
                         onClick={() => setSwapDialog({ open: true, apt: a, date: activeDate })}
-                        className="px-3 py-1 text-[11px] font-label border border-accent text-accent flex items-center gap-1"
-                        title="Pedir a una compañera que tome esta cita">
-                        <Repeat size={11} /> Cambio
+                        disabled={a.swapLocked || (globalSwapsLocked && !isAdmin)}
+                        className="px-3 py-1 text-[11px] font-label border border-accent text-accent flex items-center gap-1 disabled:opacity-40"
+                        title={a.swapLocked ? "Cita bloqueada por admin" : (globalSwapsLocked ? "Cambios bloqueados" : "Pedir cambio")}>
+                        {a.swapLocked ? <Lock size={11} /> : <Repeat size={11} />} Cambio
                       </button>
                     )}
                     {!isAdmin && selectedEmployee === myEmployee && (
@@ -937,6 +1063,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           client: swapDialog.apt.client,
           time: swapDialog.apt.time,
           date: swapDialog.date,
+          time_mins: swapDialog.apt.timeMins,
         } : null}
         myEmployee={myEmployee}
         myUserId={session.user.id}
