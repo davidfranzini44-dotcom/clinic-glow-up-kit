@@ -1060,6 +1060,18 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         {view === "swaps" && (
           <SwapRequests session={session} isAdmin={isAdmin} myEmployee={myEmployee} />
         )}
+
+        {view === "clients" && (
+          <ClientsModule isAdmin={isAdmin} selectedClientId={selectedClientId} setSelectedClientId={setSelectedClientId} />
+        )}
+
+        {view === "sales" && isAdmin && (
+          <SalesModule profile={profile} isAdmin={isAdmin} />
+        )}
+
+        {view === "inventory" && (
+          <InventoryModule isAdmin={isAdmin} />
+        )}
       </main>
 
       <SwapRequestDialog
