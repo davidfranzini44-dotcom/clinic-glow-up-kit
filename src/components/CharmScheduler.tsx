@@ -881,6 +881,14 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     <div className="text-sm font-medium w-24 text-primary">{a.time}</div>
                     <div className="flex-1 min-w-0 text-sm text-primary" style={{ textDecoration: a.noShow ? "line-through" : "none" }}>{a.client}</div>
                     {a.walkIn && <span className="text-[10px] px-2 py-0.5 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
+                    {selectedEmployee === myEmployee && a.employee === myEmployee && !a.noShow && (
+                      <button
+                        onClick={() => setSwapDialog({ open: true, apt: a, date: activeDate })}
+                        className="px-3 py-1 text-[11px] font-label border border-accent text-accent flex items-center gap-1"
+                        title="Pedir a una compañera que tome esta cita">
+                        <Repeat size={11} /> Cambio
+                      </button>
+                    )}
                     {!isAdmin && selectedEmployee === myEmployee && (
                       <button onClick={() => updateApt(a.id, { noShow: !a.noShow })}
                         className="px-3 py-1 text-[11px] font-label border"
