@@ -358,16 +358,77 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     return () => { supabase.removeChannel(ch); };
   }, [session.user.id]);
 
+  // Load global swap lock + subscribe
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("app_settings").select("swaps_locked").eq("id", 1).maybeSingle();
+      setGlobalSwapsLocked(!!data?.swaps_locked);
+    })();
+    const ch = supabase
+      .channel("app-settings-feed")
+      .on("postgres_changes", { event: "*", schema: "public", table: "app_settings" }, async () => {
+        const { data } = await supabase.from("app_settings").select("swaps_locked").eq("id", 1).maybeSingle();
+        setGlobalSwapsLocked(!!data?.swaps_locked);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
+
+  // Beforeunload guard
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (pendingCount > 0) { e.preventDefault(); e.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [pendingCount]);
+
   const saveApt = async (apt: Apt, dateStr: string) => {
     setSaveStatus("saving");
     try {
       const { error } = await supabase.from("appointments").upsert(aptToRow(apt, dateStr));
       if (error) throw error;
+      // Success — drop from pending
+      if (pendingRef.current.has(apt.id)) {
+        pendingRef.current.delete(apt.id);
+        setPendingCount(pendingRef.current.size);
+      }
       setSaveStatus("saved");
+      setLastSaveError("");
       setTimeout(() => setSaveStatus(""), 1500);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Save error:", e);
+      pendingRef.current.set(apt.id, { apt, date: dateStr });
+      setPendingCount(pendingRef.current.size);
       setSaveStatus("error");
+      setLastSaveError(e?.message || "Error desconocido");
+      toast.error("No se pudo guardar", { description: e?.message || "Pulsa Guardar para reintentar" });
+    }
+  };
+
+  const flushPending = async () => {
+    if (pendingRef.current.size === 0) {
+      toast.success("Todo está guardado");
+      return;
+    }
+    const items = Array.from(pendingRef.current.values());
+    setSaveStatus("saving");
+    let okCount = 0, failCount = 0; let lastErr = "";
+    for (const { apt, date } of items) {
+      const { error } = await supabase.from("appointments").upsert(aptToRow(apt, date));
+      if (error) { failCount++; lastErr = error.message; }
+      else { pendingRef.current.delete(apt.id); okCount++; }
+    }
+    setPendingCount(pendingRef.current.size);
+    if (failCount === 0) {
+      setSaveStatus("saved");
+      setLastSaveError("");
+      toast.success(`${okCount} cambio${okCount === 1 ? "" : "s"} guardado${okCount === 1 ? "" : "s"}`);
+      setTimeout(() => setSaveStatus(""), 1500);
+    } else {
+      setSaveStatus("error");
+      setLastSaveError(lastErr);
+      toast.error(`${failCount} cambio${failCount === 1 ? "" : "s"} no se pudo guardar`, { description: lastErr });
     }
   };
 
