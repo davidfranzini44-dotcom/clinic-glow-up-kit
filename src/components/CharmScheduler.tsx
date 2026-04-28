@@ -737,6 +737,9 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Individual</TabBtn>
                 <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Reportes</TabBtn>
                 <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
+                <TabBtn active={view === "clients"} onClick={() => { setSelectedClientId(null); setView("clients"); }}>Clientes</TabBtn>
+                <TabBtn active={view === "sales"} onClick={() => setView("sales")}>Ventas</TabBtn>
+                <TabBtn active={view === "inventory"} onClick={() => setView("inventory")}>Inventario</TabBtn>
                 <button onClick={exportAgendaExcel} className="px-3 md:px-4 py-2 text-xs font-label bg-primary text-primary-foreground flex items-center gap-2">
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
                 </button>
