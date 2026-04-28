@@ -266,7 +266,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const pendingRef = useRef<Map<string, { apt: Apt; date: string }>>(new Map());
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSaveError, setLastSaveError] = useState<string>("");
-  const walkInTriggerRef = useRef<() => void>(() => {});
+  
 
   useEffect(() => {
     if (!isAdmin) {
