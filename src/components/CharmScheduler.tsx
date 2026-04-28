@@ -193,6 +193,7 @@ const parseExcel = async (file: File): Promise<Record<string, Apt[]>> => {
         noShow: false,
         walkIn: false,
         changed: "",
+        swapLocked: false,
       });
     });
   }
@@ -226,6 +227,7 @@ const rowToApt = (row: any): Apt => ({
   noShow: row.no_show,
   walkIn: row.walk_in,
   changed: row.changed || "",
+  swapLocked: !!row.swap_locked,
 });
 
 const aptToRow = (apt: Apt, dateStr: string) => ({
@@ -240,6 +242,7 @@ const aptToRow = (apt: Apt, dateStr: string) => ({
   no_show: apt.noShow,
   walk_in: apt.walkIn,
   changed: apt.changed || "",
+  swap_locked: apt.swapLocked,
 });
 
 // ─── Main component ───────────────────────────────────────────────────────
@@ -459,7 +462,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       timeMins,
       employee: chosen,
       cabin: EMPLOYEES[chosen].cabin,
-      cancelled: false, noShow: false, walkIn: true, changed: "",
+      cancelled: false, noShow: false, walkIn: true, changed: "", swapLocked: false,
     };
     setDays(prev => ({
       ...prev,
