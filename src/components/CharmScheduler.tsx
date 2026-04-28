@@ -1013,7 +1013,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 {currentAppts.filter(a => a.employee === selectedEmployee && !a.cancelled).sort((a, b) => a.timeMins - b.timeMins).map(a => (
                   <div key={a.id} className="flex items-center gap-3 py-3 border-b border-border flex-wrap">
                     <div className="text-sm font-medium w-24 text-primary">{a.time}</div>
-                    <div className="flex-1 min-w-0 text-sm text-primary" style={{ textDecoration: a.noShow ? "line-through" : "none" }}>{a.client}</div>
+                    <button onClick={() => setProfileClient(a.client)} className="flex-1 min-w-0 text-sm text-primary hover:underline text-left" style={{ textDecoration: a.noShow ? "line-through" : undefined }}>{a.client}</button>
                     {a.walkIn && <span className="text-[10px] px-2 py-0.5 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
                     {selectedEmployee === myEmployee && a.employee === myEmployee && !a.noShow && (
                       <button
