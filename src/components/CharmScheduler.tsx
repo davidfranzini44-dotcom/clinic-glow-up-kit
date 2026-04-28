@@ -925,15 +925,20 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 }
 
 // ─── Small UI helpers ─────────────────────────────────────────────────────
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabBtn({ active, onClick, children, badge }: { active: boolean; onClick: () => void; children: React.ReactNode; badge?: number }) {
   return (
-    <button onClick={onClick} className="px-3 md:px-4 py-2 text-xs font-label transition-opacity"
+    <button onClick={onClick} className="px-3 md:px-4 py-2 text-xs font-label transition-opacity relative"
       style={{
         borderBottom: active ? "2px solid hsl(var(--primary))" : "2px solid transparent",
         color: "hsl(var(--primary))",
         opacity: active ? 1 : 0.55,
       }}>
       {children}
+      {badge && badge > 0 ? (
+        <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] bg-destructive text-destructive-foreground rounded-full align-middle">
+          {badge}
+        </span>
+      ) : null}
     </button>
   );
 }
