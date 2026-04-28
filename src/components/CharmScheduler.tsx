@@ -1051,6 +1051,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           client: swapDialog.apt.client,
           time: swapDialog.apt.time,
           date: swapDialog.date,
+          time_mins: swapDialog.apt.timeMins,
         } : null}
         myEmployee={myEmployee}
         myUserId={session.user.id}
