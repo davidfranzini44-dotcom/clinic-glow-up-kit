@@ -8,6 +8,9 @@ import Dashboard from "./Dashboard";
 import SwapRequests, { SwapRequestDialog } from "./SwapRequests";
 import NotificationBell from "./NotificationBell";
 import GlobalSearch from "./GlobalSearch";
+import ClientsModule from "./ClientsModule";
+import SalesModule from "./SalesModule";
+import InventoryModule from "./InventoryModule";
 
 // ─── Employee config ──────────────────────────────────────────────────────
 type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
@@ -252,7 +255,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const myEmployee = (profile?.employee_name || "Yaira") as EmpKey;
   const [days, setDays] = useState<Record<string, Apt[]>>({});
   const [activeDate, setActiveDate] = useState<string | null>(null);
-  const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps">(isAdmin ? "schedule" : "individual");
+  const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory">(isAdmin ? "schedule" : "individual");
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<EmpKey>(isAdmin ? "Yaira" : myEmployee);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -733,6 +737,9 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Individual</TabBtn>
                 <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Reportes</TabBtn>
                 <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
+                <TabBtn active={view === "clients"} onClick={() => { setSelectedClientId(null); setView("clients"); }}>Clientes</TabBtn>
+                <TabBtn active={view === "sales"} onClick={() => setView("sales")}>Ventas</TabBtn>
+                <TabBtn active={view === "inventory"} onClick={() => setView("inventory")}>Inventario</TabBtn>
                 <button onClick={exportAgendaExcel} className="px-3 md:px-4 py-2 text-xs font-label bg-primary text-primary-foreground flex items-center gap-2">
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
                 </button>
@@ -1052,6 +1059,18 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
         {view === "swaps" && (
           <SwapRequests session={session} isAdmin={isAdmin} myEmployee={myEmployee} />
+        )}
+
+        {view === "clients" && (
+          <ClientsModule isAdmin={isAdmin} selectedClientId={selectedClientId} setSelectedClientId={setSelectedClientId} />
+        )}
+
+        {view === "sales" && isAdmin && (
+          <SalesModule profile={profile} isAdmin={isAdmin} />
+        )}
+
+        {view === "inventory" && (
+          <InventoryModule isAdmin={isAdmin} />
         )}
       </main>
 
