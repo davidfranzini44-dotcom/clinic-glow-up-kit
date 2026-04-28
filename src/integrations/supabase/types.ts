@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          id: number
+          swaps_locked: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          swaps_locked?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          swaps_locked?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       appointment_swap_requests: {
         Row: {
           appointment_id: string
@@ -21,9 +42,11 @@ export type Database = {
           from_employee: string
           from_user_id: string
           id: string
+          kind: string
           note: string | null
           responded_at: string | null
           status: Database["public"]["Enums"]["swap_status"]
+          target_appointment_id: string | null
           to_employee: string
           to_user_id: string
         }
@@ -33,9 +56,11 @@ export type Database = {
           from_employee: string
           from_user_id: string
           id?: string
+          kind?: string
           note?: string | null
           responded_at?: string | null
           status?: Database["public"]["Enums"]["swap_status"]
+          target_appointment_id?: string | null
           to_employee: string
           to_user_id: string
         }
@@ -45,9 +70,11 @@ export type Database = {
           from_employee?: string
           from_user_id?: string
           id?: string
+          kind?: string
           note?: string | null
           responded_at?: string | null
           status?: Database["public"]["Enums"]["swap_status"]
+          target_appointment_id?: string | null
           to_employee?: string
           to_user_id?: string
         }
@@ -71,6 +98,7 @@ export type Database = {
           employee: string | null
           id: string
           no_show: boolean
+          swap_locked: boolean
           time: string
           time_mins: number
           updated_at: string
@@ -85,6 +113,7 @@ export type Database = {
           employee?: string | null
           id: string
           no_show?: boolean
+          swap_locked?: boolean
           time: string
           time_mins: number
           updated_at?: string
@@ -99,10 +128,44 @@ export type Database = {
           employee?: string | null
           id?: string
           no_show?: boolean
+          swap_locked?: boolean
           time?: string
           time_mins?: number
           updated_at?: string
           walk_in?: boolean
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          link: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          link?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          link?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
         }
         Relationships: []
       }
