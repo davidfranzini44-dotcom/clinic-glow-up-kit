@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
-import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut } from "lucide-react";
+import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import Dashboard from "./Dashboard";
+import SwapRequests, { SwapRequestDialog } from "./SwapRequests";
 
 // ─── Employee config ──────────────────────────────────────────────────────
 type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
@@ -240,11 +241,11 @@ const aptToRow = (apt: Apt, dateStr: string) => ({
 // ─── Main component ───────────────────────────────────────────────────────
 type Props = { session: Session; profile: Profile; isAdmin: boolean; onSignOut: () => void };
 
-export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
+export default function CharmScheduler({ session, profile, isAdmin, onSignOut }: Props) {
   const myEmployee = (profile?.employee_name || "Yaira") as EmpKey;
   const [days, setDays] = useState<Record<string, Apt[]>>({});
   const [activeDate, setActiveDate] = useState<string | null>(null);
-  const [view, setView] = useState<"schedule" | "individual" | "reports">(isAdmin ? "schedule" : "individual");
+  const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps">(isAdmin ? "schedule" : "individual");
   const [selectedEmployee, setSelectedEmployee] = useState<EmpKey>(isAdmin ? "Yaira" : myEmployee);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -252,6 +253,8 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
   const [walkInForm, setWalkInForm] = useState<{ open: boolean; time: string; client: string }>({ open: false, time: "", client: "" });
   const [saveStatus, setSaveStatus] = useState<"" | "saving" | "saved" | "error">("");
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [swapDialog, setSwapDialog] = useState<{ open: boolean; apt: Apt | null; date: string | null }>({ open: false, apt: null, date: null });
+  const [pendingSwaps, setPendingSwaps] = useState(0);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -324,6 +327,24 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
 
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // ─── Pending swap requests count (for badge) ────────────────────────
+  useEffect(() => {
+    const refresh = async () => {
+      const { count } = await supabase
+        .from("appointment_swap_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("to_user_id", session.user.id)
+        .eq("status", "pending");
+      setPendingSwaps(count || 0);
+    };
+    refresh();
+    const ch = supabase
+      .channel("swap-badge")
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointment_swap_requests" }, refresh)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [session.user.id]);
 
   const saveApt = async (apt: Apt, dateStr: string) => {
     setSaveStatus("saving");
@@ -602,6 +623,7 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
                 <TabBtn active={view === "schedule"} onClick={() => setView("schedule")}>Agenda</TabBtn>
                 <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Individual</TabBtn>
                 <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Reportes</TabBtn>
+                <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
                 <button onClick={exportAgendaExcel} className="px-3 md:px-4 py-2 text-xs font-label bg-primary text-primary-foreground flex items-center gap-2">
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
                 </button>
@@ -619,6 +641,7 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
               <>
                 <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Mi agenda</TabBtn>
                 <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Mis reportes</TabBtn>
+                <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
               </>
             )}
             <button onClick={onSignOut} className="px-2 md:px-3 py-2 text-xs font-label border border-destructive text-destructive flex items-center gap-1" title="Salir">
@@ -858,6 +881,14 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
                     <div className="text-sm font-medium w-24 text-primary">{a.time}</div>
                     <div className="flex-1 min-w-0 text-sm text-primary" style={{ textDecoration: a.noShow ? "line-through" : "none" }}>{a.client}</div>
                     {a.walkIn && <span className="text-[10px] px-2 py-0.5 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
+                    {selectedEmployee === myEmployee && a.employee === myEmployee && !a.noShow && (
+                      <button
+                        onClick={() => setSwapDialog({ open: true, apt: a, date: activeDate })}
+                        className="px-3 py-1 text-[11px] font-label border border-accent text-accent flex items-center gap-1"
+                        title="Pedir a una compañera que tome esta cita">
+                        <Repeat size={11} /> Cambio
+                      </button>
+                    )}
                     {!isAdmin && selectedEmployee === myEmployee && (
                       <button onClick={() => updateApt(a.id, { noShow: !a.noShow })}
                         className="px-3 py-1 text-[11px] font-label border"
@@ -892,7 +923,25 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
         {view === "reports" && (
           <Dashboard profile={profile} isAdmin={isAdmin} />
         )}
+
+        {view === "swaps" && (
+          <SwapRequests session={session} isAdmin={isAdmin} myEmployee={myEmployee} />
+        )}
       </main>
+
+      <SwapRequestDialog
+        open={swapDialog.open}
+        onClose={() => setSwapDialog({ open: false, apt: null, date: null })}
+        appointment={swapDialog.apt && swapDialog.date ? {
+          id: swapDialog.apt.id,
+          client: swapDialog.apt.client,
+          time: swapDialog.apt.time,
+          date: swapDialog.date,
+        } : null}
+        myEmployee={myEmployee}
+        myUserId={session.user.id}
+        employees={EMP_LIST}
+      />
 
       <footer className="text-center py-8 text-xs font-label text-accent">
         CHARM CLÍNICA ESTÉTICA · AGENDA DIARIA
@@ -902,15 +951,20 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
 }
 
 // ─── Small UI helpers ─────────────────────────────────────────────────────
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabBtn({ active, onClick, children, badge }: { active: boolean; onClick: () => void; children: React.ReactNode; badge?: number }) {
   return (
-    <button onClick={onClick} className="px-3 md:px-4 py-2 text-xs font-label transition-opacity"
+    <button onClick={onClick} className="px-3 md:px-4 py-2 text-xs font-label transition-opacity relative"
       style={{
         borderBottom: active ? "2px solid hsl(var(--primary))" : "2px solid transparent",
         color: "hsl(var(--primary))",
         opacity: active ? 1 : 0.55,
       }}>
       {children}
+      {badge && badge > 0 ? (
+        <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] bg-destructive text-destructive-foreground rounded-full align-middle">
+          {badge}
+        </span>
+      ) : null}
     </button>
   );
 }
