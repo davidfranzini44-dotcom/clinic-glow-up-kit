@@ -1091,6 +1091,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         employees={EMP_LIST}
       />
 
+      <ClientProfileModal
+        clientName={profileClient}
+        onClose={() => setProfileClient(null)}
+      />
+
       <footer className="text-center py-8 text-xs font-label text-accent">
         CHARM CLÍNICA ESTÉTICA · AGENDA DIARIA
       </footer>
