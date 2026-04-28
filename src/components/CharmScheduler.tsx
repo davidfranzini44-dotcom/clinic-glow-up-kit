@@ -923,7 +923,25 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         {view === "reports" && (
           <Dashboard profile={profile} isAdmin={isAdmin} />
         )}
+
+        {view === "swaps" && (
+          <SwapRequests session={session} isAdmin={isAdmin} myEmployee={myEmployee} />
+        )}
       </main>
+
+      <SwapRequestDialog
+        open={swapDialog.open}
+        onClose={() => setSwapDialog({ open: false, apt: null, date: null })}
+        appointment={swapDialog.apt && swapDialog.date ? {
+          id: swapDialog.apt.id,
+          client: swapDialog.apt.client,
+          time: swapDialog.apt.time,
+          date: swapDialog.date,
+        } : null}
+        myEmployee={myEmployee}
+        myUserId={session.user.id}
+        employees={EMP_LIST}
+      />
 
       <footer className="text-center py-8 text-xs font-label text-accent">
         CHARM CLÍNICA ESTÉTICA · AGENDA DIARIA
