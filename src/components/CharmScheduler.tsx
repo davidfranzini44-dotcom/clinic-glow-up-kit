@@ -11,6 +11,7 @@ import GlobalSearch from "./GlobalSearch";
 import ClientsModule from "./ClientsModule";
 import SalesModule from "./SalesModule";
 import InventoryModule from "./InventoryModule";
+import ClientProfileModal from "./ClientProfileModal";
 
 // ─── Employee config ──────────────────────────────────────────────────────
 type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
@@ -257,6 +258,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory">(isAdmin ? "schedule" : "individual");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [profileClient, setProfileClient] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<EmpKey>(isAdmin ? "Yaira" : myEmployee);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -876,7 +878,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     }}>
                     <div className="text-sm text-primary">{a.time}</div>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm truncate text-primary" style={{ textDecoration: dimmed ? "line-through" : "none" }}>{a.client}</span>
+                      <button onClick={() => setProfileClient(a.client)} className="text-sm truncate text-primary hover:underline text-left" style={{ textDecoration: dimmed ? "line-through" : undefined }}>{a.client}</button>
                       {a.walkIn && <span className="text-[10px] px-2 py-0.5 flex-shrink-0 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
                     </div>
                     <div>
@@ -927,7 +929,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     <div className="flex items-baseline justify-between gap-2 mb-2">
                       <div className="flex items-baseline gap-2 flex-wrap min-w-0">
                         <span className="text-sm font-medium text-primary">{a.time}</span>
-                        <span className="text-sm text-primary" style={{ textDecoration: dimmed ? "line-through" : "none" }}>{a.client}</span>
+                        <button onClick={() => setProfileClient(a.client)} className="text-sm text-primary hover:underline text-left" style={{ textDecoration: dimmed ? "line-through" : undefined }}>{a.client}</button>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         {a.walkIn && <span className="text-[10px] px-2 py-0.5 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
@@ -1011,7 +1013,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 {currentAppts.filter(a => a.employee === selectedEmployee && !a.cancelled).sort((a, b) => a.timeMins - b.timeMins).map(a => (
                   <div key={a.id} className="flex items-center gap-3 py-3 border-b border-border flex-wrap">
                     <div className="text-sm font-medium w-24 text-primary">{a.time}</div>
-                    <div className="flex-1 min-w-0 text-sm text-primary" style={{ textDecoration: a.noShow ? "line-through" : "none" }}>{a.client}</div>
+                    <button onClick={() => setProfileClient(a.client)} className="flex-1 min-w-0 text-sm text-primary hover:underline text-left" style={{ textDecoration: a.noShow ? "line-through" : undefined }}>{a.client}</button>
                     {a.walkIn && <span className="text-[10px] px-2 py-0.5 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
                     {selectedEmployee === myEmployee && a.employee === myEmployee && !a.noShow && (
                       <button
@@ -1087,6 +1089,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         myEmployee={myEmployee}
         myUserId={session.user.id}
         employees={EMP_LIST}
+      />
+
+      <ClientProfileModal
+        clientName={profileClient}
+        onClose={() => setProfileClient(null)}
       />
 
       <footer className="text-center py-8 text-xs font-label text-accent">
