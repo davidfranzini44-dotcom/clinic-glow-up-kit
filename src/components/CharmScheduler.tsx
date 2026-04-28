@@ -683,14 +683,50 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     <div className="min-h-screen w-full bg-background">
       <header className="border-b border-border sticky top-0 z-10 bg-card">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-baseline gap-3">
+          <div className="flex items-baseline gap-3 flex-wrap">
             <span className="font-display text-primary" style={{ fontSize: 34, fontWeight: 400, lineHeight: 1 }}>Charm</span>
             <span className="text-xs font-label text-accent hidden sm:inline">{profile?.display_name || profile?.employee_name}</span>
-            {saveStatus === "saving" && <span className="text-xs flex items-center gap-1 italic text-accent"><Save size={11} /> guardando…</span>}
-            {saveStatus === "saved"  && <span className="text-xs flex items-center gap-1 italic text-success"><Check size={11} /> guardado</span>}
-            {saveStatus === "error"  && <span className="text-xs flex items-center gap-1 text-destructive"><AlertCircle size={11} /> error</span>}
+            {pendingCount === 0 && saveStatus === "saving" && <span className="text-xs flex items-center gap-1 italic text-accent"><Save size={11} /> guardando…</span>}
+            {pendingCount === 0 && saveStatus === "saved"  && <span className="text-xs flex items-center gap-1 italic text-success"><Check size={11} /> guardado</span>}
+            {pendingCount > 0 && (
+              <button
+                onClick={flushPending}
+                className="text-xs flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground font-label"
+                title={lastSaveError || "Reintentar guardar"}
+              >
+                <Save size={11} /> Guardar ({pendingCount})
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <GlobalSearch
+              isAdmin={isAdmin}
+              employees={EMP_LIST}
+              onPickDate={(d) => { if (days[d]) setActiveDate(d); else toast("Esa fecha no tiene citas cargadas"); }}
+              onPickEmployee={(e) => { setSelectedEmployee(e); setView("individual"); }}
+              onOpenSwaps={() => setView("swaps")}
+              onOpenUpload={isAdmin ? () => document.getElementById("hidden-upload-input")?.click() : undefined}
+              onAddWalkIn={isAdmin ? () => { setView("schedule"); setWalkInForm({ open: true, time: "", client: "" }); } : undefined}
+              onSignOut={onSignOut}
+              onToggleLock={isAdmin ? async () => {
+                const { error } = await supabase
+                  .from("app_settings")
+                  .update({ swaps_locked: !globalSwapsLocked, updated_by: session.user.id, updated_at: new Date().toISOString() })
+                  .eq("id", 1);
+                if (error) toast.error(error.message);
+                else { setGlobalSwapsLocked(v => !v); toast.success(!globalSwapsLocked ? "Cambios bloqueados" : "Cambios desbloqueados"); }
+              } : undefined}
+            />
+            <NotificationBell
+              userId={session.user.id}
+              onLink={(link) => {
+                if (link === "swaps") setView("swaps");
+                else if (link.startsWith("date:")) {
+                  const d = link.slice(5);
+                  if (days[d]) setActiveDate(d);
+                }
+              }}
+            />
             {isAdmin && (
               <>
                 <TabBtn active={view === "schedule"} onClick={() => setView("schedule")}>Agenda</TabBtn>
@@ -701,7 +737,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
                 </button>
                 <div style={{ position: "relative", display: "inline-block" }}>
-                  <input type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  <input id="hidden-upload-input" type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     onChange={handleUpload}
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", fontSize: 100 }} />
                   <span className="px-3 md:px-4 py-2 text-xs font-label border border-primary text-primary flex items-center gap-2 pointer-events-none">
@@ -722,6 +758,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             </button>
           </div>
         </div>
+        {!profile?.employee_name && !isAdmin && (
+          <div className="bg-destructive/10 border-t border-destructive px-4 md:px-6 py-2 text-xs text-destructive flex items-center gap-2">
+            <AlertCircle size={12} /> Tu cuenta no está vinculada a una empleada. Pide al admin que te asigne para poder editar y solicitar cambios.
+          </div>
+        )}
         <div className="max-w-7xl mx-auto px-4 md:px-6 pb-3 flex items-center gap-1 overflow-x-auto">
           {sortedDates.map(d => (
             <button key={d} onClick={() => setActiveDate(d)}
