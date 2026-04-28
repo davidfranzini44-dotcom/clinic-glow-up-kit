@@ -262,6 +262,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const [hasLoaded, setHasLoaded] = useState(false);
   const [swapDialog, setSwapDialog] = useState<{ open: boolean; apt: Apt | null; date: string | null }>({ open: false, apt: null, date: null });
   const [pendingSwaps, setPendingSwaps] = useState(0);
+  const [globalSwapsLocked, setGlobalSwapsLocked] = useState(false);
+  const pendingRef = useRef<Map<string, { apt: Apt; date: string }>>(new Map());
+  const [pendingCount, setPendingCount] = useState(0);
+  const [lastSaveError, setLastSaveError] = useState<string>("");
+  const walkInTriggerRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (!isAdmin) {
