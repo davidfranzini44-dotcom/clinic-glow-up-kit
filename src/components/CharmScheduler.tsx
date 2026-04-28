@@ -328,6 +328,24 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // ─── Pending swap requests count (for badge) ────────────────────────
+  useEffect(() => {
+    const refresh = async () => {
+      const { count } = await supabase
+        .from("appointment_swap_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("to_user_id", session.user.id)
+        .eq("status", "pending");
+      setPendingSwaps(count || 0);
+    };
+    refresh();
+    const ch = supabase
+      .channel("swap-badge")
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointment_swap_requests" }, refresh)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [session.user.id]);
+
   const saveApt = async (apt: Apt, dateStr: string) => {
     setSaveStatus("saving");
     try {
