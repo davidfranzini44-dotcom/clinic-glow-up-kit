@@ -1,10 +1,13 @@
-import { useState, useMemo, useEffect } from "react";
-import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
+import { toast } from "sonner";
 import Dashboard from "./Dashboard";
 import SwapRequests, { SwapRequestDialog } from "./SwapRequests";
+import NotificationBell from "./NotificationBell";
+import GlobalSearch from "./GlobalSearch";
 
 // ─── Employee config ──────────────────────────────────────────────────────
 type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
