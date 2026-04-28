@@ -878,7 +878,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     }}>
                     <div className="text-sm text-primary">{a.time}</div>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm truncate text-primary" style={{ textDecoration: dimmed ? "line-through" : "none" }}>{a.client}</span>
+                      <button onClick={() => setProfileClient(a.client)} className="text-sm truncate text-primary hover:underline text-left" style={{ textDecoration: dimmed ? "line-through" : undefined }}>{a.client}</button>
                       {a.walkIn && <span className="text-[10px] px-2 py-0.5 flex-shrink-0 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
                     </div>
                     <div>
