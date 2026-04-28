@@ -11,6 +11,7 @@ import GlobalSearch from "./GlobalSearch";
 import ClientsModule from "./ClientsModule";
 import SalesModule from "./SalesModule";
 import InventoryModule from "./InventoryModule";
+import ClientProfileModal from "./ClientProfileModal";
 
 // ─── Employee config ──────────────────────────────────────────────────────
 type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
