@@ -623,6 +623,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 <TabBtn active={view === "schedule"} onClick={() => setView("schedule")}>Agenda</TabBtn>
                 <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Individual</TabBtn>
                 <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Reportes</TabBtn>
+                <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
                 <button onClick={exportAgendaExcel} className="px-3 md:px-4 py-2 text-xs font-label bg-primary text-primary-foreground flex items-center gap-2">
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
                 </button>
@@ -640,6 +641,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
               <>
                 <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Mi agenda</TabBtn>
                 <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Mis reportes</TabBtn>
+                <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
               </>
             )}
             <button onClick={onSignOut} className="px-2 md:px-3 py-2 text-xs font-label border border-destructive text-destructive flex items-center gap-1" title="Salir">
