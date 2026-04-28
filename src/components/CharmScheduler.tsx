@@ -39,6 +39,7 @@ export type Apt = {
   noShow: boolean;
   walkIn: boolean;
   changed: string;
+  swapLocked: boolean;
 };
 
 // ─── Time helpers ─────────────────────────────────────────────────────────
