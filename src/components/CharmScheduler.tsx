@@ -889,6 +889,17 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     <div className="flex items-center justify-end gap-1">
                       <ToggleBtn active={a.noShow} onClick={() => updateApt(a.id, { noShow: !a.noShow, cancelled: false })} variant="destructive">NO ASISTIÓ</ToggleBtn>
                       <ToggleBtn active={a.cancelled} onClick={() => updateApt(a.id, { cancelled: !a.cancelled, noShow: false })} variant="accent">CANCELÓ</ToggleBtn>
+                      {isAdmin && (
+                        <button
+                          onClick={() => updateApt(a.id, { swapLocked: !a.swapLocked })}
+                          className="p-1 opacity-60 hover:opacity-100"
+                          title={a.swapLocked ? "Desbloquear cambios para esta cita" : "Bloquear cambios para esta cita"}
+                        >
+                          {a.swapLocked
+                            ? <Lock size={14} className="text-destructive" />
+                            : <Unlock size={14} className="text-muted-foreground" />}
+                        </button>
+                      )}
                       <button onClick={() => removeApt(a.id)} className="p-1 opacity-40 hover:opacity-100" title="Eliminar">
                         <Trash2 size={14} className="text-destructive" />
                       </button>
