@@ -173,40 +173,94 @@ export type Database = {
       }
       cash_closures: {
         Row: {
-          counted_cash: number
+          azul_counted: number
+          azul_system: number
+          bills_100: number
+          bills_1000: number
+          bills_200: number
+          bills_2000: number
+          bills_50: number
+          bills_500: number
+          card_terminal_counted: number
+          card_terminal_system: number
+          cash_counted: number
+          cash_difference: number
+          cash_system: number
+          closed_by: string | null
+          coins_1: number
+          coins_10: number
+          coins_25: number
+          coins_5: number
           created_at: string
           created_by: string | null
           date: string
-          difference: number
-          expected_cash: number
           id: string
+          net_total: number
           notes: string | null
-          opening_cash: number
-          totals_by_method: Json
+          total_expenses: number
+          total_income: number
+          transfers_counted: number
+          transfers_system: number
         }
         Insert: {
-          counted_cash?: number
+          azul_counted?: number
+          azul_system?: number
+          bills_100?: number
+          bills_1000?: number
+          bills_200?: number
+          bills_2000?: number
+          bills_50?: number
+          bills_500?: number
+          card_terminal_counted?: number
+          card_terminal_system?: number
+          cash_counted?: number
+          cash_difference?: number
+          cash_system?: number
+          closed_by?: string | null
+          coins_1?: number
+          coins_10?: number
+          coins_25?: number
+          coins_5?: number
           created_at?: string
           created_by?: string | null
           date?: string
-          difference?: number
-          expected_cash?: number
           id?: string
+          net_total?: number
           notes?: string | null
-          opening_cash?: number
-          totals_by_method?: Json
+          total_expenses?: number
+          total_income?: number
+          transfers_counted?: number
+          transfers_system?: number
         }
         Update: {
-          counted_cash?: number
+          azul_counted?: number
+          azul_system?: number
+          bills_100?: number
+          bills_1000?: number
+          bills_200?: number
+          bills_2000?: number
+          bills_50?: number
+          bills_500?: number
+          card_terminal_counted?: number
+          card_terminal_system?: number
+          cash_counted?: number
+          cash_difference?: number
+          cash_system?: number
+          closed_by?: string | null
+          coins_1?: number
+          coins_10?: number
+          coins_25?: number
+          coins_5?: number
           created_at?: string
           created_by?: string | null
           date?: string
-          difference?: number
-          expected_cash?: number
           id?: string
+          net_total?: number
           notes?: string | null
-          opening_cash?: number
-          totals_by_method?: Json
+          total_expenses?: number
+          total_income?: number
+          transfers_counted?: number
+          transfers_system?: number
         }
         Relationships: []
       }
@@ -250,6 +304,7 @@ export type Database = {
           customer_id: string | null
           id: string
           invoice_id: string | null
+          invoice_item_id: string | null
           package_name: string
           purchased_date: string
           total_sessions: number
@@ -262,6 +317,7 @@ export type Database = {
           customer_id?: string | null
           id?: string
           invoice_id?: string | null
+          invoice_item_id?: string | null
           package_name: string
           purchased_date?: string
           total_sessions?: number
@@ -274,6 +330,7 @@ export type Database = {
           customer_id?: string | null
           id?: string
           invoice_id?: string | null
+          invoice_item_id?: string | null
           package_name?: string
           purchased_date?: string
           total_sessions?: number
@@ -293,6 +350,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_packages_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
             referencedColumns: ["id"]
           },
         ]
@@ -348,7 +412,7 @@ export type Database = {
           date: string
           description: string | null
           id: string
-          photo_url: string | null
+          receipt_url: string | null
         }
         Insert: {
           amount?: number
@@ -358,7 +422,7 @@ export type Database = {
           date?: string
           description?: string | null
           id?: string
-          photo_url?: string | null
+          receipt_url?: string | null
         }
         Update: {
           amount?: number
@@ -368,7 +432,7 @@ export type Database = {
           date?: string
           description?: string | null
           id?: string
-          photo_url?: string | null
+          receipt_url?: string | null
         }
         Relationships: []
       }
@@ -478,39 +542,45 @@ export type Database = {
       }
       invoice_items: {
         Row: {
-          catalog_id: string | null
+          catalog_item_id: string | null
           created_at: string
           id: string
           invoice_id: string
+          is_package: boolean
           name: string
-          qty: number
+          package_sessions: number | null
+          quantity: number
           total: number
           unit_price: number
         }
         Insert: {
-          catalog_id?: string | null
+          catalog_item_id?: string | null
           created_at?: string
           id?: string
           invoice_id: string
+          is_package?: boolean
           name: string
-          qty?: number
+          package_sessions?: number | null
+          quantity?: number
           total?: number
           unit_price?: number
         }
         Update: {
-          catalog_id?: string | null
+          catalog_item_id?: string | null
           created_at?: string
           id?: string
           invoice_id?: string
+          is_package?: boolean
           name?: string
-          qty?: number
+          package_sessions?: number | null
+          quantity?: number
           total?: number
           unit_price?: number
         }
         Relationships: [
           {
             foreignKeyName: "invoice_items_catalog_id_fkey"
-            columns: ["catalog_id"]
+            columns: ["catalog_item_id"]
             isOneToOne: false
             referencedRelation: "catalog_items"
             referencedColumns: ["id"]
@@ -560,6 +630,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          customer_email: string | null
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
@@ -576,6 +647,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          customer_email?: string | null
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
@@ -592,6 +664,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          customer_email?: string | null
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
