@@ -241,11 +241,11 @@ const aptToRow = (apt: Apt, dateStr: string) => ({
 // ─── Main component ───────────────────────────────────────────────────────
 type Props = { session: Session; profile: Profile; isAdmin: boolean; onSignOut: () => void };
 
-export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
+export default function CharmScheduler({ session, profile, isAdmin, onSignOut }: Props) {
   const myEmployee = (profile?.employee_name || "Yaira") as EmpKey;
   const [days, setDays] = useState<Record<string, Apt[]>>({});
   const [activeDate, setActiveDate] = useState<string | null>(null);
-  const [view, setView] = useState<"schedule" | "individual" | "reports">(isAdmin ? "schedule" : "individual");
+  const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps">(isAdmin ? "schedule" : "individual");
   const [selectedEmployee, setSelectedEmployee] = useState<EmpKey>(isAdmin ? "Yaira" : myEmployee);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -253,6 +253,8 @@ export default function CharmScheduler({ profile, isAdmin, onSignOut }: Props) {
   const [walkInForm, setWalkInForm] = useState<{ open: boolean; time: string; client: string }>({ open: false, time: "", client: "" });
   const [saveStatus, setSaveStatus] = useState<"" | "saving" | "saved" | "error">("");
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [swapDialog, setSwapDialog] = useState<{ open: boolean; apt: Apt | null; date: string | null }>({ open: false, apt: null, date: null });
+  const [pendingSwaps, setPendingSwaps] = useState(0);
 
   useEffect(() => {
     if (!isAdmin) {
