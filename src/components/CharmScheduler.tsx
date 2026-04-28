@@ -1009,9 +1009,10 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     {selectedEmployee === myEmployee && a.employee === myEmployee && !a.noShow && (
                       <button
                         onClick={() => setSwapDialog({ open: true, apt: a, date: activeDate })}
-                        className="px-3 py-1 text-[11px] font-label border border-accent text-accent flex items-center gap-1"
-                        title="Pedir a una compañera que tome esta cita">
-                        <Repeat size={11} /> Cambio
+                        disabled={a.swapLocked || (globalSwapsLocked && !isAdmin)}
+                        className="px-3 py-1 text-[11px] font-label border border-accent text-accent flex items-center gap-1 disabled:opacity-40"
+                        title={a.swapLocked ? "Cita bloqueada por admin" : (globalSwapsLocked ? "Cambios bloqueados" : "Pedir cambio")}>
+                        {a.swapLocked ? <Lock size={11} /> : <Repeat size={11} />} Cambio
                       </button>
                     )}
                     {!isAdmin && selectedEmployee === myEmployee && (
