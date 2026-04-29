@@ -390,6 +390,17 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     return () => window.removeEventListener("beforeunload", handler);
   }, [pendingCount]);
 
+  // Auto-retry pending saves every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (pendingRef.current.size > 0) {
+        flushPending();
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const saveApt = async (apt: Apt, dateStr: string) => {
     setSaveStatus("saving");
     try {
