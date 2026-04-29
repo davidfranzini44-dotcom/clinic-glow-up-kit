@@ -300,10 +300,10 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           grouped[row.date].push(rowToApt(row));
         });
         setDays(grouped);
-        const allDates = Object.keys(grouped).sort();
+        const allDates = Object.keys(grouped).sort().filter(d => d > HISTORY_CUTOFF);
         if (allDates.length > 0) {
           const today = new Date().toISOString().slice(0, 10);
-          setActiveDate(grouped[today] ? today : allDates[0]);
+          setActiveDate(allDates.includes(today) ? today : allDates[0]);
         }
       } catch (e) {
         console.error("Load error:", e);
