@@ -75,6 +75,7 @@ export const syncLastSavedAt = (value?: string | Date | null) => {
 
   if (incoming >= current) {
     updateSnapshot({ lastSavedAt: normalized });
+    writePersistedLastSaved(normalized);
   }
 };
 
