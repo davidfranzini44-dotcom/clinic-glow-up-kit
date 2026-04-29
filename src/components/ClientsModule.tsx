@@ -64,12 +64,12 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
     (async () => {
       setLoading(true);
       try {
-        const [{ data: cust }, { data: inv }, { data: pkg }, { data: apt }, { data: notes }] = await Promise.all([
-          supabase.from("customers").select("*"),
-          supabase.from("invoices").select("*, invoice_items(*), invoice_payments(*)"),
-          supabase.from("customer_packages").select("*"),
-          supabase.from("appointments").select("*"),
-          supabase.from("appointment_notes").select("*"),
+        const [cust, inv, pkg, apt, notes] = await Promise.all([
+          fetchAll<any>("customers"),
+          fetchAll<any>("invoices", "*, invoice_items(*), invoice_payments(*)"),
+          fetchAll<any>("customer_packages"),
+          fetchAll<any>("appointments"),
+          fetchAll<any>("appointment_notes"),
         ]);
         setCustomers(cust || []);
         setInvoices(inv || []);
