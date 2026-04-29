@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAll } from '@/lib/fetchAll';
 
 const EMP_LIST = ['Yaira', 'Belkis', 'Cielo', 'Lisa'];
 
