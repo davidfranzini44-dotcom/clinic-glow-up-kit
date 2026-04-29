@@ -300,10 +300,19 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const [pendingSwaps, setPendingSwaps] = useState(0);
   const [globalSwapsLocked, setGlobalSwapsLocked] = useState(false);
   const pendingRef = useRef<Map<string, { apt: Apt; date: string }>>(new Map());
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFlushingRef = useRef(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSaveError, setLastSaveError] = useState<string>("");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const globalSave = useGlobalSaveStatus();
+
+  const clearFlushTimer = () => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+  };
   
 
   useEffect(() => {
@@ -320,6 +329,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       setLastSavedAt(prev => latestTimestamp(prev, globalSave.lastSavedAt));
     }
   }, [globalSave]);
+
+  useEffect(() => () => clearFlushTimer(), []);
 
   // ─── Load + realtime ─────────────────────────────────────────────────
   useEffect(() => {
