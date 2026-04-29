@@ -777,19 +777,21 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             <AlertCircle size={12} /> Tu cuenta no está vinculada a una empleada. Pide al admin que te asigne para poder editar y solicitar cambios.
           </div>
         )}
-        <div className="max-w-7xl mx-auto px-4 md:px-6 pb-3 flex items-center gap-1 overflow-x-auto">
-          {sortedDates.map(d => (
-            <button key={d} onClick={() => setActiveDate(d)}
-              className="px-3 md:px-4 py-2 text-xs font-label border border-primary whitespace-nowrap transition-opacity"
-              style={{
-                backgroundColor: activeDate === d ? "hsl(var(--primary))" : "transparent",
-                color: activeDate === d ? "hsl(var(--primary-foreground))" : "hsl(var(--primary))",
-                opacity: activeDate === d ? 1 : 0.6,
-              }}>
-              {dateLabelShortES(d)}
-            </button>
-          ))}
-        </div>
+        {(view === "schedule" || view === "individual") && (
+          <div className="max-w-7xl mx-auto px-4 md:px-6 pb-3 flex items-center gap-1 overflow-x-auto">
+            {sortedDates.map(d => (
+              <button key={d} onClick={() => setActiveDate(d)}
+                className="px-3 md:px-4 py-2 text-xs font-label border border-primary whitespace-nowrap transition-opacity"
+                style={{
+                  backgroundColor: activeDate === d ? "hsl(var(--primary))" : "transparent",
+                  color: activeDate === d ? "hsl(var(--primary-foreground))" : "hsl(var(--primary))",
+                  opacity: activeDate === d ? 1 : 0.6,
+                }}>
+                {dateLabelShortES(d)}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6">
