@@ -833,7 +833,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             </div>
             {pendingCount > 0 ? (
               <button
-                onClick={flushPending}
+                onClick={() => void flushPending({ manual: true })}
                 className="text-xs flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground font-label"
                 title={lastSaveError || "Reintentar guardar cambios pendientes"}
               >
@@ -841,7 +841,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
               </button>
             ) : (
               <button
-                onClick={flushPending}
+                onClick={() => void flushPending({ manual: true })}
                 disabled={saveStatus === "saving"}
                 className="text-xs flex items-center gap-1 px-2 py-1 border border-border font-label hover:bg-accent/10 disabled:opacity-60"
                 title="Guardar manualmente (los cambios se guardan automáticamente)"
@@ -940,7 +940,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
               <span className="break-words">SAVE ERROR: {lastSaveError || "No se pudo guardar automáticamente."}</span>
             </div>
             {pendingCount > 0 && (
-              <button onClick={flushPending} className="px-2 py-1 border border-destructive text-destructive font-label">
+              <button onClick={() => void flushPending({ manual: true })} className="px-2 py-1 border border-destructive text-destructive font-label">
                 Reintentar
               </button>
             )}
