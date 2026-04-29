@@ -393,8 +393,19 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const saveApt = async (apt: Apt, dateStr: string) => {
     setSaveStatus("saving");
     try {
-      const { error } = await supabase.from("appointments").upsert(aptToRow(apt, dateStr));
-      if (error) throw error;
+      const row = aptToRow(apt, dateStr);
+      // Try UPDATE first (works for non-admin employees on their own appointments).
+      // If no row was updated, fall back to upsert (admin creating new rows like walk-ins).
+      const { data: updated, error: updErr } = await supabase
+        .from("appointments")
+        .update(row)
+        .eq("id", apt.id)
+        .select("id");
+      if (updErr) throw updErr;
+      if (!updated || updated.length === 0) {
+        const { error: upErr } = await supabase.from("appointments").upsert(row);
+        if (upErr) throw upErr;
+      }
       // Success — drop from pending
       if (pendingRef.current.has(apt.id)) {
         pendingRef.current.delete(apt.id);
