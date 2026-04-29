@@ -214,6 +214,7 @@ const DAYS_ES = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sá
 const DAYS_ES_SHORT = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const MONTHS_ES_UPPER = MONTHS_ES.map(m => m.toUpperCase());
+const SANTO_DOMINGO_TZ = "America/Santo_Domingo";
 
 const dateLabelES = (dateStr: string | null) => {
   if (!dateStr) return "";
@@ -223,6 +224,29 @@ const dateLabelES = (dateStr: string | null) => {
 const dateLabelShortES = (dateStr: string) => {
   const d = new Date(dateStr + "T12:00:00");
   return `${DAYS_ES_SHORT[d.getDay()]} ${d.getDate()}`;
+};
+
+const formatSantoDomingoDateTime = (value: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("es-DO", {
+    timeZone: SANTO_DOMINGO_TZ,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  }).format(date);
+};
+
+const latestTimestamp = (current: string | null, incoming?: string | null) => {
+  if (!incoming) return current;
+  if (!current) return incoming;
+  return new Date(incoming).getTime() > new Date(current).getTime() ? incoming : current;
 };
 
 const rowToApt = (row: any): Apt => ({
@@ -277,6 +301,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const pendingRef = useRef<Map<string, { apt: Apt; date: string }>>(new Map());
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSaveError, setLastSaveError] = useState<string>("");
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   
 
   useEffect(() => {
