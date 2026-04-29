@@ -305,7 +305,17 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSaveError, setLastSaveError] = useState<string>("");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugTick, setDebugTick] = useState(0);
+  const [flushCount, setFlushCount] = useState(0);
+  const [lastFlushAt, setLastFlushAt] = useState<string | null>(null);
   const globalSave = useGlobalSaveStatus();
+
+  useEffect(() => {
+    if (!showDebug) return;
+    const t = setInterval(() => setDebugTick(x => x + 1), 500);
+    return () => clearInterval(t);
+  }, [showDebug]);
 
   const clearFlushTimer = () => {
     if (flushTimerRef.current) {
@@ -526,6 +536,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       console.error("Flush save error:", e);
     } finally {
       isFlushingRef.current = false;
+      setFlushCount(c => c + 1);
+      setLastFlushAt(new Date().toISOString());
     }
 
     setPendingCount(pendingRef.current.size);
@@ -855,6 +867,13 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 )}
               </button>
             )}
+            <button
+              onClick={() => setShowDebug(s => !s)}
+              className="text-[10px] px-2 py-1 border border-border font-label hover:bg-accent/10"
+              title="Mostrar panel de depuración de autosave"
+            >
+              {showDebug ? "Debug ▾" : "Debug ▸"}
+            </button>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <GlobalSearch
@@ -944,6 +963,35 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 Reintentar
               </button>
             )}
+          </div>
+        )}
+        {showDebug && (
+          <div className="bg-muted/40 border-t border-border px-4 md:px-6 py-2 text-[11px] font-mono text-foreground/80 space-y-1">
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <span>queue: <b>{pendingRef.current.size}</b></span>
+              <span>pendingCount(state): <b>{pendingCount}</b></span>
+              <span>flushing: <b>{String(isFlushingRef.current)}</b></span>
+              <span>status: <b>{saveStatus || "idle"}</b></span>
+              <span>flushes: <b>{flushCount}</b></span>
+              <span>timer: <b>{flushTimerRef.current ? "armed" : "off"}</b></span>
+              <span>tick: {debugTick}</span>
+            </div>
+            <div>lastSavedAt: {lastSavedAt || "—"}</div>
+            <div>lastFlushAt: {lastFlushAt || "—"}</div>
+            <div className="break-words">lastError: {lastSaveError || "—"}</div>
+            <div className="break-words">
+              pendingIds: {pendingRef.current.size === 0 ? "—" : Array.from(pendingRef.current.keys()).join(", ")}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => void flushPending({ manual: true })}
+                className="px-2 py-0.5 border border-border hover:bg-accent/10"
+              >Force flush</button>
+              <button
+                onClick={() => { setLastSaveError(""); }}
+                className="px-2 py-0.5 border border-border hover:bg-accent/10"
+              >Clear error</button>
+            </div>
           </div>
         )}
         {(view === "schedule" || view === "individual") && (
