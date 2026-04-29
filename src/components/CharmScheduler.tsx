@@ -12,6 +12,10 @@ import ClientsModule from "./ClientsModule";
 import SalesModule from "./SalesModule";
 import InventoryModule from "./InventoryModule";
 import ClientProfileModal from "./ClientProfileModal";
+import HistoryView from "./HistoryView";
+
+// ─── History cutoff: dates on or before this are hidden from the main agenda ─
+const HISTORY_CUTOFF = "2026-04-26";
 
 // ─── Employee config ──────────────────────────────────────────────────────
 type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
@@ -256,7 +260,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const myEmployee = (profile?.employee_name || "Yaira") as EmpKey;
   const [days, setDays] = useState<Record<string, Apt[]>>({});
   const [activeDate, setActiveDate] = useState<string | null>(null);
-  const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory">(isAdmin ? "schedule" : "individual");
+  const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory" | "history">(isAdmin ? "schedule" : "individual");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [profileClient, setProfileClient] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<EmpKey>(isAdmin ? "Yaira" : myEmployee);
@@ -296,10 +300,10 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           grouped[row.date].push(rowToApt(row));
         });
         setDays(grouped);
-        const allDates = Object.keys(grouped).sort();
+        const allDates = Object.keys(grouped).sort().filter(d => d > HISTORY_CUTOFF);
         if (allDates.length > 0) {
           const today = new Date().toISOString().slice(0, 10);
-          setActiveDate(grouped[today] ? today : allDates[0]);
+          setActiveDate(allDates.includes(today) ? today : allDates[0]);
         }
       } catch (e) {
         console.error("Load error:", e);
@@ -475,7 +479,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     e.target.value = "";
   };
 
-  const sortedDates = useMemo(() => Object.keys(days).sort(), [days]);
+  const sortedDates = useMemo(() => Object.keys(days).filter(d => d > HISTORY_CUTOFF).sort(), [days]);
   const currentAppts = activeDate ? (days[activeDate] || []) : [];
 
   const updateApt = async (id: string, changes: Partial<Apt>) => {
@@ -742,6 +746,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 <TabBtn active={view === "clients"} onClick={() => { setSelectedClientId(null); setView("clients"); }}>Clientes</TabBtn>
                 <TabBtn active={view === "sales"} onClick={() => setView("sales")}>Ventas</TabBtn>
                 <TabBtn active={view === "inventory"} onClick={() => setView("inventory")}>Inventario</TabBtn>
+                <TabBtn active={view === "history"} onClick={() => setView("history")}>Historial</TabBtn>
                 <button onClick={exportAgendaExcel} className="px-3 md:px-4 py-2 text-xs font-label bg-primary text-primary-foreground flex items-center gap-2">
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
                 </button>
@@ -772,19 +777,21 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             <AlertCircle size={12} /> Tu cuenta no está vinculada a una empleada. Pide al admin que te asigne para poder editar y solicitar cambios.
           </div>
         )}
-        <div className="max-w-7xl mx-auto px-4 md:px-6 pb-3 flex items-center gap-1 overflow-x-auto">
-          {sortedDates.map(d => (
-            <button key={d} onClick={() => setActiveDate(d)}
-              className="px-3 md:px-4 py-2 text-xs font-label border border-primary whitespace-nowrap transition-opacity"
-              style={{
-                backgroundColor: activeDate === d ? "hsl(var(--primary))" : "transparent",
-                color: activeDate === d ? "hsl(var(--primary-foreground))" : "hsl(var(--primary))",
-                opacity: activeDate === d ? 1 : 0.6,
-              }}>
-              {dateLabelShortES(d)}
-            </button>
-          ))}
-        </div>
+        {(view === "schedule" || view === "individual") && (
+          <div className="max-w-7xl mx-auto px-4 md:px-6 pb-3 flex items-center gap-1 overflow-x-auto">
+            {sortedDates.map(d => (
+              <button key={d} onClick={() => setActiveDate(d)}
+                className="px-3 md:px-4 py-2 text-xs font-label border border-primary whitespace-nowrap transition-opacity"
+                style={{
+                  backgroundColor: activeDate === d ? "hsl(var(--primary))" : "transparent",
+                  color: activeDate === d ? "hsl(var(--primary-foreground))" : "hsl(var(--primary))",
+                  opacity: activeDate === d ? 1 : 0.6,
+                }}>
+                {dateLabelShortES(d)}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6">
@@ -1073,6 +1080,14 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
         {view === "inventory" && (
           <InventoryModule isAdmin={isAdmin} />
+        )}
+
+        {view === "history" && isAdmin && (
+          <HistoryView
+            days={days}
+            cutoff={HISTORY_CUTOFF}
+            onClientClick={(name) => setProfileClient(name)}
+          />
         )}
       </main>
 
