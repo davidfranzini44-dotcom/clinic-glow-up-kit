@@ -1081,6 +1081,14 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         {view === "inventory" && (
           <InventoryModule isAdmin={isAdmin} />
         )}
+
+        {view === "history" && isAdmin && (
+          <HistoryView
+            days={days}
+            cutoff={HISTORY_CUTOFF}
+            onClientClick={(name) => setProfileClient(name)}
+          />
+        )}
       </main>
 
       <SwapRequestDialog
