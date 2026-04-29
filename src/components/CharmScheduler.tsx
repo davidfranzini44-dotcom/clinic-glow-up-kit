@@ -693,15 +693,28 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           <div className="flex items-baseline gap-3 flex-wrap">
             <span className="font-display text-primary" style={{ fontSize: 34, fontWeight: 400, lineHeight: 1 }}>Charm</span>
             <span className="text-xs font-label text-accent hidden sm:inline">{profile?.display_name || profile?.employee_name}</span>
-            {pendingCount === 0 && saveStatus === "saving" && <span className="text-xs flex items-center gap-1 italic text-accent"><Save size={11} /> guardando…</span>}
-            {pendingCount === 0 && saveStatus === "saved"  && <span className="text-xs flex items-center gap-1 italic text-success"><Check size={11} /> guardado</span>}
-            {pendingCount > 0 && (
+            {pendingCount > 0 ? (
               <button
                 onClick={flushPending}
                 className="text-xs flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground font-label"
-                title={lastSaveError || "Reintentar guardar"}
+                title={lastSaveError || "Reintentar guardar cambios pendientes"}
               >
                 <Save size={11} /> Guardar ({pendingCount})
+              </button>
+            ) : (
+              <button
+                onClick={flushPending}
+                disabled={saveStatus === "saving"}
+                className="text-xs flex items-center gap-1 px-2 py-1 border border-border font-label hover:bg-accent/10 disabled:opacity-60"
+                title="Guardar manualmente (los cambios se guardan automáticamente)"
+              >
+                {saveStatus === "saving" ? (
+                  <><Save size={11} className="animate-pulse" /> guardando…</>
+                ) : saveStatus === "saved" ? (
+                  <><Check size={11} className="text-success" /> Guardado</>
+                ) : (
+                  <><Save size={11} /> Guardar</>
+                )}
               </button>
             )}
           </div>
