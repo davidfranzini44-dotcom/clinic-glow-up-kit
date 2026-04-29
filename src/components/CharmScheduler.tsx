@@ -289,11 +289,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   useEffect(() => {
     (async () => {
       try {
-        const { data, error } = await supabase
-          .from("appointments")
-          .select("*")
-          .order("time_mins", { ascending: true });
-        if (error) throw error;
+        const data = await fetchAll<any>("appointments", "*", { column: "time_mins", ascending: true });
         const grouped: Record<string, Apt[]> = {};
         (data || []).forEach((row: any) => {
           if (!grouped[row.date]) grouped[row.date] = [];
