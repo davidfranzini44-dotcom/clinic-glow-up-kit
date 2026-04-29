@@ -3,6 +3,7 @@ import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
+import { markSaveError, markSaveStart, markSaveSuccess, syncLastSavedAt, useGlobalSaveStatus } from "@/lib/saveSync";
 import type { Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import Dashboard from "./Dashboard";
@@ -302,6 +303,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSaveError, setLastSaveError] = useState<string>("");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const globalSave = useGlobalSaveStatus();
   
 
   useEffect(() => {
@@ -429,7 +431,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   }, []);
 
   const saveApt = async (apt: Apt, dateStr: string) => {
-    setSaveStatus("saving");
+    markSaveStart();
     try {
       const row = aptToRow(apt, dateStr);
       const { data: updated, error: updErr } = await supabase
@@ -458,6 +460,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       setSaveStatus("saved");
       setLastSaveError("");
       setLastSavedAt(prev => latestTimestamp(prev, savedAt));
+      markSaveSuccess(savedAt);
       setTimeout(() => setSaveStatus(""), 1500);
     } catch (e: any) {
       console.error("Save error:", e);
@@ -465,6 +468,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       setPendingCount(pendingRef.current.size);
       setSaveStatus("error");
       setLastSaveError(e?.message || "Error desconocido");
+      markSaveError(e);
       toast.error("No se pudo guardar", { description: e?.message || "Pulsa Guardar para reintentar" });
     }
   };
@@ -475,6 +479,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       return;
     }
     const items = Array.from(pendingRef.current.values());
+    markSaveStart();
     setSaveStatus("saving");
     let okCount = 0, failCount = 0; let lastErr = ""; let newestSavedAt: string | null = null;
     for (const { apt, date } of items) {
@@ -507,11 +512,13 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       setSaveStatus("saved");
       setLastSaveError("");
       setLastSavedAt(prev => latestTimestamp(prev, newestSavedAt));
+      markSaveSuccess(newestSavedAt);
       toast.success(`${okCount} cambio${okCount === 1 ? "" : "s"} guardado${okCount === 1 ? "" : "s"}`);
       setTimeout(() => setSaveStatus(""), 1500);
     } else {
       setSaveStatus("error");
       setLastSaveError(lastErr);
+      markSaveError(lastErr);
       toast.error(`${failCount} cambio${failCount === 1 ? "" : "s"} no se pudo guardar`, { description: lastErr });
     }
   };
