@@ -479,7 +479,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     e.target.value = "";
   };
 
-  const sortedDates = useMemo(() => Object.keys(days).sort(), [days]);
+  const sortedDates = useMemo(() => Object.keys(days).filter(d => d > HISTORY_CUTOFF).sort(), [days]);
   const currentAppts = activeDate ? (days[activeDate] || []) : [];
 
   const updateApt = async (id: string, changes: Partial<Apt>) => {
