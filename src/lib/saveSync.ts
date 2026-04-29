@@ -78,7 +78,7 @@ export const markSaveError = (error: unknown) => {
   updateSnapshot({ status: "error", error: message });
 };
 
-export async function trackSave<T>(promise: Promise<T>, options?: { savedAt?: string | Date | null }) {
+export async function trackSave<T>(promise: PromiseLike<T>, options?: { savedAt?: string | Date | null }) {
   markSaveStart();
   try {
     const result: any = await promise;
