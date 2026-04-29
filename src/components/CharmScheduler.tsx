@@ -313,6 +313,14 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     }
   }, [isAdmin, myEmployee]);
 
+  useEffect(() => {
+    setSaveStatus(globalSave.status === "idle" ? "" : globalSave.status);
+    if (globalSave.error) setLastSaveError(globalSave.error);
+    if (globalSave.lastSavedAt) {
+      setLastSavedAt(prev => latestTimestamp(prev, globalSave.lastSavedAt));
+    }
+  }, [globalSave]);
+
   // ─── Load + realtime ─────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -342,6 +350,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         if (payload.eventType === "INSERT") {
           const row = payload.new;
           setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
+          syncLastSavedAt(row.updated_at);
           setDays(prev => {
             const updated = { ...prev };
             if (!updated[row.date]) updated[row.date] = [];
@@ -353,6 +362,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         } else if (payload.eventType === "UPDATE") {
           const row = payload.new;
           setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
+          syncLastSavedAt(row.updated_at);
           setDays(prev => {
             const updated = { ...prev };
             if (updated[row.date]) {
@@ -548,12 +558,15 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         assignedDays[d] = autoAssign(parsed[d]);
         assignedDays[d].forEach(apt => allRows.push(aptToRow(apt, d)));
       });
-      const { error } = await supabase.from("appointments").upsert(allRows);
+      markSaveStart();
+      const { error, data } = await supabase.from("appointments").upsert(allRows).select("updated_at");
       if (error) throw error;
       setDays(prev => ({ ...prev, ...assignedDays }));
       setActiveDate(Object.keys(assignedDays).sort()[0]);
       setView("schedule");
+      markSaveSuccess(Array.isArray(data) ? data[data.length - 1]?.updated_at ?? null : null);
     } catch (err: any) {
+      markSaveError(err);
       setError(err.message || "No se pudo leer el archivo");
     }
     setLoading(false);
@@ -584,8 +597,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       [activeDate]: prev[activeDate].filter(a => a.id !== id),
     }));
     try {
-      await supabase.from("appointments").delete().eq("id", id);
-    } catch (e) { console.error(e); }
+      markSaveStart();
+      const { error } = await supabase.from("appointments").delete().eq("id", id);
+      if (error) throw error;
+      markSaveSuccess();
+    } catch (e) { markSaveError(e); console.error(e); }
   };
 
   const addWalkIn = async () => {
@@ -636,7 +652,15 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     const assigned = autoAssign(reset);
     setDays(prev => ({ ...prev, [activeDate]: assigned }));
     const rows = assigned.map(a => aptToRow(a, activeDate));
-    try { await supabase.from("appointments").upsert(rows); } catch (e) { console.error(e); }
+    try {
+      markSaveStart();
+      const { error, data } = await supabase.from("appointments").upsert(rows).select("updated_at");
+      if (error) throw error;
+      markSaveSuccess(Array.isArray(data) ? data[data.length - 1]?.updated_at ?? null : null);
+    } catch (e) {
+      markSaveError(e);
+      console.error(e);
+    }
   };
 
   const employeeStats = useMemo(() => {
