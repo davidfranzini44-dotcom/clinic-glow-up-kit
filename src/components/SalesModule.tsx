@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAll } from '@/lib/fetchAll';
 
 const EMP_LIST = ['Yaira', 'Belkis', 'Cielo', 'Lisa'];
 
@@ -86,18 +87,18 @@ export default function SalesModule({ profile, isAdmin }: { profile: any; isAdmi
       try {
         const [c, cu, i, p, e, cl] = await Promise.all([
           supabase.from('catalog_items').select('*').eq('active', true).order('name'),
-          supabase.from('customers').select('*'),
-          supabase.from('invoices').select('*, invoice_items(*), invoice_payments(*)').order('invoice_number', { ascending: false }),
-          supabase.from('customer_packages').select('*'),
-          supabase.from('expenses').select('*').order('created_at', { ascending: false }),
-          supabase.from('cash_closures').select('*').order('date', { ascending: false }),
+          fetchAll<any>('customers'),
+          fetchAll<any>('invoices', '*, invoice_items(*), invoice_payments(*)', { column: 'invoice_number', ascending: false }),
+          fetchAll<any>('customer_packages'),
+          fetchAll<any>('expenses', '*', { column: 'created_at', ascending: false }),
+          fetchAll<any>('cash_closures', '*', { column: 'date', ascending: false }),
         ]);
-        setCatalog(c.data || []);
-        setCustomers(cu.data || []);
-        setInvoices(i.data || []);
-        setPackages(p.data || []);
-        setExpenses(e.data || []);
-        setClosures(cl.data || []);
+        setCatalog((c as any).data || []);
+        setCustomers(cu || []);
+        setInvoices(i || []);
+        setPackages(p || []);
+        setExpenses(e || []);
+        setClosures(cl || []);
       } catch (e) { console.error(e); }
       setLoading(false);
     })();
