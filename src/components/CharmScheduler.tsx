@@ -965,6 +965,35 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             )}
           </div>
         )}
+        {showDebug && (
+          <div className="bg-muted/40 border-t border-border px-4 md:px-6 py-2 text-[11px] font-mono text-foreground/80 space-y-1">
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <span>queue: <b>{pendingRef.current.size}</b></span>
+              <span>pendingCount(state): <b>{pendingCount}</b></span>
+              <span>flushing: <b>{String(isFlushingRef.current)}</b></span>
+              <span>status: <b>{saveStatus || "idle"}</b></span>
+              <span>flushes: <b>{flushCount}</b></span>
+              <span>timer: <b>{flushTimerRef.current ? "armed" : "off"}</b></span>
+              <span>tick: {debugTick}</span>
+            </div>
+            <div>lastSavedAt: {lastSavedAt || "—"}</div>
+            <div>lastFlushAt: {lastFlushAt || "—"}</div>
+            <div className="break-words">lastError: {lastSaveError || "—"}</div>
+            <div className="break-words">
+              pendingIds: {pendingRef.current.size === 0 ? "—" : Array.from(pendingRef.current.keys()).join(", ")}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => void flushPending({ manual: true })}
+                className="px-2 py-0.5 border border-border hover:bg-accent/10"
+              >Force flush</button>
+              <button
+                onClick={() => { setLastSaveError(""); }}
+                className="px-2 py-0.5 border border-border hover:bg-accent/10"
+              >Clear error</button>
+            </div>
+          </div>
+        )}
         {(view === "schedule" || view === "individual") && (
           <div className="max-w-7xl mx-auto px-4 md:px-6 pb-3 flex items-center gap-1 overflow-x-auto">
             {sortedDates.map(d => (
