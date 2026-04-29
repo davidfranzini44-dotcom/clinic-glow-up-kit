@@ -844,12 +844,20 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
               onAddWalkIn={isAdmin ? () => { setView("schedule"); setWalkInForm({ open: true, time: "", client: "" }); } : undefined}
               onSignOut={onSignOut}
               onToggleLock={isAdmin ? async () => {
-                const { error } = await supabase
-                  .from("app_settings")
-                  .update({ swaps_locked: !globalSwapsLocked, updated_by: session.user.id, updated_at: new Date().toISOString() })
-                  .eq("id", 1);
-                if (error) toast.error(error.message);
-                else { setGlobalSwapsLocked(v => !v); toast.success(!globalSwapsLocked ? "Cambios bloqueados" : "Cambios desbloqueados"); }
+                try {
+                  markSaveStart();
+                  const { error } = await supabase
+                    .from("app_settings")
+                    .update({ swaps_locked: !globalSwapsLocked, updated_by: session.user.id, updated_at: new Date().toISOString() })
+                    .eq("id", 1);
+                  if (error) throw error;
+                  setGlobalSwapsLocked(v => !v);
+                  markSaveSuccess();
+                  toast.success(!globalSwapsLocked ? "Cambios bloqueados" : "Cambios desbloqueados");
+                } catch (error: any) {
+                  markSaveError(error);
+                  toast.error(error?.message || "No se pudo actualizar el bloqueo");
+                }
               } : undefined}
             />
             <NotificationBell
