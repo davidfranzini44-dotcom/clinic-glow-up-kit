@@ -12,6 +12,10 @@ import ClientsModule from "./ClientsModule";
 import SalesModule from "./SalesModule";
 import InventoryModule from "./InventoryModule";
 import ClientProfileModal from "./ClientProfileModal";
+import HistoryView from "./HistoryView";
+
+// ─── History cutoff: dates on or before this are hidden from the main agenda ─
+const HISTORY_CUTOFF = "2026-04-26";
 
 // ─── Employee config ──────────────────────────────────────────────────────
 type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
