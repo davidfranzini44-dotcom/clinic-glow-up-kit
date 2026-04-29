@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAll } from "@/lib/fetchAll";
 
 const EMPLOYEES: Record<string, { color: string }> = {
   Yaira:  { color: "#C8956D" },
