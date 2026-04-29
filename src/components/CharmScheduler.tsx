@@ -390,11 +390,33 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     return () => window.removeEventListener("beforeunload", handler);
   }, [pendingCount]);
 
+  // Auto-retry pending saves every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (pendingRef.current.size > 0) {
+        flushPending();
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const saveApt = async (apt: Apt, dateStr: string) => {
     setSaveStatus("saving");
     try {
-      const { error } = await supabase.from("appointments").upsert(aptToRow(apt, dateStr));
-      if (error) throw error;
+      const row = aptToRow(apt, dateStr);
+      // Try UPDATE first (works for non-admin employees on their own appointments).
+      // If no row was updated, fall back to upsert (admin creating new rows like walk-ins).
+      const { data: updated, error: updErr } = await supabase
+        .from("appointments")
+        .update(row)
+        .eq("id", apt.id)
+        .select("id");
+      if (updErr) throw updErr;
+      if (!updated || updated.length === 0) {
+        const { error: upErr } = await supabase.from("appointments").upsert(row);
+        if (upErr) throw upErr;
+      }
       // Success — drop from pending
       if (pendingRef.current.has(apt.id)) {
         pendingRef.current.delete(apt.id);
@@ -422,7 +444,17 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     setSaveStatus("saving");
     let okCount = 0, failCount = 0; let lastErr = "";
     for (const { apt, date } of items) {
-      const { error } = await supabase.from("appointments").upsert(aptToRow(apt, date));
+      const row = aptToRow(apt, date);
+      const { data: updated, error: updErr } = await supabase
+        .from("appointments")
+        .update(row)
+        .eq("id", apt.id)
+        .select("id");
+      let error = updErr;
+      if (!error && (!updated || updated.length === 0)) {
+        const { error: upErr } = await supabase.from("appointments").upsert(row);
+        error = upErr;
+      }
       if (error) { failCount++; lastErr = error.message; }
       else { pendingRef.current.delete(apt.id); okCount++; }
     }
