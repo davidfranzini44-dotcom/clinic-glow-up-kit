@@ -763,13 +763,20 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   }
 
   // ─── Render: main ────────────────────────────────────────────────────
+  const lastSavedLabel = formatSantoDomingoDateTime(lastSavedAt);
+
   return (
     <div className="min-h-screen w-full bg-background">
       <header className="border-b border-border sticky top-0 z-10 bg-card">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-baseline gap-3 flex-wrap">
-            <span className="font-display text-primary" style={{ fontSize: 34, fontWeight: 400, lineHeight: 1 }}>Charm</span>
-            <span className="text-xs font-label text-accent hidden sm:inline">{profile?.display_name || profile?.employee_name}</span>
+          <div className="flex items-start gap-3 flex-wrap">
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <span className="font-display text-primary" style={{ fontSize: 34, fontWeight: 400, lineHeight: 1 }}>Charm</span>
+              <span className="text-xs font-label text-accent hidden sm:inline">{profile?.display_name || profile?.employee_name}</span>
+            </div>
+            <div className="text-[11px] font-label text-muted-foreground leading-relaxed">
+              {saveStatus === "saving" ? "Guardando automáticamente…" : lastSavedLabel ? `Último guardado: ${lastSavedLabel} · Santo Domingo` : "Sin guardado reciente"}
+            </div>
             {pendingCount > 0 ? (
               <button
                 onClick={flushPending}
@@ -862,6 +869,19 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         {!profile?.employee_name && !isAdmin && (
           <div className="bg-destructive/10 border-t border-destructive px-4 md:px-6 py-2 text-xs text-destructive flex items-center gap-2">
             <AlertCircle size={12} /> Tu cuenta no está vinculada a una empleada. Pide al admin que te asigne para poder editar y solicitar cambios.
+          </div>
+        )}
+        {saveStatus === "error" && (
+          <div className="bg-destructive/10 border-t border-destructive px-4 md:px-6 py-2 text-xs text-destructive flex items-center gap-2 justify-between flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertCircle size={12} className="flex-shrink-0" />
+              <span className="break-words">SAVE ERROR: {lastSaveError || "No se pudo guardar automáticamente."}</span>
+            </div>
+            {pendingCount > 0 && (
+              <button onClick={flushPending} className="px-2 py-1 border border-destructive text-destructive font-label">
+                Reintentar
+              </button>
+            )}
           </div>
         )}
         {(view === "schedule" || view === "individual") && (
