@@ -867,6 +867,13 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 )}
               </button>
             )}
+            <button
+              onClick={() => setShowDebug(s => !s)}
+              className="text-[10px] px-2 py-1 border border-border font-label hover:bg-accent/10"
+              title="Mostrar panel de depuración de autosave"
+            >
+              {showDebug ? "Debug ▾" : "Debug ▸"}
+            </button>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <GlobalSearch
