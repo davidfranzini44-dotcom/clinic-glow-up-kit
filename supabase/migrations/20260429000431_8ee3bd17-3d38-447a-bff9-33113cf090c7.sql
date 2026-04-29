@@ -1,0 +1,1 @@
+DELETE FROM public.appointments WHERE date <= '2026-04-26';
