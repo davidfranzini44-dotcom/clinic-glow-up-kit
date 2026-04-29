@@ -339,6 +339,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload: any) => {
         if (payload.eventType === "INSERT") {
           const row = payload.new;
+          setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
           setDays(prev => {
             const updated = { ...prev };
             if (!updated[row.date]) updated[row.date] = [];
@@ -349,6 +350,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           });
         } else if (payload.eventType === "UPDATE") {
           const row = payload.new;
+          setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
           setDays(prev => {
             const updated = { ...prev };
             if (updated[row.date]) {
@@ -430,18 +432,24 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     setSaveStatus("saving");
     try {
       const row = aptToRow(apt, dateStr);
-      // Try UPDATE first (works for non-admin employees on their own appointments).
-      // If no row was updated, fall back to upsert (admin creating new rows like walk-ins).
       const { data: updated, error: updErr } = await supabase
         .from("appointments")
         .update(row)
         .eq("id", apt.id)
-        .select("id");
+        .select("id, updated_at");
       if (updErr) throw updErr;
+
+      let savedAt = updated?.[0]?.updated_at ?? null;
       if (!updated || updated.length === 0) {
-        const { error: upErr } = await supabase.from("appointments").upsert(row);
+        const { data: inserted, error: upErr } = await supabase
+          .from("appointments")
+          .upsert(row)
+          .select("id, updated_at")
+          .single();
         if (upErr) throw upErr;
+        savedAt = inserted?.updated_at ?? savedAt;
       }
+
       // Success — drop from pending
       if (pendingRef.current.has(apt.id)) {
         pendingRef.current.delete(apt.id);
@@ -449,6 +457,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       }
       setSaveStatus("saved");
       setLastSaveError("");
+      setLastSavedAt(prev => latestTimestamp(prev, savedAt));
       setTimeout(() => setSaveStatus(""), 1500);
     } catch (e: any) {
       console.error("Save error:", e);
@@ -467,26 +476,37 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     }
     const items = Array.from(pendingRef.current.values());
     setSaveStatus("saving");
-    let okCount = 0, failCount = 0; let lastErr = "";
+    let okCount = 0, failCount = 0; let lastErr = ""; let newestSavedAt: string | null = null;
     for (const { apt, date } of items) {
       const row = aptToRow(apt, date);
       const { data: updated, error: updErr } = await supabase
         .from("appointments")
         .update(row)
         .eq("id", apt.id)
-        .select("id");
+        .select("id, updated_at");
       let error = updErr;
+      let savedAt = updated?.[0]?.updated_at ?? null;
       if (!error && (!updated || updated.length === 0)) {
-        const { error: upErr } = await supabase.from("appointments").upsert(row);
+        const { data: inserted, error: upErr } = await supabase
+          .from("appointments")
+          .upsert(row)
+          .select("id, updated_at")
+          .single();
         error = upErr;
+        savedAt = inserted?.updated_at ?? savedAt;
       }
       if (error) { failCount++; lastErr = error.message; }
-      else { pendingRef.current.delete(apt.id); okCount++; }
+      else {
+        newestSavedAt = latestTimestamp(newestSavedAt, savedAt);
+        pendingRef.current.delete(apt.id);
+        okCount++;
+      }
     }
     setPendingCount(pendingRef.current.size);
     if (failCount === 0) {
       setSaveStatus("saved");
       setLastSaveError("");
+      setLastSavedAt(prev => latestTimestamp(prev, newestSavedAt));
       toast.success(`${okCount} cambio${okCount === 1 ? "" : "s"} guardado${okCount === 1 ? "" : "s"}`);
       setTimeout(() => setSaveStatus(""), 1500);
     } else {
