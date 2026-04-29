@@ -214,6 +214,7 @@ const DAYS_ES = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sá
 const DAYS_ES_SHORT = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const MONTHS_ES_UPPER = MONTHS_ES.map(m => m.toUpperCase());
+const SANTO_DOMINGO_TZ = "America/Santo_Domingo";
 
 const dateLabelES = (dateStr: string | null) => {
   if (!dateStr) return "";
@@ -223,6 +224,29 @@ const dateLabelES = (dateStr: string | null) => {
 const dateLabelShortES = (dateStr: string) => {
   const d = new Date(dateStr + "T12:00:00");
   return `${DAYS_ES_SHORT[d.getDay()]} ${d.getDate()}`;
+};
+
+const formatSantoDomingoDateTime = (value: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("es-DO", {
+    timeZone: SANTO_DOMINGO_TZ,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  }).format(date);
+};
+
+const latestTimestamp = (current: string | null, incoming?: string | null) => {
+  if (!incoming) return current;
+  if (!current) return incoming;
+  return new Date(incoming).getTime() > new Date(current).getTime() ? incoming : current;
 };
 
 const rowToApt = (row: any): Apt => ({
@@ -277,6 +301,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const pendingRef = useRef<Map<string, { apt: Apt; date: string }>>(new Map());
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSaveError, setLastSaveError] = useState<string>("");
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   
 
   useEffect(() => {
@@ -314,6 +339,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload: any) => {
         if (payload.eventType === "INSERT") {
           const row = payload.new;
+          setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
           setDays(prev => {
             const updated = { ...prev };
             if (!updated[row.date]) updated[row.date] = [];
@@ -324,6 +350,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           });
         } else if (payload.eventType === "UPDATE") {
           const row = payload.new;
+          setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
           setDays(prev => {
             const updated = { ...prev };
             if (updated[row.date]) {
@@ -405,18 +432,24 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     setSaveStatus("saving");
     try {
       const row = aptToRow(apt, dateStr);
-      // Try UPDATE first (works for non-admin employees on their own appointments).
-      // If no row was updated, fall back to upsert (admin creating new rows like walk-ins).
       const { data: updated, error: updErr } = await supabase
         .from("appointments")
         .update(row)
         .eq("id", apt.id)
-        .select("id");
+        .select("id, updated_at");
       if (updErr) throw updErr;
+
+      let savedAt = updated?.[0]?.updated_at ?? null;
       if (!updated || updated.length === 0) {
-        const { error: upErr } = await supabase.from("appointments").upsert(row);
+        const { data: inserted, error: upErr } = await supabase
+          .from("appointments")
+          .upsert(row)
+          .select("id, updated_at")
+          .single();
         if (upErr) throw upErr;
+        savedAt = inserted?.updated_at ?? savedAt;
       }
+
       // Success — drop from pending
       if (pendingRef.current.has(apt.id)) {
         pendingRef.current.delete(apt.id);
@@ -424,6 +457,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       }
       setSaveStatus("saved");
       setLastSaveError("");
+      setLastSavedAt(prev => latestTimestamp(prev, savedAt));
       setTimeout(() => setSaveStatus(""), 1500);
     } catch (e: any) {
       console.error("Save error:", e);
@@ -442,26 +476,37 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     }
     const items = Array.from(pendingRef.current.values());
     setSaveStatus("saving");
-    let okCount = 0, failCount = 0; let lastErr = "";
+    let okCount = 0, failCount = 0; let lastErr = ""; let newestSavedAt: string | null = null;
     for (const { apt, date } of items) {
       const row = aptToRow(apt, date);
       const { data: updated, error: updErr } = await supabase
         .from("appointments")
         .update(row)
         .eq("id", apt.id)
-        .select("id");
+        .select("id, updated_at");
       let error = updErr;
+      let savedAt = updated?.[0]?.updated_at ?? null;
       if (!error && (!updated || updated.length === 0)) {
-        const { error: upErr } = await supabase.from("appointments").upsert(row);
+        const { data: inserted, error: upErr } = await supabase
+          .from("appointments")
+          .upsert(row)
+          .select("id, updated_at")
+          .single();
         error = upErr;
+        savedAt = inserted?.updated_at ?? savedAt;
       }
       if (error) { failCount++; lastErr = error.message; }
-      else { pendingRef.current.delete(apt.id); okCount++; }
+      else {
+        newestSavedAt = latestTimestamp(newestSavedAt, savedAt);
+        pendingRef.current.delete(apt.id);
+        okCount++;
+      }
     }
     setPendingCount(pendingRef.current.size);
     if (failCount === 0) {
       setSaveStatus("saved");
       setLastSaveError("");
+      setLastSavedAt(prev => latestTimestamp(prev, newestSavedAt));
       toast.success(`${okCount} cambio${okCount === 1 ? "" : "s"} guardado${okCount === 1 ? "" : "s"}`);
       setTimeout(() => setSaveStatus(""), 1500);
     } else {
@@ -718,13 +763,20 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   }
 
   // ─── Render: main ────────────────────────────────────────────────────
+  const lastSavedLabel = formatSantoDomingoDateTime(lastSavedAt);
+
   return (
     <div className="min-h-screen w-full bg-background">
       <header className="border-b border-border sticky top-0 z-10 bg-card">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-baseline gap-3 flex-wrap">
-            <span className="font-display text-primary" style={{ fontSize: 34, fontWeight: 400, lineHeight: 1 }}>Charm</span>
-            <span className="text-xs font-label text-accent hidden sm:inline">{profile?.display_name || profile?.employee_name}</span>
+          <div className="flex items-start gap-3 flex-wrap">
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <span className="font-display text-primary" style={{ fontSize: 34, fontWeight: 400, lineHeight: 1 }}>Charm</span>
+              <span className="text-xs font-label text-accent hidden sm:inline">{profile?.display_name || profile?.employee_name}</span>
+            </div>
+            <div className="text-[11px] font-label text-muted-foreground leading-relaxed">
+              {saveStatus === "saving" ? "Guardando automáticamente…" : lastSavedLabel ? `Último guardado: ${lastSavedLabel} · Santo Domingo` : "Sin guardado reciente"}
+            </div>
             {pendingCount > 0 ? (
               <button
                 onClick={flushPending}
@@ -817,6 +869,19 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         {!profile?.employee_name && !isAdmin && (
           <div className="bg-destructive/10 border-t border-destructive px-4 md:px-6 py-2 text-xs text-destructive flex items-center gap-2">
             <AlertCircle size={12} /> Tu cuenta no está vinculada a una empleada. Pide al admin que te asigne para poder editar y solicitar cambios.
+          </div>
+        )}
+        {saveStatus === "error" && (
+          <div className="bg-destructive/10 border-t border-destructive px-4 md:px-6 py-2 text-xs text-destructive flex items-center gap-2 justify-between flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertCircle size={12} className="flex-shrink-0" />
+              <span className="break-words">SAVE ERROR: {lastSaveError || "No se pudo guardar automáticamente."}</span>
+            </div>
+            {pendingCount > 0 && (
+              <button onClick={flushPending} className="px-2 py-1 border border-destructive text-destructive font-label">
+                Reintentar
+              </button>
+            )}
           </div>
         )}
         {(view === "schedule" || view === "individual") && (
