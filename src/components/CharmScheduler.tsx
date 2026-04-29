@@ -300,10 +300,19 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const [pendingSwaps, setPendingSwaps] = useState(0);
   const [globalSwapsLocked, setGlobalSwapsLocked] = useState(false);
   const pendingRef = useRef<Map<string, { apt: Apt; date: string }>>(new Map());
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFlushingRef = useRef(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSaveError, setLastSaveError] = useState<string>("");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const globalSave = useGlobalSaveStatus();
+
+  const clearFlushTimer = () => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+  };
   
 
   useEffect(() => {
@@ -320,6 +329,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       setLastSavedAt(prev => latestTimestamp(prev, globalSave.lastSavedAt));
     }
   }, [globalSave]);
+
+  useEffect(() => () => clearFlushTimer(), []);
 
   // ─── Load + realtime ─────────────────────────────────────────────────
   useEffect(() => {
@@ -429,11 +440,27 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     return () => window.removeEventListener("beforeunload", handler);
   }, [pendingCount]);
 
+  const queuePendingSave = (apt: Apt, dateStr: string) => {
+    pendingRef.current.set(apt.id, { apt, date: dateStr });
+    setPendingCount(pendingRef.current.size);
+    setSaveStatus("saving");
+    setLastSaveError("");
+    markSaveStart();
+  };
+
+  const scheduleFlush = (delay = 700) => {
+    clearFlushTimer();
+    flushTimerRef.current = setTimeout(() => {
+      flushTimerRef.current = null;
+      void flushPending();
+    }, delay);
+  };
+
   // Auto-retry pending saves every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      if (pendingRef.current.size > 0) {
-        flushPending();
+      if (pendingRef.current.size > 0 && !isFlushingRef.current) {
+        void flushPending();
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -441,90 +468,86 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   }, []);
 
   const saveApt = async (apt: Apt, dateStr: string) => {
-    markSaveStart();
-    try {
-      const row = aptToRow(apt, dateStr);
-      const { data: updated, error: updErr } = await supabase
-        .from("appointments")
-        .update(row)
-        .eq("id", apt.id)
-        .select("id, updated_at");
-      if (updErr) throw updErr;
-
-      let savedAt = updated?.[0]?.updated_at ?? null;
-      if (!updated || updated.length === 0) {
-        const { data: inserted, error: upErr } = await supabase
-          .from("appointments")
-          .upsert(row)
-          .select("id, updated_at")
-          .single();
-        if (upErr) throw upErr;
-        savedAt = inserted?.updated_at ?? savedAt;
-      }
-
-      // Success — drop from pending
-      if (pendingRef.current.has(apt.id)) {
-        pendingRef.current.delete(apt.id);
-        setPendingCount(pendingRef.current.size);
-      }
-      setSaveStatus("saved");
-      setLastSaveError("");
-      setLastSavedAt(prev => latestTimestamp(prev, savedAt));
-      markSaveSuccess(savedAt);
-      setTimeout(() => setSaveStatus(""), 1500);
-    } catch (e: any) {
-      console.error("Save error:", e);
-      pendingRef.current.set(apt.id, { apt, date: dateStr });
-      setPendingCount(pendingRef.current.size);
-      setSaveStatus("error");
-      setLastSaveError(e?.message || "Error desconocido");
-      markSaveError(e);
-      toast.error("No se pudo guardar", { description: e?.message || "Pulsa Guardar para reintentar" });
-    }
+    queuePendingSave(apt, dateStr);
+    if (isFlushingRef.current) return;
+    scheduleFlush();
   };
 
-  const flushPending = async () => {
-    if (pendingRef.current.size === 0) {
-      toast.success("Todo está guardado");
+  const flushPending = async (options?: { manual?: boolean }) => {
+    clearFlushTimer();
+    if (isFlushingRef.current) {
+      if (options?.manual) toast("Guardando cambios…");
       return;
     }
+    if (pendingRef.current.size === 0) {
+      if (options?.manual) toast.success("Todo está guardado");
+      return;
+    }
+
     const items = Array.from(pendingRef.current.values());
+    isFlushingRef.current = true;
     markSaveStart();
     setSaveStatus("saving");
     let okCount = 0, failCount = 0; let lastErr = ""; let newestSavedAt: string | null = null;
-    for (const { apt, date } of items) {
-      const row = aptToRow(apt, date);
-      const { data: updated, error: updErr } = await supabase
-        .from("appointments")
-        .update(row)
-        .eq("id", apt.id)
-        .select("id, updated_at");
-      let error = updErr;
-      let savedAt = updated?.[0]?.updated_at ?? null;
-      if (!error && (!updated || updated.length === 0)) {
-        const { data: inserted, error: upErr } = await supabase
+    try {
+      for (const { apt, date } of items) {
+        const row = aptToRow(apt, date);
+        const { data: updated, error: updErr } = await supabase
           .from("appointments")
-          .upsert(row)
-          .select("id, updated_at")
-          .single();
-        error = upErr;
-        savedAt = inserted?.updated_at ?? savedAt;
+          .update(row)
+          .eq("id", apt.id)
+          .select("id, updated_at");
+        let error = updErr;
+        let savedAt = updated?.[0]?.updated_at ?? null;
+        if (!error && (!updated || updated.length === 0)) {
+          const { data: inserted, error: upErr } = await supabase
+            .from("appointments")
+            .upsert(row)
+            .select("id, updated_at")
+            .single();
+          error = upErr;
+          savedAt = inserted?.updated_at ?? savedAt;
+        }
+        if (error) {
+          failCount++;
+          lastErr = error.message;
+        } else {
+          newestSavedAt = latestTimestamp(newestSavedAt, savedAt);
+          const latestPending = pendingRef.current.get(apt.id);
+          if (latestPending && latestPending.apt === apt && latestPending.date === date) {
+            pendingRef.current.delete(apt.id);
+          }
+          okCount++;
+        }
       }
-      if (error) { failCount++; lastErr = error.message; }
-      else {
-        newestSavedAt = latestTimestamp(newestSavedAt, savedAt);
-        pendingRef.current.delete(apt.id);
-        okCount++;
-      }
+    } catch (e: any) {
+      failCount++;
+      lastErr = e?.message || "Error desconocido";
+      console.error("Flush save error:", e);
+    } finally {
+      isFlushingRef.current = false;
     }
+
     setPendingCount(pendingRef.current.size);
-    if (failCount === 0) {
+    if (failCount === 0 && pendingRef.current.size === 0) {
       setSaveStatus("saved");
       setLastSaveError("");
       setLastSavedAt(prev => latestTimestamp(prev, newestSavedAt));
       markSaveSuccess(newestSavedAt);
-      toast.success(`${okCount} cambio${okCount === 1 ? "" : "s"} guardado${okCount === 1 ? "" : "s"}`);
+      if (options?.manual) {
+        toast.success(`${okCount} cambio${okCount === 1 ? "" : "s"} guardado${okCount === 1 ? "" : "s"}`);
+      }
       setTimeout(() => setSaveStatus(""), 1500);
+    } else if (failCount === 0) {
+      if (newestSavedAt) {
+        setLastSavedAt(prev => latestTimestamp(prev, newestSavedAt));
+        syncLastSavedAt(newestSavedAt);
+      }
+      setLastSaveError("");
+      setSaveStatus("saving");
+      markSaveStart();
+      scheduleFlush(250);
+      if (options?.manual) toast("Guardando cambios recientes…");
     } else {
       setSaveStatus("error");
       setLastSaveError(lastErr);
@@ -810,7 +833,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             </div>
             {pendingCount > 0 ? (
               <button
-                onClick={flushPending}
+                onClick={() => void flushPending({ manual: true })}
                 className="text-xs flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground font-label"
                 title={lastSaveError || "Reintentar guardar cambios pendientes"}
               >
@@ -818,7 +841,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
               </button>
             ) : (
               <button
-                onClick={flushPending}
+                onClick={() => void flushPending({ manual: true })}
                 disabled={saveStatus === "saving"}
                 className="text-xs flex items-center gap-1 px-2 py-1 border border-border font-label hover:bg-accent/10 disabled:opacity-60"
                 title="Guardar manualmente (los cambios se guardan automáticamente)"
@@ -917,7 +940,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
               <span className="break-words">SAVE ERROR: {lastSaveError || "No se pudo guardar automáticamente."}</span>
             </div>
             {pendingCount > 0 && (
-              <button onClick={flushPending} className="px-2 py-1 border border-destructive text-destructive font-label">
+              <button onClick={() => void flushPending({ manual: true })} className="px-2 py-1 border border-destructive text-destructive font-label">
                 Reintentar
               </button>
             )}
