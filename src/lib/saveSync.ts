@@ -10,9 +10,30 @@ type SaveSnapshot = {
 
 const listeners = new Set<(snapshot: SaveSnapshot) => void>();
 
+const LAST_SAVED_KEY = "charm_last_saved_at";
+
+const readPersistedLastSaved = (): string | null => {
+  try {
+    const v = typeof localStorage !== "undefined" ? localStorage.getItem(LAST_SAVED_KEY) : null;
+    if (!v) return null;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  } catch {
+    return null;
+  }
+};
+
+const writePersistedLastSaved = (iso: string) => {
+  try {
+    if (typeof localStorage !== "undefined") localStorage.setItem(LAST_SAVED_KEY, iso);
+  } catch {
+    /* ignore */
+  }
+};
+
 let snapshot: SaveSnapshot = {
   status: "idle",
-  lastSavedAt: null,
+  lastSavedAt: readPersistedLastSaved(),
   error: "",
 };
 
