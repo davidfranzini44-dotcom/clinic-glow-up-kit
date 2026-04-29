@@ -536,6 +536,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       console.error("Flush save error:", e);
     } finally {
       isFlushingRef.current = false;
+      setFlushCount(c => c + 1);
+      setLastFlushAt(new Date().toISOString());
     }
 
     setPendingCount(pendingRef.current.size);
