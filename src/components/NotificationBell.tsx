@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Bell, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { trackSave } from "@/lib/saveSync";
 import { toast } from "sonner";
 
 export type Notif = {
@@ -70,12 +71,12 @@ export default function NotificationBell({ userId, onLink }: Props) {
     const ids = items.filter(n => !n.read_at).map(n => n.id);
     if (!ids.length) return;
     setItems(prev => prev.map(n => n.read_at ? n : { ...n, read_at: new Date().toISOString() }));
-    await supabase.from("notifications").update({ read_at: new Date().toISOString() }).in("id", ids);
+    await trackSave(supabase.from("notifications").update({ read_at: new Date().toISOString() }).in("id", ids));
   };
 
   const markRead = async (id: string) => {
     setItems(prev => prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
-    await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
+    await trackSave(supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id));
   };
 
   const handleClick = (n: Notif) => {

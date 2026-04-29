@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
+import { trackSave } from "@/lib/saveSync";
 
 const fmtMoney = (n: any) => {
   if (n === null || n === undefined || isNaN(n)) return "RD$ 0.00";
@@ -98,7 +99,7 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
   const initDefaults = async () => {
     if (!confirm("¿Cargar la lista predeterminada (15 insumos)?")) return;
     try {
-      const { data, error } = await supabase.from("inventory_items").insert(DEFAULT_INVENTORY).select();
+      const { data, error } = await trackSave(supabase.from("inventory_items").insert(DEFAULT_INVENTORY).select());
       if (error) throw error;
       setInventory(data || []);
     } catch (e: any) { alert("Error: " + e.message); }
@@ -116,11 +117,11 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
     };
     try {
       if (editForm.id) {
-        const { error } = await supabase.from("inventory_items").update(item).eq("id", editForm.id);
+        const { error } = await trackSave(supabase.from("inventory_items").update(item).eq("id", editForm.id));
         if (error) throw error;
         setInventory(prev => prev.map(i => i.id === editForm.id ? { ...i, ...item } : i));
       } else {
-        const { data, error } = await supabase.from("inventory_items").insert(item).select().single();
+        const { data, error } = await trackSave(supabase.from("inventory_items").insert(item).select().single());
         if (error) throw error;
         setInventory(prev => [...prev, data]);
       }
@@ -140,14 +141,14 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
     if (newStock < 0 && !confirm(`Stock quedaría en ${newStock}. ¿Continuar?`)) return;
 
     try {
-      const { error: e1 } = await supabase.from("inventory_items").update({ stock: newStock }).eq("id", item.id);
+      const { error: e1 } = await trackSave(supabase.from("inventory_items").update({ stock: newStock }).eq("id", item.id));
       if (e1) throw e1;
       const movement = {
         date: todayISO(), item_id: item.id, item_name: item.name, sku: item.sku,
         type: movementForm.type, qty, previous_stock: item.stock, new_stock: newStock,
         notes: movementForm.notes || "",
       };
-      const { data, error: e2 } = await supabase.from("inventory_movements").insert(movement).select().single();
+      const { data, error: e2 } = await trackSave(supabase.from("inventory_movements").insert(movement).select().single());
       if (e2) throw e2;
 
       setInventory(prev => prev.map(i => i.id === item.id ? { ...i, stock: newStock } : i));
