@@ -305,7 +305,17 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSaveError, setLastSaveError] = useState<string>("");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugTick, setDebugTick] = useState(0);
+  const [flushCount, setFlushCount] = useState(0);
+  const [lastFlushAt, setLastFlushAt] = useState<string | null>(null);
   const globalSave = useGlobalSaveStatus();
+
+  useEffect(() => {
+    if (!showDebug) return;
+    const t = setInterval(() => setDebugTick(x => x + 1), 500);
+    return () => clearInterval(t);
+  }, [showDebug]);
 
   const clearFlushTimer = () => {
     if (flushTimerRef.current) {
