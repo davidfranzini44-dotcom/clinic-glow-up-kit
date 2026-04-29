@@ -9,6 +9,7 @@ import {
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAll } from '@/lib/fetchAll';
+import { trackSave } from '@/lib/saveSync';
 
 const EMP_LIST = ['Yaira', 'Belkis', 'Cielo', 'Lisa'];
 
@@ -200,11 +201,11 @@ function CatalogManager({ catalog, setCatalog }: any) {
     };
     try {
       if (form.id) {
-        const { error } = await supabase.from('catalog_items').update(item).eq('id', form.id);
+        const { error } = await trackSave(supabase.from('catalog_items').update(item).eq('id', form.id));
         if (error) throw error;
         setCatalog(prev => prev.map(c => c.id === form.id ? { ...c, ...item } : c));
       } else {
-        const { data, error } = await supabase.from('catalog_items').insert(item).select().single();
+        const { data, error } = await trackSave(supabase.from('catalog_items').insert(item).select().single());
         if (error) throw error;
         setCatalog(prev => [...prev, data]);
       }
@@ -215,7 +216,7 @@ function CatalogManager({ catalog, setCatalog }: any) {
   const remove = async (id) => {
     if (!confirm('¿Eliminar este item?')) return;
     try {
-      const { error } = await supabase.from('catalog_items').update({ active: false }).eq('id', id);
+      const { error } = await trackSave(supabase.from('catalog_items').update({ active: false }).eq('id', id));
       if (error) throw error;
       setCatalog(prev => prev.filter(c => c.id !== id));
     } catch (e) { alert('Error: ' + e.message); }
@@ -337,21 +338,21 @@ function NewSale({ catalog, customers, setCustomers, setInvoices, setPackages, s
       if (existing) {
         customerId = existing.id;
       } else {
-        const { data, error } = await supabase.from('customers').insert({
+        const { data, error } = await trackSave(supabase.from('customers').insert({
           name: customer.name.trim(), phone: customer.phone, email: customer.email, source: 'sale',
-        }).select().single();
+        }).select().single());
         if (error) throw error;
         customerId = data.id;
         setCustomers(prev => [...prev, data]);
       }
 
       // Create invoice
-      const { data: inv, error: invError } = await supabase.from('invoices').insert({
+      const { data: inv, error: invError } = await trackSave(supabase.from('invoices').insert({
         customer_id: customerId, customer_name: customer.name.trim(),
         customer_phone: customer.phone, customer_email: customer.email,
         sold_by: soldBy, subtotal, total: subtotal, notes,
         date: todayISO(),
-      }).select().single();
+      }).select().single());
       if (invError) throw invError;
 
       // Create items
@@ -360,27 +361,27 @@ function NewSale({ catalog, customers, setCustomers, setInvoices, setPackages, s
         quantity: i.qty, unit_price: i.unitPrice, total: i.total,
         is_package: i.isPackage, package_sessions: i.isPackage ? i.packageSessions : null,
       }));
-      const { data: insertedItems, error: itemsError } = await supabase.from('invoice_items').insert(itemsToInsert).select();
+      const { data: insertedItems, error: itemsError } = await trackSave(supabase.from('invoice_items').insert(itemsToInsert).select());
       if (itemsError) throw itemsError;
 
       // Create payments
       const paymentsToInsert = payments.filter(p => parseFloat(p.amount) > 0).map(p => ({
         invoice_id: inv.id, method: p.method, amount: parseFloat(p.amount),
       }));
-      const { error: payError } = await supabase.from('invoice_payments').insert(paymentsToInsert);
+      const { error: payError } = await trackSave(supabase.from('invoice_payments').insert(paymentsToInsert));
       if (payError) throw payError;
 
       // Create packages
       const newPackages = [];
       for (const item of items.filter(i => i.isPackage)) {
         const insertedItem = insertedItems.find(ii => ii.name === item.name);
-        const { data: pkg, error: pkgError } = await supabase.from('customer_packages').insert({
+        const { data: pkg, error: pkgError } = await trackSave(supabase.from('customer_packages').insert({
           customer_id: customerId, invoice_item_id: insertedItem?.id,
           package_name: item.name,
           total_sessions: item.packageSessions * item.qty,
           used_sessions: 0, active: true,
           purchased_date: todayISO(),
-        }).select().single();
+        }).select().single());
         if (!pkgError && pkg) newPackages.push(pkg);
       }
 
@@ -768,11 +769,11 @@ function ExpensesManager({ expenses, setExpenses }: any) {
     };
     try {
       if (form.id) {
-        const { error } = await supabase.from('expenses').update(exp).eq('id', form.id);
+        const { error } = await trackSave(supabase.from('expenses').update(exp).eq('id', form.id));
         if (error) throw error;
         setExpenses(prev => prev.map(e => e.id === form.id ? { ...e, ...exp } : e));
       } else {
-        const { data, error } = await supabase.from('expenses').insert(exp).select().single();
+        const { data, error } = await trackSave(supabase.from('expenses').insert(exp).select().single());
         if (error) throw error;
         setExpenses(prev => [data, ...prev]);
       }
@@ -783,7 +784,7 @@ function ExpensesManager({ expenses, setExpenses }: any) {
   const remove = async (id) => {
     if (!confirm('¿Eliminar este gasto?')) return;
     try {
-      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      const { error } = await trackSave(supabase.from('expenses').delete().eq('id', id));
       if (error) throw error;
       setExpenses(prev => prev.filter(e => e.id !== id));
     } catch (e) { alert('Error: ' + e.message); }
@@ -934,11 +935,11 @@ function CashClosure({ invoices, expenses, closures, setClosures, profile }: any
     };
     try {
       if (existingClosure) {
-        const { error } = await supabase.from('cash_closures').update(closure).eq('id', existingClosure.id);
+        const { error } = await trackSave(supabase.from('cash_closures').update(closure).eq('id', existingClosure.id));
         if (error) throw error;
         setClosures(prev => prev.map(c => c.id === existingClosure.id ? { ...c, ...closure } : c));
       } else {
-        const { data, error } = await supabase.from('cash_closures').insert(closure).select().single();
+        const { data, error } = await trackSave(supabase.from('cash_closures').insert(closure).select().single());
         if (error) throw error;
         setClosures(prev => [data, ...prev]);
       }

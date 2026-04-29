@@ -6,6 +6,7 @@ import {
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
+import { trackSave } from "@/lib/saveSync";
 
 const EMPLOYEES: Record<string, { color: string }> = {
   Yaira:  { color: "#C8956D" },
@@ -135,19 +136,19 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
     if (!editForm.name?.trim()) { alert("El nombre es obligatorio."); return; }
     try {
       if (editForm.id) {
-        const { error } = await supabase.from("customers").update({
+        const { error } = await trackSave(supabase.from("customers").update({
           name: editForm.name, phone: editForm.phone, email: editForm.email,
           birthday: editForm.birthday || null, address: editForm.address,
           notes: editForm.notes, allergies: editForm.allergies,
-        }).eq("id", editForm.id);
+        }).eq("id", editForm.id));
         if (error) throw error;
         setCustomers(prev => prev.map(c => c.id === editForm.id ? { ...c, ...editForm } : c));
       } else {
-        const { data, error } = await supabase.from("customers").insert({
+        const { data, error } = await trackSave(supabase.from("customers").insert({
           name: editForm.name, phone: editForm.phone, email: editForm.email,
           birthday: editForm.birthday || null, address: editForm.address,
           notes: editForm.notes, allergies: editForm.allergies, source: "manual",
-        }).select().single();
+        }).select().single());
         if (error) throw error;
         setCustomers(prev => [...prev, data]);
       }
@@ -322,11 +323,11 @@ function ClientDetail({ client, setCustomers, invoices, packages, appointments, 
 
   const saveEdit = async () => {
     try {
-      const { error } = await supabase.from("customers").update({
+      const { error } = await trackSave(supabase.from("customers").update({
         name: editForm.name, phone: editForm.phone, email: editForm.email,
         birthday: editForm.birthday || null, address: editForm.address,
         notes: editForm.notes, allergies: editForm.allergies,
-      }).eq("id", client.id);
+      }).eq("id", client.id));
       if (error) throw error;
       setCustomers((prev: any[]) => prev.map(c => c.id === client.id ? { ...c, ...editForm } : c));
       setEditing(false);
@@ -477,11 +478,11 @@ function AppointmentNoteRow({ apt, appointmentNotes, setAppointmentNotes }: any)
 
   const save = async () => {
     try {
-      const { error } = await supabase.from("appointment_notes").upsert({
+      const { error } = await trackSave(supabase.from("appointment_notes").upsert({
         appointment_id: apt.id,
         treatments: draft.treatments || "",
         observations: draft.observations || "",
-      }, { onConflict: "appointment_id" });
+      }, { onConflict: "appointment_id" }));
       if (error) throw error;
       setAppointmentNotes((prev: any) => ({ ...prev, [apt.id]: { ...draft, appointment_id: apt.id } }));
       setEditing(false);

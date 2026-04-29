@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { trackSave } from "@/lib/saveSync";
 import { X, Phone, Mail, Calendar, MapPin, AlertCircle, MessageSquare } from "lucide-react";
 
 type Customer = {
@@ -104,11 +105,11 @@ export default function ClientProfileModal({ clientName, onClose }: Props) {
 
   const createCustomer = async () => {
     if (!clientName) return;
-    const { data, error } = await supabase
+    const { data, error } = await trackSave(supabase
       .from("customers")
       .insert({ name: clientName.trim(), source: "agenda" })
       .select()
-      .single();
+      .single());
     if (error) {
       alert("Error: " + error.message);
       return;
