@@ -433,7 +433,17 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     setSaveStatus("saving");
     let okCount = 0, failCount = 0; let lastErr = "";
     for (const { apt, date } of items) {
-      const { error } = await supabase.from("appointments").upsert(aptToRow(apt, date));
+      const row = aptToRow(apt, date);
+      const { data: updated, error: updErr } = await supabase
+        .from("appointments")
+        .update(row)
+        .eq("id", apt.id)
+        .select("id");
+      let error = updErr;
+      if (!error && (!updated || updated.length === 0)) {
+        const { error: upErr } = await supabase.from("appointments").upsert(row);
+        error = upErr;
+      }
       if (error) { failCount++; lastErr = error.message; }
       else { pendingRef.current.delete(apt.id); okCount++; }
     }
