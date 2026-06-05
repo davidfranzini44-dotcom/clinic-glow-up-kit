@@ -143,29 +143,48 @@ const autoAssign = (appointments: Apt[]): Apt[] => {
 };
 
 // ─── Excel parser ─────────────────────────────────────────────────────────
+const SPANISH_MONTHS: Record<string, number> = {
+  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
+  julio: 7, agosto: 8, septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+};
+
 const parseExcel = async (file: File): Promise<Record<string, Apt[]>> => {
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array", cellDates: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false }) as unknown as unknown[][];
 
+  // Header row: needs a client column (Client/Cliente) and a time column (Time/Hora)
   let headerIdx = -1;
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i] || [];
     const lc = r.map((c) => String(c || "").toLowerCase());
-    if (lc.some(c => c.includes("client")) && lc.some(c => c.includes("time"))) {
+    if (lc.some((c) => /client|cliente/.test(c)) && lc.some((c) => /\btime\b|hora/.test(c))) {
       headerIdx = i; break;
     }
   }
-  if (headerIdx === -1) throw new Error("No se encontró el encabezado. Se esperan columnas: Date, Time, Client.");
+  if (headerIdx === -1) throw new Error("No se encontró el encabezado. Se esperan columnas de Cliente y Hora (o Client/Time).");
 
   const header = rows[headerIdx].map((c) => String(c || "").toLowerCase());
-  const dateCol = header.findIndex((c: string) => c.includes("date"));
-  const timeCol = header.findIndex((c: string) => c.includes("time"));
-  const clientCol = header.findIndex((c: string) => c.includes("client"));
-  if (dateCol < 0 || timeCol < 0 || clientCol < 0) throw new Error("Faltan columnas obligatorias.");
+  const findCol = (re: RegExp) => header.findIndex((c: string) => re.test(c));
+  const dateCol = findCol(/date|fecha/);
+  const timeCol = findCol(/\btime\b|hora/);
+  const clientCol = findCol(/client|cliente/);
+  if (dateCol < 0 || timeCol < 0 || clientCol < 0) throw new Error("Faltan columnas obligatorias (Fecha, Hora, Cliente).");
+
+  // For agendas that use a bare day-of-month (e.g. header "Fecha (Mayo)" with days 19..31),
+  // derive the month from the date-column header / title and the year from any 20xx in the title.
+  const titleText = rows.slice(0, headerIdx + 1).flat().map((c) => String(c || "").toLowerCase()).join(" ");
+  const yearMatch = titleText.match(/(20\d{2})/);
+  const fileYear = yearMatch ? parseInt(yearMatch[1], 10) : new Date().getFullYear();
+  let fileMonth: number | null = null;
+  const monthHay = (header[dateCol] || "") + " " + titleText;
+  for (const [name, num] of Object.entries(SPANISH_MONTHS)) {
+    if (monthHay.includes(name)) { fileMonth = num; break; }
+  }
 
   const days: Record<string, Apt[]> = {};
+  let sawDayNumbers = false;
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const r = rows[i];
     if (!r) continue;
@@ -176,13 +195,25 @@ const parseExcel = async (file: File): Promise<Record<string, Apt[]>> => {
     const cstr = String(client).toLowerCase();
     if (cstr.includes("total") || cstr.includes("revenue") || cstr.includes("forecast") || cstr.includes("actual")) continue;
 
+    const dayNum = typeof rawDate === "number"
+      ? rawDate
+      : (/^\d{1,2}$/.test(String(rawDate).trim()) ? parseInt(String(rawDate), 10) : NaN);
+
+    const looksLikeDay = !isNaN(dayNum) && dayNum >= 1 && dayNum <= 31;
+    if (looksLikeDay) sawDayNumbers = true;
     let dateObj: Date;
-    if (rawDate instanceof Date) dateObj = rawDate;
-    else if (typeof rawDate === "number") dateObj = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
-    else dateObj = new Date(rawDate);
+    if (looksLikeDay && fileMonth) {
+      dateObj = new Date(fileYear, fileMonth - 1, dayNum);
+    } else if (rawDate instanceof Date) {
+      dateObj = rawDate;
+    } else if (typeof rawDate === "number") {
+      dateObj = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
+    } else {
+      dateObj = new Date(String(rawDate));
+    }
     if (isNaN(dateObj.getTime())) continue;
 
-    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,"0")}-${String(dateObj.getDate()).padStart(2,"0")}`;
+    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
     const timeStr = String(time).replace(/[\u202f\u00a0]/g, " ");
     const timeMins = parseTime(timeStr);
     if (timeMins === null) continue;
@@ -190,11 +221,11 @@ const parseExcel = async (file: File): Promise<Record<string, Apt[]>> => {
     if (!days[dateStr]) days[dateStr] = [];
 
     const clientStr = String(client).trim();
-    const clientNames = clientStr.split(/\s*,\s*/).map(n => n.trim()).filter(n => n.length > 0);
+    const clientNames = clientStr.split(/\s*,\s*/).map((n) => n.trim()).filter((n) => n.length > 0);
 
     clientNames.forEach((name, nameIdx) => {
       days[dateStr].push({
-        id: `${dateStr}-${i}-${nameIdx}-${Math.random().toString(36).slice(2,7)}`,
+        id: `${dateStr}-${i}-${nameIdx}-${Math.random().toString(36).slice(2, 7)}`,
         client: name,
         time: timeStr.trim(),
         timeMins,
@@ -207,6 +238,9 @@ const parseExcel = async (file: File): Promise<Record<string, Apt[]>> => {
         swapLocked: false,
       });
     });
+  }
+  if (sawDayNumbers && !fileMonth) {
+    throw new Error("No se pudo determinar el mes. Asegúrate de que el encabezado de fecha incluya el mes, por ej. \"Fecha (Mayo)\".");
   }
   if (Object.keys(days).length === 0) throw new Error("No se encontraron citas válidas.");
   return days;
