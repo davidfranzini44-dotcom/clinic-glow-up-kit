@@ -42,7 +42,7 @@ const labelDate = (d: string) => {
 const parseDateInput = (q: string): string | null => {
   const t = q.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
-  const m = t.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/);
+  const m = t.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?$/);
   if (m) {
     const d = parseInt(m[1], 10);
     const mo = parseInt(m[2], 10);

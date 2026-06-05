@@ -148,7 +148,7 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
   const exportDashboard = () => {
     try {
       const wb = XLSX.utils.book_new();
-      const summaryRows: any[][] = [
+      const summaryRows: (string | number)[][] = [
         ["REPORTE CHARM CLÍNICA"],
         ["Período:", `${dateFrom} a ${dateTo}`],
         ["Generado:", new Date().toLocaleString("es-DO")],
@@ -167,7 +167,7 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
       ws1["!cols"] = [{wch:14},{wch:16},{wch:12},{wch:12},{wch:10},{wch:10},{wch:18},{wch:18},{wch:14}];
       XLSX.utils.book_append_sheet(wb, ws1, "Resumen");
 
-      const dailyRows: any[][] = [["Fecha","Empleada","Atendidos","No asistió","Canceló","Sin cita"]];
+      const dailyRows: (string | number)[][] = [["Fecha","Empleada","Atendidos","No asistió","Canceló","Sin cita"]];
       Object.keys(dailyBreakdown).sort().forEach(date => {
         visibleEmployees.forEach(emp => {
           const d = dailyBreakdown[date][emp];
@@ -179,7 +179,7 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
       ws2["!cols"] = [{wch:12},{wch:12},{wch:12},{wch:12},{wch:10},{wch:10}];
       XLSX.utils.book_append_sheet(wb, ws2, "Detalle Diario");
 
-      const aptRows: any[][] = [["Fecha","Hora","Cliente","Empleada","Cabina","Sin cita","No asistió","Canceló"]];
+      const aptRows: (string | number)[][] = [["Fecha","Hora","Cliente","Empleada","Cabina","Sin cita","No asistió","Canceló"]];
       filtered.forEach(a => {
         if (!isAdmin && a.employee !== myEmployee) return;
         aptRows.push([a.date, a.time, a.client, a.employee || "", a.cabin || "", a.walk_in?"Sí":"", a.no_show?"Sí":"", a.cancelled?"Sí":""]);
@@ -189,8 +189,8 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
       XLSX.utils.book_append_sheet(wb, ws3, "Todas las citas");
 
       XLSX.writeFile(wb, `REPORTE_CHARM_${dateFrom}_a_${dateTo}.xlsx`);
-    } catch (e: any) {
-      alert("Error al exportar: " + e.message);
+    } catch (e) {
+      alert("Error al exportar: " + (e instanceof Error ? e.message : String(e)));
     }
   };
 

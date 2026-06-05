@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
 import { markSaveError, markSaveStart, markSaveSuccess, syncLastSavedAt, useGlobalSaveStatus } from "@/lib/saveSync";
 import type { Session } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import Dashboard from "./Dashboard";
 import SwapRequests, { SwapRequestDialog } from "./SwapRequests";
@@ -53,7 +54,7 @@ export type Apt = {
 };
 
 // ─── Time helpers ─────────────────────────────────────────────────────────
-const parseTime = (s: any): number | null => {
+const parseTime = (s: unknown): number | null => {
   if (s === null || s === undefined) return null;
   const cleaned = String(s).replace(/[\u202f\u00a0]/g, " ").toLowerCase().trim();
   const m = cleaned.match(/(\d{1,2}):(\d{2})\s*(a\.?\s*m\.?|p\.?\s*m\.?)?/);
@@ -146,19 +147,19 @@ const parseExcel = async (file: File): Promise<Record<string, Apt[]>> => {
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array", cellDates: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false }) as unknown as unknown[][];
 
   let headerIdx = -1;
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i] || [];
-    const lc = r.map((c: any) => String(c || "").toLowerCase());
+    const lc = r.map((c) => String(c || "").toLowerCase());
     if (lc.some(c => c.includes("client")) && lc.some(c => c.includes("time"))) {
       headerIdx = i; break;
     }
   }
   if (headerIdx === -1) throw new Error("No se encontró el encabezado. Se esperan columnas: Date, Time, Client.");
 
-  const header = rows[headerIdx].map((c: any) => String(c || "").toLowerCase());
+  const header = rows[headerIdx].map((c) => String(c || "").toLowerCase());
   const dateCol = header.findIndex((c: string) => c.includes("date"));
   const timeCol = header.findIndex((c: string) => c.includes("time"));
   const clientCol = header.findIndex((c: string) => c.includes("client"));
@@ -250,7 +251,14 @@ const latestTimestamp = (current: string | null, incoming?: string | null) => {
   return new Date(incoming).getTime() > new Date(current).getTime() ? incoming : current;
 };
 
-const rowToApt = (row: any): Apt => ({
+type ApptRow = Database["public"]["Tables"]["appointments"]["Row"];
+type ApptChangePayload = {
+  eventType: "INSERT" | "UPDATE" | "DELETE";
+  new: ApptRow;
+  old: Partial<ApptRow>;
+};
+
+const rowToApt = (row: ApptRow): Apt => ({
   id: row.id,
   client: row.client,
   time: row.time,
@@ -346,9 +354,9 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchAll<any>("appointments", "*", { column: "time_mins", ascending: true });
+        const data = await fetchAll<ApptRow>("appointments", "*", { column: "time_mins", ascending: true });
         const grouped: Record<string, Apt[]> = {};
-        (data || []).forEach((row: any) => {
+        (data || []).forEach((row) => {
           if (!grouped[row.date]) grouped[row.date] = [];
           grouped[row.date].push(rowToApt(row));
         });
@@ -367,7 +375,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
     const channel = supabase
       .channel("appointments-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload: any) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload: ApptChangePayload) => {
         if (payload.eventType === "INSERT") {
           const row = payload.new;
           setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
@@ -530,9 +538,9 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           okCount++;
         }
       }
-    } catch (e: any) {
+    } catch (e) {
       failCount++;
-      lastErr = e?.message || "Error desconocido";
+      lastErr = (e instanceof Error ? e.message : "") || "Error desconocido";
       console.error("Flush save error:", e);
     } finally {
       isFlushingRef.current = false;
@@ -576,8 +584,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       if (error) throw error;
       setDays({});
       setActiveDate(null);
-    } catch (e: any) {
-      alert("Error al borrar: " + e.message);
+    } catch (e) {
+      alert("Error al borrar: " + (e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -588,7 +596,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     try {
       const parsed = await parseExcel(file);
       const assignedDays: Record<string, Apt[]> = {};
-      const allRows: any[] = [];
+      const allRows: ReturnType<typeof aptToRow>[] = [];
       Object.keys(parsed).forEach(d => {
         assignedDays[d] = autoAssign(parsed[d]);
         assignedDays[d].forEach(apt => allRows.push(aptToRow(apt, d)));
@@ -600,16 +608,16 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       setActiveDate(Object.keys(assignedDays).sort()[0]);
       setView("schedule");
       markSaveSuccess(Array.isArray(data) ? data[data.length - 1]?.updated_at ?? null : null);
-    } catch (err: any) {
+    } catch (err) {
       markSaveError(err);
-      setError(err.message || "No se pudo leer el archivo");
+      setError((err instanceof Error ? err.message : "") || "No se pudo leer el archivo");
     }
     setLoading(false);
     e.target.value = "";
   };
 
   const sortedDates = useMemo(() => Object.keys(days).filter(d => d > HISTORY_CUTOFF).sort(), [days]);
-  const currentAppts = activeDate ? (days[activeDate] || []) : [];
+  const currentAppts = useMemo(() => (activeDate ? (days[activeDate] || []) : []), [activeDate, days]);
 
   const updateApt = async (id: string, changes: Partial<Apt>) => {
     if (!activeDate) return;
@@ -746,7 +754,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         const sheetName = `${dd}-${mm}-${yy}`;
         const monthName = MONTHS_ES_UPPER[d.getMonth()];
         const yearDigits = String(d.getFullYear()).split("").map(c => parseInt(c));
-        const rows: any[][] = [];
+        const rows: (string | number | null)[][] = [];
         rows.push(["AGENDA DIARIA ", dd, monthName, ...yearDigits]);
         rows.push(["CLIENTES", "HORARIO", "ASIGNACION", "CAMBIO", null, "NO ASISTIDO"]);
         const sorted = [...(days[dateStr] || [])].sort((a, b) => a.timeMins - b.timeMins);
@@ -759,8 +767,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       });
       const filename = `AGENDA_CHARM_${sortedDates[0]}_a_${sortedDates[sortedDates.length-1]}.xlsx`;
       XLSX.writeFile(wb, filename);
-    } catch (err: any) {
-      alert(`Error al exportar: ${err.message}`);
+    } catch (err) {
+      alert(`Error al exportar: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -896,9 +904,9 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   setGlobalSwapsLocked(v => !v);
                   markSaveSuccess();
                   toast.success(!globalSwapsLocked ? "Cambios bloqueados" : "Cambios desbloqueados");
-                } catch (error: any) {
+                } catch (error) {
                   markSaveError(error);
-                  toast.error(error?.message || "No se pudo actualizar el bloqueo");
+                  toast.error((error instanceof Error ? error.message : "") || "No se pudo actualizar el bloqueo");
                 }
               } : undefined}
             />

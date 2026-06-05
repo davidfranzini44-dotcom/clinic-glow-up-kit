@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, type ReactNode, type Dispatch, type SetStateAction } from "react";
 import {
   Plus, Search, Edit2, Phone, Mail, Cake, MessageCircle,
   AlertTriangle, ChevronLeft, Download,
@@ -7,6 +7,21 @@ import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
 import { trackSave } from "@/lib/saveSync";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Customer = Tables<'customers'>;
+type Invoice = Tables<'invoices'> & {
+  invoice_items: Tables<'invoice_items'>[];
+  invoice_payments: Tables<'invoice_payments'>[];
+};
+type CustomerPackage = Tables<'customer_packages'>;
+type ApptRow = Tables<'appointments'>;
+type ApptNote = Tables<'appointment_notes'>;
+type NotesMap = Record<string, Partial<ApptNote>>;
+type ClientForm = Partial<Customer>;
+type EnrichedCustomer = Customer & {
+  totalSpent: number; lastVisit: string | null; visits: number; activePkgs: CustomerPackage[];
+};
 
 const EMPLOYEES: Record<string, { color: string }> = {
   Yaira:  { color: "#C8956D" },
@@ -15,8 +30,8 @@ const EMPLOYEES: Record<string, { color: string }> = {
   Lisa:   { color: "#6B4423" },
 };
 
-const fmtMoney = (n: any) => {
-  if (n === null || n === undefined || isNaN(n)) return "RD$ 0.00";
+const fmtMoney = (n: number | string | null | undefined) => {
+  if (n === null || n === undefined || isNaN(n as number)) return "RD$ 0.00";
   return `RD$ ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
@@ -25,14 +40,14 @@ const todayISO = () => {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 };
 
-const SubNavBtn = ({ active, onClick, children }: any) => (
+const SubNavBtn = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) => (
   <button onClick={onClick} className="px-3 py-1.5 text-xs tracking-[0.15em] uppercase whitespace-nowrap"
     style={{ backgroundColor: active ? "#3E2A1A" : "transparent", color: active ? "#F5EFE6" : "#3E2A1A", border: "1px solid #3E2A1A", opacity: active ? 1 : 0.65, fontFamily: "Lora, serif" }}>
     {children}
   </button>
 );
 
-const Section = ({ title, subtitle, action, children }: any) => (
+const Section = ({ title, subtitle, action, children }: { title: ReactNode; subtitle?: ReactNode; action?: ReactNode; children: ReactNode }) => (
   <>
     <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
       <div>
@@ -52,14 +67,14 @@ type Props = {
 };
 
 export default function ClientsModule({ isAdmin, selectedClientId, setSelectedClientId }: Props) {
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [packages, setPackages] = useState<any[]>([]);
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [appointmentNotes, setAppointmentNotes] = useState<Record<string, any>>({});
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [packages, setPackages] = useState<CustomerPackage[]>([]);
+  const [appointments, setAppointments] = useState<ApptRow[]>([]);
+  const [appointmentNotes, setAppointmentNotes] = useState<NotesMap>({});
   const [view, setView] = useState<"list" | "birthdays" | "inactive">("list");
   const [search, setSearch] = useState("");
-  const [editForm, setEditForm] = useState<any>(null);
+  const [editForm, setEditForm] = useState<ClientForm | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -67,18 +82,18 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
       setLoading(true);
       try {
         const [cust, inv, pkg, apt, notes] = await Promise.all([
-          fetchAll<any>("customers"),
-          fetchAll<any>("invoices", "*, invoice_items(*), invoice_payments(*)"),
-          fetchAll<any>("customer_packages"),
-          fetchAll<any>("appointments"),
-          fetchAll<any>("appointment_notes"),
+          fetchAll<Customer>("customers"),
+          fetchAll<Invoice>("invoices", "*, invoice_items(*), invoice_payments(*)"),
+          fetchAll<CustomerPackage>("customer_packages"),
+          fetchAll<ApptRow>("appointments"),
+          fetchAll<ApptNote>("appointment_notes"),
         ]);
         setCustomers(cust || []);
         setInvoices(inv || []);
         setPackages(pkg || []);
         setAppointments(apt || []);
-        const notesMap: Record<string, any> = {};
-        (notes || []).forEach((n: any) => { notesMap[n.appointment_id] = n; });
+        const notesMap: NotesMap = {};
+        (notes || []).forEach((n) => { notesMap[n.appointment_id] = n; });
         setAppointmentNotes(notesMap);
       } catch (e) {
         console.error("Load error:", e);
@@ -153,14 +168,14 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
         setCustomers(prev => [...prev, data]);
       }
       setEditForm(null);
-    } catch (e: any) {
-      alert("Error al guardar: " + e.message);
+    } catch (e) {
+      alert("Error al guardar: " + (e instanceof Error ? e.message : String(e)));
     }
   };
 
   const exportClients = () => {
     const wb = XLSX.utils.book_new();
-    const rows: any[][] = [["Nombre", "Teléfono", "Correo", "Cumpleaños", "Total gastado", "Visitas", "Última visita", "Notas"]];
+    const rows: (string | number | null)[][] = [["Nombre", "Teléfono", "Correo", "Cumpleaños", "Total gastado", "Visitas", "Última visita", "Notas"]];
     enriched.forEach(c => rows.push([c.name, c.phone || "", c.email || "", c.birthday || "", c.totalSpent, c.visits, c.lastVisit || "", c.notes || ""]));
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws["!cols"] = [{ wch: 28 }, { wch: 14 }, { wch: 24 }, { wch: 12 }, { wch: 14 }, { wch: 8 }, { wch: 12 }, { wch: 30 }];
@@ -240,7 +255,7 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
   );
 }
 
-function ClientRow({ c, onClick }: any) {
+function ClientRow({ c, onClick }: { c: EnrichedCustomer; onClick: () => void }) {
   return (
     <button onClick={onClick} className="w-full border p-4 flex items-center gap-3 text-left hover:opacity-90 flex-wrap" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
       <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0" style={{ backgroundColor: "#E8D9BF", color: "#6B4423" }}>
@@ -263,38 +278,38 @@ function ClientRow({ c, onClick }: any) {
   );
 }
 
-function ClientEditForm({ form, setForm, onSave, onCancel }: any) {
+function ClientEditForm({ form, setForm, onSave, onCancel }: { form: ClientForm; setForm: Dispatch<SetStateAction<ClientForm | null>>; onSave: () => void; onCancel: () => void }) {
   return (
     <div className="border p-5 mb-6" style={{ borderColor: "#8B6F47", backgroundColor: "#FBF7F0" }}>
       <div className="text-xs tracking-[0.25em] mb-4" style={{ color: "#8B6F47" }}>{form.id ? "EDITAR CLIENTE" : "NUEVO CLIENTE"}</div>
       <div className="grid md:grid-cols-2 gap-3">
         <div className="md:col-span-2">
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Nombre completo *</label>
-          <input type="text" value={form.name || ""} onChange={e => setForm((f: any) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="text" value={form.name || ""} onChange={e => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Teléfono / WhatsApp</label>
-          <input type="tel" value={form.phone || ""} onChange={e => setForm((f: any) => ({ ...f, phone: e.target.value }))} placeholder="809-555-1234" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="tel" value={form.phone || ""} onChange={e => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="809-555-1234" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Correo</label>
-          <input type="email" value={form.email || ""} onChange={e => setForm((f: any) => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="email" value={form.email || ""} onChange={e => setForm((f) => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Cumpleaños</label>
-          <input type="date" value={form.birthday || ""} onChange={e => setForm((f: any) => ({ ...f, birthday: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="date" value={form.birthday || ""} onChange={e => setForm((f) => ({ ...f, birthday: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Dirección</label>
-          <input type="text" value={form.address || ""} onChange={e => setForm((f: any) => ({ ...f, address: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="text" value={form.address || ""} onChange={e => setForm((f) => ({ ...f, address: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div className="md:col-span-2">
           <label className="text-xs tracking-[0.2em] uppercase mb-1 flex items-center gap-1" style={{ color: "#A04040" }}><AlertTriangle size={11} /> Alergias / Condiciones médicas</label>
-          <textarea value={form.allergies || ""} onChange={e => setForm((f: any) => ({ ...f, allergies: e.target.value }))} rows={2} placeholder="Ej. Embarazo, alergia a..., medicamentos actuales" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <textarea value={form.allergies || ""} onChange={e => setForm((f) => ({ ...f, allergies: e.target.value }))} rows={2} placeholder="Ej. Embarazo, alergia a..., medicamentos actuales" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div className="md:col-span-2">
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Notas generales</label>
-          <textarea value={form.notes || ""} onChange={e => setForm((f: any) => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Preferencias, observaciones..." className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <textarea value={form.notes || ""} onChange={e => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Preferencias, observaciones..." className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
       </div>
       <div className="flex gap-2 mt-4">
@@ -305,21 +320,21 @@ function ClientEditForm({ form, setForm, onSave, onCancel }: any) {
   );
 }
 
-function ClientDetail({ client, setCustomers, invoices, packages, appointments, appointmentNotes, setAppointmentNotes, onBack, isAdmin }: any) {
+function ClientDetail({ client, setCustomers, invoices, packages, appointments, appointmentNotes, setAppointmentNotes, onBack, isAdmin }: { client: Customer; setCustomers: Dispatch<SetStateAction<Customer[]>>; invoices: Invoice[]; packages: CustomerPackage[]; appointments: ApptRow[]; appointmentNotes: NotesMap; setAppointmentNotes: Dispatch<SetStateAction<NotesMap>>; onBack: () => void; isAdmin: boolean }) {
   const [editing, setEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ ...client });
+  const [editForm, setEditForm] = useState<ClientForm | null>({ ...client });
   const [tab, setTab] = useState<"history" | "invoices" | "packages">("history");
 
   const allAppts = useMemo(() =>
     appointments
-      .filter((apt: any) => apt.client?.toLowerCase().trim() === client.name?.toLowerCase().trim())
-      .sort((a: any, b: any) => (b.date + (b.time || "")).localeCompare(a.date + (a.time || ""))),
+      .filter((apt) => apt.client?.toLowerCase().trim() === client.name?.toLowerCase().trim())
+      .sort((a, b) => (b.date + (b.time || "")).localeCompare(a.date + (a.time || ""))),
     [appointments, client.name]
   );
 
-  const clientInvoices = invoices.filter((i: any) => i.customer_id === client.id).sort((a: any, b: any) => (b.invoice_number || 0) - (a.invoice_number || 0));
-  const clientPackages = packages.filter((p: any) => p.customer_id === client.id);
-  const totalSpent = clientInvoices.filter((i: any) => i.status !== "voided").reduce((s: number, i: any) => s + Number(i.total || 0), 0);
+  const clientInvoices = invoices.filter((i) => i.customer_id === client.id).sort((a, b) => (b.invoice_number || 0) - (a.invoice_number || 0));
+  const clientPackages = packages.filter((p) => p.customer_id === client.id);
+  const totalSpent = clientInvoices.filter((i) => i.status !== "voided").reduce((s: number, i) => s + Number(i.total || 0), 0);
 
   const saveEdit = async () => {
     try {
@@ -329,9 +344,9 @@ function ClientDetail({ client, setCustomers, invoices, packages, appointments, 
         notes: editForm.notes, allergies: editForm.allergies,
       }).eq("id", client.id));
       if (error) throw error;
-      setCustomers((prev: any[]) => prev.map(c => c.id === client.id ? { ...c, ...editForm } : c));
+      setCustomers((prev) => prev.map(c => c.id === client.id ? { ...c, ...editForm } : c));
       setEditing(false);
-    } catch (e: any) { alert("Error: " + e.message); }
+    } catch (e) { alert("Error: " + (e instanceof Error ? e.message : String(e))); }
   };
 
   const sendWA = (msg: string) => {
@@ -341,7 +356,7 @@ function ClientDetail({ client, setCustomers, invoices, packages, appointments, 
     window.open(url, "_blank");
   };
 
-  const upcomingAppt = allAppts.find((a: any) => a.date >= todayISO() && !a.cancelled && !a.no_show);
+  const upcomingAppt = allAppts.find((a) => a.date >= todayISO() && !a.cancelled && !a.no_show);
 
   return (
     <div>
@@ -388,7 +403,7 @@ function ClientDetail({ client, setCustomers, invoices, packages, appointments, 
           <div className="grid grid-cols-3 gap-3 mt-6 pt-4 border-t" style={{ borderColor: "#D4C4A8" }}>
             <div>
               <div className="text-xs tracking-[0.2em]" style={{ color: "#8B6F47" }}>VISITAS</div>
-              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#3E2A1A", fontWeight: 500, lineHeight: 1 }}>{allAppts.filter((a: any) => !a.cancelled && !a.no_show).length}</div>
+              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#3E2A1A", fontWeight: 500, lineHeight: 1 }}>{allAppts.filter((a) => !a.cancelled && !a.no_show).length}</div>
             </div>
             <div>
               <div className="text-xs tracking-[0.2em]" style={{ color: "#8B6F47" }}>GASTADO</div>
@@ -396,7 +411,7 @@ function ClientDetail({ client, setCustomers, invoices, packages, appointments, 
             </div>
             <div>
               <div className="text-xs tracking-[0.2em]" style={{ color: "#8B6F47" }}>PAQUETES</div>
-              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#3E2A1A", fontWeight: 500, lineHeight: 1 }}>{clientPackages.filter((p: any) => p.used_sessions < p.total_sessions).length}</div>
+              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#3E2A1A", fontWeight: 500, lineHeight: 1 }}>{clientPackages.filter((p) => p.used_sessions < p.total_sessions).length}</div>
             </div>
           </div>
 
@@ -418,18 +433,18 @@ function ClientDetail({ client, setCustomers, invoices, packages, appointments, 
       {tab === "history" && (
         <div className="space-y-2">
           {allAppts.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", color: "#6B5B47" }}>Sin historial.</div>}
-          {allAppts.map((apt: any) => <AppointmentNoteRow key={apt.id} apt={apt} appointmentNotes={appointmentNotes} setAppointmentNotes={setAppointmentNotes} />)}
+          {allAppts.map((apt) => <AppointmentNoteRow key={apt.id} apt={apt} appointmentNotes={appointmentNotes} setAppointmentNotes={setAppointmentNotes} />)}
         </div>
       )}
       {tab === "invoices" && (
         <div className="space-y-2">
           {clientInvoices.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", color: "#6B5B47" }}>Sin facturas.</div>}
-          {clientInvoices.map((inv: any) => (
+          {clientInvoices.map((inv) => (
             <div key={inv.id} className="border p-4 flex items-center gap-3 flex-wrap" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
               <div className="text-xs" style={{ color: "#8B6F47" }}>#{inv.invoice_number}</div>
               <div className="text-xs" style={{ color: "#6B5B47" }}>{inv.date}</div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm" style={{ color: "#3E2A1A" }}>{(inv.invoice_items || []).map((i: any) => i.name).join(", ")}</div>
+                <div className="text-sm" style={{ color: "#3E2A1A" }}>{(inv.invoice_items || []).map((i) => i.name).join(", ")}</div>
                 <div className="text-xs" style={{ color: "#8B6F47" }}>Vendido por {inv.sold_by}</div>
               </div>
               <div className="text-sm font-medium" style={{ color: "#3E2A1A" }}>{fmtMoney(inv.total)}</div>
@@ -440,7 +455,7 @@ function ClientDetail({ client, setCustomers, invoices, packages, appointments, 
       {tab === "packages" && (
         <div className="space-y-2">
           {clientPackages.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", color: "#6B5B47" }}>Sin paquetes.</div>}
-          {clientPackages.map((p: any) => {
+          {clientPackages.map((p) => {
             const remaining = p.total_sessions - p.used_sessions;
             const isDone = remaining === 0;
             return (
@@ -468,7 +483,7 @@ function ClientDetail({ client, setCustomers, invoices, packages, appointments, 
   );
 }
 
-function AppointmentNoteRow({ apt, appointmentNotes, setAppointmentNotes }: any) {
+function AppointmentNoteRow({ apt, appointmentNotes, setAppointmentNotes }: { apt: ApptRow; appointmentNotes: NotesMap; setAppointmentNotes: Dispatch<SetStateAction<NotesMap>> }) {
   const note = appointmentNotes[apt.id] || { observations: "", treatments: "" };
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(note);
@@ -484,9 +499,9 @@ function AppointmentNoteRow({ apt, appointmentNotes, setAppointmentNotes }: any)
         observations: draft.observations || "",
       }, { onConflict: "appointment_id" }));
       if (error) throw error;
-      setAppointmentNotes((prev: any) => ({ ...prev, [apt.id]: { ...draft, appointment_id: apt.id } }));
+      setAppointmentNotes((prev) => ({ ...prev, [apt.id]: { ...draft, appointment_id: apt.id } }));
       setEditing(false);
-    } catch (e: any) { alert("Error: " + e.message); }
+    } catch (e) { alert("Error: " + (e instanceof Error ? e.message : String(e))); }
   };
 
   return (
@@ -508,8 +523,8 @@ function AppointmentNoteRow({ apt, appointmentNotes, setAppointmentNotes }: any)
       </div>
       {editing ? (
         <div className="mt-3 space-y-2">
-          <input type="text" value={draft.treatments || ""} onChange={e => setDraft((d: any) => ({ ...d, treatments: e.target.value }))} placeholder="Tratamientos: Ej. Láser axilas + bigote" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
-          <textarea value={draft.observations || ""} onChange={e => setDraft((d: any) => ({ ...d, observations: e.target.value }))} rows={2} placeholder="Observaciones..." className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="text" value={draft.treatments || ""} onChange={e => setDraft((d) => ({ ...d, treatments: e.target.value }))} placeholder="Tratamientos: Ej. Láser axilas + bigote" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <textarea value={draft.observations || ""} onChange={e => setDraft((d) => ({ ...d, observations: e.target.value }))} rows={2} placeholder="Observaciones..." className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
           <div className="flex gap-2">
             <button onClick={save} className="px-4 py-1.5 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: "#3E2A1A", color: "#F5EFE6" }}>Guardar</button>
             <button onClick={() => setEditing(false)} className="px-4 py-1.5 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#3E2A1A", color: "#3E2A1A" }}>Cancelar</button>
@@ -527,14 +542,14 @@ function AppointmentNoteRow({ apt, appointmentNotes, setAppointmentNotes }: any)
   );
 }
 
-function sendBirthdayWA(c: any) {
+function sendBirthdayWA(c: Customer) {
   const phone = (c.phone || "").replace(/\D/g, "");
   const msg = `¡Feliz cumpleaños ${c.name.split(" ")[0]}! 🎂✨ Todo el equipo de Charm Clínica Estética te desea un día maravilloso. Tenemos una sorpresa especial para ti. 💕`;
   const url = phone ? `https://wa.me/${phone.startsWith("1") ? phone : "1" + phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
   window.open(url, "_blank");
 }
 
-function sendReactivationWA(c: any) {
+function sendReactivationWA(c: Customer) {
   const phone = (c.phone || "").replace(/\D/g, "");
   const msg = `Hola ${c.name.split(" ")[0]}, le saluda Charm Clínica Estética. Hace tiempo que no la vemos por acá. Tenemos novedades y promociones que le pueden interesar. ¿Le gustaría agendar una cita?`;
   const url = phone ? `https://wa.me/${phone.startsWith("1") ? phone : "1" + phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;

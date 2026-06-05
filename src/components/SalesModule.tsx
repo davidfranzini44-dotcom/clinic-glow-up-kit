@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, type ReactNode, type Dispatch, type SetStateAction } from 'react';
 import {
   ShoppingBag, Plus, Search, Edit2, Trash2, X, Check, Tag, Package,
   Receipt, FileText, Wallet, Calculator, Banknote, CreditCard,
@@ -10,6 +9,22 @@ import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAll } from '@/lib/fetchAll';
 import { trackSave } from '@/lib/saveSync';
+import type { Tables } from '@/integrations/supabase/types';
+
+type CatalogItem = Tables<'catalog_items'>;
+type Customer = Tables<'customers'>;
+type Invoice = Tables<'invoices'> & {
+  invoice_items: Tables<'invoice_items'>[];
+  invoice_payments: Tables<'invoice_payments'>[];
+};
+type CustomerPackage = Tables<'customer_packages'>;
+type Expense = Tables<'expenses'>;
+type CashClosureRow = Tables<'cash_closures'>;
+type SalesProfile = Tables<'profiles'>;
+type CartItem = {
+  tempId: string; catalogId: string; name: string; qty: number;
+  unitPrice: number; total: number; isPackage: boolean; packageSessions: number | null;
+};
 
 const EMP_LIST = ['Yaira', 'Belkis', 'Cielo', 'Lisa'];
 
@@ -41,14 +56,14 @@ const labelMethod = (m) => ({
   cash: 'Efectivo', transfer: 'Transferencia', azul: 'Azul Link', card_terminal: 'Tarjeta Terminal'
 }[m] || m);
 
-const SubNavBtn = ({ active, onClick, children }: any) => (
+const SubNavBtn = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) => (
   <button onClick={onClick} className="px-3 py-1.5 text-xs tracking-[0.15em] uppercase whitespace-nowrap"
     style={{ backgroundColor: active ? '#3E2A1A' : 'transparent', color: active ? '#F5EFE6' : '#3E2A1A', border: '1px solid #3E2A1A', opacity: active ? 1 : 0.65, fontFamily: 'Lora, serif' }}>
     {children}
   </button>
 );
 
-const Section = ({ title, subtitle, action, children }: any) => (
+const Section = ({ title, subtitle, action, children }: { title: ReactNode; subtitle?: ReactNode; action?: ReactNode; children: ReactNode }) => (
   <>
     <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
       <div>
@@ -61,7 +76,7 @@ const Section = ({ title, subtitle, action, children }: any) => (
   </>
 );
 
-const Stat = ({ label, value, icon, color }: any) => (
+const Stat = ({ label, value, icon, color }: { label: ReactNode; value: ReactNode; icon?: ReactNode; color?: string }) => (
   <div className="border p-4" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0', borderLeft: `4px solid ${color}` }}>
     <div className="text-xs tracking-[0.2em] flex items-center gap-1" style={{ color: '#8B6F47' }}>{icon} {label.toUpperCase()}</div>
     <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '28px', fontWeight: 400, color, lineHeight: 1.1, marginTop: '4px' }}>{value}</div>
@@ -71,14 +86,14 @@ const Stat = ({ label, value, icon, color }: any) => (
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN SALES MODULE
 // ═══════════════════════════════════════════════════════════════════════════
-export default function SalesModule({ profile, isAdmin }: { profile: any; isAdmin: boolean }) {
+export default function SalesModule({ profile, isAdmin }: { profile: SalesProfile; isAdmin: boolean }) {
   const [view, setView] = useState('overview');
-  const [catalog, setCatalog] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [packages, setPackages] = useState<any[]>([]);
-  const [expenses, setExpenses] = useState<any[]>([]);
-  const [closures, setClosures] = useState<any[]>([]);
+  const [catalog, setCatalog] = useState<CatalogItem[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [packages, setPackages] = useState<CustomerPackage[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [closures, setClosures] = useState<CashClosureRow[]>([]);
   const [loading, setLoading] = useState(true);
 
 
@@ -88,13 +103,13 @@ export default function SalesModule({ profile, isAdmin }: { profile: any; isAdmi
       try {
         const [c, cu, i, p, e, cl] = await Promise.all([
           supabase.from('catalog_items').select('*').eq('active', true).order('name'),
-          fetchAll<any>('customers'),
-          fetchAll<any>('invoices', '*, invoice_items(*), invoice_payments(*)', { column: 'invoice_number', ascending: false }),
-          fetchAll<any>('customer_packages'),
-          fetchAll<any>('expenses', '*', { column: 'created_at', ascending: false }),
-          fetchAll<any>('cash_closures', '*', { column: 'date', ascending: false }),
+          fetchAll<Customer>('customers'),
+          fetchAll<Invoice>('invoices', '*, invoice_items(*), invoice_payments(*)', { column: 'invoice_number', ascending: false }),
+          fetchAll<CustomerPackage>('customer_packages'),
+          fetchAll<Expense>('expenses', '*', { column: 'created_at', ascending: false }),
+          fetchAll<CashClosureRow>('cash_closures', '*', { column: 'date', ascending: false }),
         ]);
-        setCatalog((c as any).data || []);
+        setCatalog(c.data || []);
         setCustomers(cu || []);
         setInvoices(i || []);
         setPackages(p || []);
@@ -129,7 +144,7 @@ export default function SalesModule({ profile, isAdmin }: { profile: any; isAdmi
 }
 
 // ─── OVERVIEW ─────────────────────────────────────────────────────────────
-function Overview({ invoices, expenses, packages, setView }: any) {
+function Overview({ invoices, expenses, packages, setView }: { invoices: Invoice[]; expenses: Expense[]; packages: CustomerPackage[]; setView: (view: string) => void }) {
   const today = todayISO();
   const todayInvoices = invoices.filter(i => i.date === today && i.status !== 'voided');
   const todayExpenses = expenses.filter(e => e.date === today);
@@ -177,7 +192,7 @@ function Overview({ invoices, expenses, packages, setView }: any) {
   );
 }
 
-function ActionCard({ title, desc, icon, onClick }: any) {
+function ActionCard({ title, desc, icon, onClick }: { title: ReactNode; desc: ReactNode; icon?: ReactNode; onClick: () => void }) {
   return (
     <button onClick={onClick} className="border p-5 text-left hover:opacity-80 transition-opacity" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
       <div className="flex items-center gap-2 mb-2" style={{ color: '#8B6F47' }}>{icon}</div>
@@ -188,7 +203,7 @@ function ActionCard({ title, desc, icon, onClick }: any) {
 }
 
 // ─── CATALOG MANAGER ──────────────────────────────────────────────────────
-function CatalogManager({ catalog, setCatalog }: any) {
+function CatalogManager({ catalog, setCatalog }: { catalog: CatalogItem[]; setCatalog: Dispatch<SetStateAction<CatalogItem[]>> }) {
   const [form, setForm] = useState(null);
 
   const save = async () => {
@@ -295,10 +310,10 @@ function CatalogManager({ catalog, setCatalog }: any) {
 }
 
 // ─── NEW SALE ─────────────────────────────────────────────────────────────
-function NewSale({ catalog, customers, setCustomers, setInvoices, setPackages, setView, profile }: any) {
+function NewSale({ catalog, customers, setCustomers, setInvoices, setPackages, setView, profile }: { catalog: CatalogItem[]; customers: Customer[]; setCustomers: Dispatch<SetStateAction<Customer[]>>; setInvoices: Dispatch<SetStateAction<Invoice[]>>; setPackages: Dispatch<SetStateAction<CustomerPackage[]>>; setView: (view: string) => void; profile: SalesProfile }) {
   const [customer, setCustomer] = useState({ name: '', phone: '', email: '' });
   const [customerSearch, setCustomerSearch] = useState('');
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<CartItem[]>([]);
   const [soldBy, setSoldBy] = useState(profile?.employee_name || 'Lisa');
   const [payments, setPayments] = useState([{ method: 'cash', amount: '' }]);
   const [notes, setNotes] = useState('');
@@ -536,7 +551,7 @@ function NewSale({ catalog, customers, setCustomers, setInvoices, setPackages, s
 }
 
 // ─── INVOICES LIST ────────────────────────────────────────────────────────
-function InvoicesList({ invoices, packages, profile }: any) {
+function InvoicesList({ invoices, packages, profile }: { invoices: Invoice[]; packages: CustomerPackage[]; profile: SalesProfile }) {
   const [search, setSearch] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
@@ -596,7 +611,7 @@ function InvoicesList({ invoices, packages, profile }: any) {
   );
 }
 
-function InvoiceDetail({ invoice, packages, onClose }: any) {
+function InvoiceDetail({ invoice, packages, onClose }: { invoice: Invoice; packages: CustomerPackage[]; onClose: () => void }) {
   const items = invoice.invoice_items || [];
   const pays = invoice.invoice_payments || [];
   const pkgs = packages.filter(p => items.some(i => i.id === p.invoice_item_id));
@@ -745,7 +760,7 @@ ${invoice.notes ? `<div style="margin-top:30px;font-size:11px;font-style:italic;
 // ─── EXPENSES ─────────────────────────────────────────────────────────────
 const EXPENSE_CATEGORIES = ['Suministros','Servicios','Mantenimiento','Personal','Marketing','Otros'];
 
-function ExpensesManager({ expenses, setExpenses }: any) {
+function ExpensesManager({ expenses, setExpenses }: { expenses: Expense[]; setExpenses: Dispatch<SetStateAction<Expense[]>> }) {
   const [form, setForm] = useState(null);
   const [filterDate, setFilterDate] = useState(todayISO());
 
@@ -881,7 +896,7 @@ const DENOMINATIONS = [
   { key: 'coins_1', label: 'RD$ 1', value: 1 },
 ];
 
-function CashClosure({ invoices, expenses, closures, setClosures, profile }: any) {
+function CashClosure({ invoices, expenses, closures, setClosures, profile }: { invoices: Invoice[]; expenses: Expense[]; closures: CashClosureRow[]; setClosures: Dispatch<SetStateAction<CashClosureRow[]>>; profile: SalesProfile }) {
   const [closureDate, setClosureDate] = useState(todayISO());
   const [counts, setCounts] = useState(Object.fromEntries(DENOMINATIONS.map(d => [d.key, ''])));
   const [transfers, setTransfers] = useState('');
@@ -1113,7 +1128,7 @@ ${notes ? `<div style="margin-top:20px;font-size:11px;font-style:italic">Notas: 
   );
 }
 
-function CuadreRow({ label, counted, system }: any) {
+function CuadreRow({ label, counted, system }: { label: ReactNode; counted: number; system: number }) {
   const diff = counted - system;
   const isOk = Math.abs(diff) < 0.01;
   return (

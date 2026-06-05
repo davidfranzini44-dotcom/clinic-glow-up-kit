@@ -69,7 +69,7 @@ export default function SwapRequests({ session, isAdmin, onChanged }: Props) {
     if (data) {
       setAppts(prev => {
         const out = { ...prev };
-        data.forEach((a: any) => { out[a.id] = a; });
+        data.forEach((a) => { out[a.id] = a as AptInfo; });
         return out;
       });
     }
@@ -387,8 +387,8 @@ export function SwapRequestDialog({
       if (error) throw error;
       toast.success("Solicitud enviada");
       onClose();
-    } catch (e: any) {
-      setErr(e.message || "No se pudo enviar");
+    } catch (e) {
+      setErr((e instanceof Error ? e.message : "") || "No se pudo enviar");
     } finally {
       setSubmitting(false);
     }

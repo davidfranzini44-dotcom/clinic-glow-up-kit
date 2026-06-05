@@ -57,7 +57,12 @@ const normalizeSavedAt = (value?: string | Date | null) => {
   return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
 };
 
-const extractSavedAt = (result: any) => {
+type TrackResult = {
+  data?: { updated_at?: string | null } | Array<{ updated_at?: string | null }> | null;
+  error?: unknown;
+};
+
+const extractSavedAt = (result: TrackResult) => {
   const data = result?.data;
   if (Array.isArray(data)) return data[0]?.updated_at ?? null;
   return data?.updated_at ?? null;
@@ -103,7 +108,7 @@ export const markSaveError = (error: unknown) => {
 export async function trackSave<T>(promise: PromiseLike<T>, options?: { savedAt?: string | Date | null }) {
   markSaveStart();
   try {
-    const result: any = await promise;
+    const result = (await promise) as unknown as TrackResult & T;
     if (result?.error) throw result.error;
     markSaveSuccess(options?.savedAt ?? extractSavedAt(result));
     return result as T;

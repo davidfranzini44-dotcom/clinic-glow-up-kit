@@ -49,8 +49,8 @@ export default function Auth() {
         if (error) throw error;
         setInfo("Cuenta creada. Iniciando sesión…");
       }
-    } catch (err: any) {
-      setError(err?.message || "Error de autenticación");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : "") || "Error de autenticación");
     } finally {
       setLoading(false);
     }

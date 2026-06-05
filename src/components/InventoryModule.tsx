@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, type ReactNode, type Dispatch, type SetStateAction } from "react";
 import {
   Box, Plus, Search, Edit2, ArrowDownCircle, ArrowUpCircle,
   AlertTriangle, TrendingDown, MessageCircle, Truck,
@@ -7,9 +7,27 @@ import {
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { trackSave } from "@/lib/saveSync";
+import type { Tables } from "@/integrations/supabase/types";
 
-const fmtMoney = (n: any) => {
-  if (n === null || n === undefined || isNaN(n)) return "RD$ 0.00";
+type InvItem = Tables<'inventory_items'>;
+type Movement = Tables<'inventory_movements'>;
+type ApptRow = Tables<'appointments'>;
+type InvForm = {
+  id?: string; sku?: string | null; name?: string; unit?: string | null;
+  category?: string | null; supplier?: string | null; supplier_phone?: string | null;
+  stock?: string | number | null; cost_per_unit?: string | number | null;
+  min_stock?: string | number | null; per_client_rate?: string | number | null;
+};
+type MoveForm = { itemId?: string; type?: string; qty?: string | number; notes?: string };
+type ForecastItem = InvItem & { totalNeeded: number; dailyNeeds: number[]; deficit: number; costNeeded: number };
+type Forecast = {
+  next7Days: { date: string; dayName: string; dayNum: number; clients: number }[];
+  totalClients: number;
+  byItem: ForecastItem[];
+};
+
+const fmtMoney = (n: number | string | null | undefined) => {
+  if (n === null || n === undefined || isNaN(n as number)) return "RD$ 0.00";
   return `RD$ ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 const todayISO = () => {
@@ -24,14 +42,14 @@ const dateLabelES = (dateStr: string) => {
   return `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][d.getDay()]}, ${d.getDate()} de ${MONTHS_ES[d.getMonth()]} de ${d.getFullYear()}`;
 };
 
-const SubNavBtn = ({ active, onClick, children }: any) => (
+const SubNavBtn = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) => (
   <button onClick={onClick} className="px-3 py-1.5 text-xs tracking-[0.15em] uppercase whitespace-nowrap"
     style={{ backgroundColor: active ? "#3E2A1A" : "transparent", color: active ? "#F5EFE6" : "#3E2A1A", border: "1px solid #3E2A1A", opacity: active ? 1 : 0.65, fontFamily: "Lora, serif" }}>
     {children}
   </button>
 );
 
-const Section = ({ title, subtitle, action, children }: any) => (
+const Section = ({ title, subtitle, action, children }: { title: ReactNode; subtitle?: ReactNode; action?: ReactNode; children: ReactNode }) => (
   <>
     <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
       <div>
@@ -44,7 +62,7 @@ const Section = ({ title, subtitle, action, children }: any) => (
   </>
 );
 
-const Stat = ({ label, value, icon, color }: any) => (
+const Stat = ({ label, value, icon, color }: { label: ReactNode; value: ReactNode; icon?: ReactNode; color?: string }) => (
   <div className="border p-4" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", borderLeft: `4px solid ${color}` }}>
     <div className="text-xs tracking-[0.2em] flex items-center gap-1" style={{ color: "#8B6F47" }}>{icon} {label.toUpperCase()}</div>
     <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", fontWeight: 400, color, lineHeight: 1.1, marginTop: "4px" }}>{value}</div>
@@ -70,13 +88,13 @@ const DEFAULT_INVENTORY = [
 ];
 
 export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [movements, setMovements] = useState<any[]>([]);
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<InvItem[]>([]);
+  const [movements, setMovements] = useState<Movement[]>([]);
+  const [appointments, setAppointments] = useState<ApptRow[]>([]);
   const [view, setView] = useState<"list" | "forecast" | "movements">("list");
   const [search, setSearch] = useState("");
-  const [editForm, setEditForm] = useState<any>(null);
-  const [movementForm, setMovementForm] = useState<any>(null);
+  const [editForm, setEditForm] = useState<InvForm | null>(null);
+  const [movementForm, setMovementForm] = useState<MoveForm | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -102,7 +120,7 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
       const { data, error } = await trackSave(supabase.from("inventory_items").insert(DEFAULT_INVENTORY).select());
       if (error) throw error;
       setInventory(data || []);
-    } catch (e: any) { alert("Error: " + e.message); }
+    } catch (e) { alert("Error: " + (e instanceof Error ? e.message : String(e))); }
   };
 
   const saveItem = async () => {
@@ -110,10 +128,10 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
     const item = {
       sku: editForm.sku || null, name: editForm.name, unit: editForm.unit,
       category: editForm.category, supplier: editForm.supplier, supplier_phone: editForm.supplier_phone,
-      stock: parseFloat(editForm.stock) || 0,
-      cost_per_unit: parseFloat(editForm.cost_per_unit) || 0,
-      min_stock: parseFloat(editForm.min_stock) || 0,
-      per_client_rate: parseFloat(editForm.per_client_rate) || 0,
+      stock: parseFloat(editForm.stock as string) || 0,
+      cost_per_unit: parseFloat(editForm.cost_per_unit as string) || 0,
+      min_stock: parseFloat(editForm.min_stock as string) || 0,
+      per_client_rate: parseFloat(editForm.per_client_rate as string) || 0,
     };
     try {
       if (editForm.id) {
@@ -126,11 +144,11 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
         setInventory(prev => [...prev, data]);
       }
       setEditForm(null);
-    } catch (e: any) { alert("Error: " + e.message); }
+    } catch (e) { alert("Error: " + (e instanceof Error ? e.message : String(e))); }
   };
 
   const saveMovement = async () => {
-    const qty = parseFloat(movementForm.qty);
+    const qty = parseFloat(movementForm.qty as string);
     if (!qty || qty <= 0) { alert("Cantidad inválida."); return; }
     const item = inventory.find(i => i.id === movementForm.itemId);
     if (!item) return;
@@ -154,11 +172,11 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
       setInventory(prev => prev.map(i => i.id === item.id ? { ...i, stock: newStock } : i));
       setMovements(prev => [data, ...prev]);
       setMovementForm(null);
-    } catch (e: any) { alert("Error: " + e.message); }
+    } catch (e) { alert("Error: " + (e instanceof Error ? e.message : String(e))); }
   };
 
   const forecast = useMemo(() => {
-    const next7Days: any[] = [];
+    const next7Days: { date: string; dayName: string; dayNum: number; clients: number }[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(); d.setDate(d.getDate() + i);
       const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -179,7 +197,7 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
   const filtered = inventory
     .filter(i => !search || i.name.toLowerCase().includes(search.toLowerCase()) || (i.sku || "").toLowerCase().includes(search.toLowerCase()));
 
-  const getStatus = (item: any) => {
+  const getStatus = (item: InvItem) => {
     const s = Number(item.stock);
     if (s === 0) return { label: "Sin stock", color: "#A04040", icon: "⚠" };
     if (s < Number(item.min_stock || 0)) return { label: "Insuficiente", color: "#C8956D", icon: "↓" };
@@ -192,7 +210,7 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
 
   const exportInventory = () => {
     const wb = XLSX.utils.book_new();
-    const invRows: any[] = [
+    const invRows: (string | number | null)[][] = [
       [`INVENTARIO ACTUAL — ${dateLabelES(todayISO()).toUpperCase()}`], [],
       ["SKU", "Descripción", "Unidad", "Stock", "Costo/U", "Valor", "Estado", "Proveedor"],
     ];
@@ -205,7 +223,7 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
     const ws1 = XLSX.utils.aoa_to_sheet(invRows);
     XLSX.utils.book_append_sheet(wb, ws1, "Inventario Actual");
 
-    const fcRows: any[] = [
+    const fcRows: (string | number | null)[][] = [
       [`PRONÓSTICO PRÓXIMOS 7 DÍAS (${forecast.totalClients} CLIENTES)`], [],
       ["Clientes:", "", "", ...forecast.next7Days.map(d => `${d.dayName} ${d.dayNum}`), "Total", "Stock", "Saldo", "Costo", "Valor Stock"],
       ["Citas →", "", "", ...forecast.next7Days.map(d => d.clients), forecast.totalClients, "", "", "", ""],
@@ -226,7 +244,7 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
 
     const deficits = forecast.byItem.filter(i => i.deficit < 0);
     if (deficits.length > 0) {
-      const reRows: any[] = [["LISTA DE REORDEN"], [], ["SKU", "Producto", "Unidad", "Stock", "Necesario", "Comprar", "Costo/U", "Total", "Proveedor", "Tel"]];
+      const reRows: (string | number | null)[][] = [["LISTA DE REORDEN"], [], ["SKU", "Producto", "Unidad", "Stock", "Necesario", "Comprar", "Costo/U", "Total", "Proveedor", "Tel"]];
       let total = 0;
       deficits.forEach(it => {
         const toBuy = Math.ceil(-it.deficit);
@@ -346,52 +364,52 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
-function ItemEditForm({ form, setForm, onSave, onCancel }: any) {
+function ItemEditForm({ form, setForm, onSave, onCancel }: { form: InvForm; setForm: Dispatch<SetStateAction<InvForm | null>>; onSave: () => void; onCancel: () => void }) {
   return (
     <div className="border p-5 mb-6" style={{ borderColor: "#8B6F47", backgroundColor: "#FBF7F0" }}>
       <div className="text-xs tracking-[0.25em] mb-4" style={{ color: "#8B6F47" }}>{form.id ? "EDITAR" : "NUEVO"} INSUMO</div>
       <div className="grid md:grid-cols-3 gap-3 mb-3">
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>SKU</label>
-          <input type="text" value={form.sku || ""} onChange={e => setForm((f: any) => ({ ...f, sku: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="text" value={form.sku || ""} onChange={e => setForm((f) => ({ ...f, sku: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div className="md:col-span-2">
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Nombre *</label>
-          <input type="text" value={form.name || ""} onChange={e => setForm((f: any) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="text" value={form.name || ""} onChange={e => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Unidad</label>
-          <input type="text" value={form.unit || ""} onChange={e => setForm((f: any) => ({ ...f, unit: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="text" value={form.unit || ""} onChange={e => setForm((f) => ({ ...f, unit: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Categoría</label>
-          <select value={form.category || "Limpieza"} onChange={e => setForm((f: any) => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }}>
+          <select value={form.category || "Limpieza"} onChange={e => setForm((f) => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }}>
             <option>Camilla</option><option>Limpieza</option><option>Médicos</option><option>Láser</option><option>Baño</option><option>Otros</option>
           </select>
         </div>
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Stock</label>
-          <input type="number" step="0.01" value={form.stock || ""} onChange={e => setForm((f: any) => ({ ...f, stock: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="number" step="0.01" value={form.stock || ""} onChange={e => setForm((f) => ({ ...f, stock: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Costo/U (RD$)</label>
-          <input type="number" step="0.01" value={form.cost_per_unit || ""} onChange={e => setForm((f: any) => ({ ...f, cost_per_unit: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="number" step="0.01" value={form.cost_per_unit || ""} onChange={e => setForm((f) => ({ ...f, cost_per_unit: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Stock mínimo</label>
-          <input type="number" step="0.1" value={form.min_stock || ""} onChange={e => setForm((f: any) => ({ ...f, min_stock: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="number" step="0.1" value={form.min_stock || ""} onChange={e => setForm((f) => ({ ...f, min_stock: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Tasa por cliente</label>
-          <input type="number" step="0.0001" value={form.per_client_rate || ""} onChange={e => setForm((f: any) => ({ ...f, per_client_rate: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="number" step="0.0001" value={form.per_client_rate || ""} onChange={e => setForm((f) => ({ ...f, per_client_rate: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div className="md:col-span-2">
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Proveedor</label>
-          <input type="text" value={form.supplier || ""} onChange={e => setForm((f: any) => ({ ...f, supplier: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="text" value={form.supplier || ""} onChange={e => setForm((f) => ({ ...f, supplier: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
         <div>
           <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Tel. proveedor</label>
-          <input type="tel" value={form.supplier_phone || ""} onChange={e => setForm((f: any) => ({ ...f, supplier_phone: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="tel" value={form.supplier_phone || ""} onChange={e => setForm((f) => ({ ...f, supplier_phone: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
         </div>
       </div>
       <div className="flex gap-2">
@@ -402,11 +420,11 @@ function ItemEditForm({ form, setForm, onSave, onCancel }: any) {
   );
 }
 
-function MovementForm({ form, setForm, item, onSave, onCancel }: any) {
+function MovementForm({ form, setForm, item, onSave, onCancel }: { form: MoveForm; setForm: Dispatch<SetStateAction<MoveForm | null>>; item: InvItem; onSave: () => void; onCancel: () => void }) {
   if (!item) return null;
-  const titles: any = { in: "↓ ENTRADA", out: "↑ SALIDA", adjust: "⚖ AJUSTE" };
-  const colors: any = { in: "#6B8E5A", out: "#A04040", adjust: "#8B6F47" };
-  const helps: any = {
+  const titles: Record<string, string> = { in: "↓ ENTRADA", out: "↑ SALIDA", adjust: "⚖ AJUSTE" };
+  const colors: Record<string, string> = { in: "#6B8E5A", out: "#A04040", adjust: "#8B6F47" };
+  const helps: Record<string, string> = {
     in: `Se SUMARÁ al stock actual (${item.stock} ${item.unit}).`,
     out: `Se RESTARÁ del stock actual (${item.stock} ${item.unit}).`,
     adjust: `REEMPLAZARÁ el stock actual (${item.stock} ${item.unit}).`,
@@ -420,7 +438,7 @@ function MovementForm({ form, setForm, item, onSave, onCancel }: any) {
         </div>
         <div className="flex gap-1">
           {["in", "out", "adjust"].map(t => (
-            <button key={t} onClick={() => setForm((f: any) => ({ ...f, type: t }))} className="px-3 py-1 text-xs tracking-[0.15em] uppercase border" style={{ backgroundColor: form.type === t ? colors[t] : "transparent", color: form.type === t ? "white" : colors[t], borderColor: colors[t] }}>
+            <button key={t} onClick={() => setForm((f) => ({ ...f, type: t }))} className="px-3 py-1 text-xs tracking-[0.15em] uppercase border" style={{ backgroundColor: form.type === t ? colors[t] : "transparent", color: form.type === t ? "white" : colors[t], borderColor: colors[t] }}>
               {t === "in" ? "Entrada" : t === "out" ? "Salida" : "Ajuste"}
             </button>
           ))}
@@ -428,8 +446,8 @@ function MovementForm({ form, setForm, item, onSave, onCancel }: any) {
       </div>
       <div className="text-xs italic mb-3" style={{ color: "#6B5B47" }}>{helps[form.type]}</div>
       <div className="grid md:grid-cols-2 gap-3 mb-3">
-        <input type="number" step="0.01" value={form.qty || ""} onChange={e => setForm((f: any) => ({ ...f, qty: e.target.value }))} placeholder="Cantidad *" className="px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} autoFocus />
-        <input type="text" value={form.notes || ""} onChange={e => setForm((f: any) => ({ ...f, notes: e.target.value }))} placeholder="Notas (opcional)" className="px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+        <input type="number" step="0.01" value={form.qty || ""} onChange={e => setForm((f) => ({ ...f, qty: e.target.value }))} placeholder="Cantidad *" className="px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} autoFocus />
+        <input type="text" value={form.notes || ""} onChange={e => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Notas (opcional)" className="px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
       </div>
       <div className="flex gap-2">
         <button onClick={onSave} className="px-5 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: colors[form.type], color: "white" }}>Confirmar</button>
@@ -439,11 +457,11 @@ function MovementForm({ form, setForm, item, onSave, onCancel }: any) {
   );
 }
 
-function ForecastView({ forecast, totalValue }: any) {
-  const deficits = forecast.byItem.filter((i: any) => i.deficit < 0);
-  const reorderTotal = deficits.reduce((s: number, i: any) => s + (Math.ceil(-i.deficit) * Number(i.cost_per_unit || 0)), 0);
+function ForecastView({ forecast, totalValue }: { forecast: Forecast; totalValue: number }) {
+  const deficits = forecast.byItem.filter((i) => i.deficit < 0);
+  const reorderTotal = deficits.reduce((s: number, i) => s + (Math.ceil(-i.deficit) * Number(i.cost_per_unit || 0)), 0);
 
-  const sendReorderWA = (item: any) => {
+  const sendReorderWA = (item: ForecastItem) => {
     const phone = (item.supplier_phone || "").replace(/\D/g, "");
     const toBuy = Math.ceil(-item.deficit);
     const msg = `Hola, soy de Charm Clínica Estética. Necesito hacer un pedido:\n\n${item.name} (${item.sku}): ${toBuy} ${item.unit}\n\nGracias.`;
@@ -463,7 +481,7 @@ function ForecastView({ forecast, totalValue }: any) {
       <div className="border p-4 mb-6" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
         <div className="text-xs tracking-[0.25em] mb-3" style={{ color: "#8B6F47" }}>CITAS PRÓXIMOS 7 DÍAS</div>
         <div className="grid grid-cols-7 gap-2">
-          {forecast.next7Days.map((d: any) => (
+          {forecast.next7Days.map((d) => (
             <div key={d.date} className="text-center">
               <div className="text-xs" style={{ color: "#8B6F47" }}>{d.dayName}</div>
               <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "24px", color: "#3E2A1A", fontWeight: 500 }}>{d.clients}</div>
@@ -479,7 +497,7 @@ function ForecastView({ forecast, totalValue }: any) {
             <div className="text-xs tracking-[0.25em] flex items-center gap-2" style={{ color: "#A04040" }}><AlertTriangle size={12} /> LISTA DE REORDEN</div>
             <div className="text-sm mt-1" style={{ color: "#3E2A1A" }}>{deficits.length} producto{deficits.length === 1 ? "" : "s"} no alcanza{deficits.length === 1 ? "" : "n"}</div>
           </div>
-          {deficits.map((item: any) => {
+          {deficits.map((item) => {
             const toBuy = Math.ceil(-item.deficit);
             const cost = toBuy * Number(item.cost_per_unit || 0);
             return (
@@ -506,7 +524,7 @@ function ForecastView({ forecast, totalValue }: any) {
         <div className="hidden md:grid gap-3 px-4 py-3 text-xs tracking-[0.2em] uppercase border-b" style={{ borderColor: "#D4C4A8", color: "#8B6F47", gridTemplateColumns: "60px 1fr 90px 100px 100px 110px" }}>
           <div>SKU</div><div>Producto</div><div>Stock</div><div className="text-right">Necesario</div><div className="text-right">Saldo</div><div className="text-right">Costo</div>
         </div>
-        {forecast.byItem.map((item: any, idx: number) => {
+        {forecast.byItem.map((item, idx: number) => {
           const isDeficit = item.deficit < 0;
           return (
             <div key={item.id} className="hidden md:grid gap-3 px-4 py-3 border-b items-center" style={{ borderColor: "#EAE0CC", backgroundColor: idx % 2 === 0 ? "transparent" : "#F5EFE6", gridTemplateColumns: "60px 1fr 90px 100px 100px 110px" }}>
@@ -524,7 +542,7 @@ function ForecastView({ forecast, totalValue }: any) {
   );
 }
 
-function MovementsHistory({ movements }: any) {
+function MovementsHistory({ movements }: { movements: Movement[] }) {
   if (movements.length === 0) {
     return (
       <div className="border p-12 text-center" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
@@ -533,12 +551,12 @@ function MovementsHistory({ movements }: any) {
       </div>
     );
   }
-  const labels: any = { in: "Entrada", out: "Salida", adjust: "Ajuste" };
-  const colors: any = { in: "#6B8E5A", out: "#A04040", adjust: "#8B6F47" };
-  const symbols: any = { in: "↓", out: "↑", adjust: "⚖" };
+  const labels: Record<string, string> = { in: "Entrada", out: "Salida", adjust: "Ajuste" };
+  const colors: Record<string, string> = { in: "#6B8E5A", out: "#A04040", adjust: "#8B6F47" };
+  const symbols: Record<string, string> = { in: "↓", out: "↑", adjust: "⚖" };
   return (
     <div className="border" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
-      {movements.map((m: any, idx: number) => (
+      {movements.map((m, idx: number) => (
         <div key={m.id} className="px-4 py-3 border-b flex items-center gap-3 flex-wrap" style={{ borderColor: "#EAE0CC", backgroundColor: idx % 2 === 0 ? "transparent" : "#F5EFE6" }}>
           <div className="text-xs" style={{ color: "#8B6F47", minWidth: "90px" }}>{m.date}</div>
           <div className="px-2 py-0.5 text-xs tracking-[0.15em] uppercase" style={{ backgroundColor: colors[m.type], color: "white", minWidth: "70px", textAlign: "center" }}>{symbols[m.type]} {labels[m.type]}</div>

@@ -44,8 +44,8 @@ export default function NotificationBell({ userId, onLink }: Props) {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
-        (payload: any) => {
-          const n = payload.new as Notif;
+        (payload: { new: Notif }) => {
+          const n = payload.new;
           setItems(prev => [n, ...prev].slice(0, 40));
           if (!firstLoad.current) {
             toast(n.title, { description: n.body || undefined });
