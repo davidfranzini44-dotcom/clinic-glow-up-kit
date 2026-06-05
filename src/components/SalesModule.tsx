@@ -78,7 +78,7 @@ const Section = ({ title, subtitle, action, children }: { title: ReactNode; subt
 
 const Stat = ({ label, value, icon, color }: { label: ReactNode; value: ReactNode; icon?: ReactNode; color?: string }) => (
   <div className="border p-4" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0', borderLeft: `4px solid ${color}` }}>
-    <div className="text-xs tracking-[0.2em] flex items-center gap-1" style={{ color: '#8B6F47' }}>{icon} {label.toUpperCase()}</div>
+    <div className="text-xs tracking-[0.2em] flex items-center gap-1" style={{ color: '#8B6F47' }}>{icon} {String(label).toUpperCase()}</div>
     <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '28px', fontWeight: 400, color, lineHeight: 1.1, marginTop: '4px' }}>{value}</div>
   </div>
 );
@@ -135,7 +135,7 @@ export default function SalesModule({ profile, isAdmin }: { profile: SalesProfil
 
       {view === 'overview' && <Overview invoices={invoices} expenses={expenses} packages={packages} setView={setView} />}
       {view === 'new-sale' && isAdmin && <NewSale catalog={catalog} customers={customers} setCustomers={setCustomers} setInvoices={setInvoices} setPackages={setPackages} setView={setView} profile={profile} />}
-      {view === 'invoices' && <InvoicesList invoices={invoices} packages={packages} profile={profile} />}
+      {view === 'invoices' && <InvoicesList invoices={invoices} packages={packages} profile={profile} isAdmin={isAdmin} />}
       {view === 'catalog' && isAdmin && <CatalogManager catalog={catalog} setCatalog={setCatalog} />}
       {view === 'expenses' && isAdmin && <ExpensesManager expenses={expenses} setExpenses={setExpenses} />}
       {view === 'closure' && isAdmin && <CashClosure invoices={invoices} expenses={expenses} closures={closures} setClosures={setClosures} profile={profile} />}
@@ -494,7 +494,7 @@ function NewSale({ catalog, customers, setCustomers, setInvoices, setPackages, s
 
           <div className="border p-4" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
             <div className="text-xs tracking-[0.25em] mb-2" style={{ color: '#8B6F47' }}>NOTAS (OPCIONAL)</div>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="2" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
           </div>
         </div>
 
@@ -551,7 +551,7 @@ function NewSale({ catalog, customers, setCustomers, setInvoices, setPackages, s
 }
 
 // ─── INVOICES LIST ────────────────────────────────────────────────────────
-function InvoicesList({ invoices, packages, profile }: { invoices: Invoice[]; packages: CustomerPackage[]; profile: SalesProfile }) {
+function InvoicesList({ invoices, packages, profile, isAdmin }: { invoices: Invoice[]; packages: CustomerPackage[]; profile: SalesProfile; isAdmin: boolean }) {
   const [search, setSearch] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
@@ -567,7 +567,7 @@ function InvoicesList({ invoices, packages, profile }: { invoices: Invoice[]; pa
 
   const exportInvoices = () => {
     const wb = XLSX.utils.book_new();
-    const rows = [['#', 'Fecha', 'Cliente', 'Teléfono', 'Vendedor', 'Total', 'Estado']];
+    const rows: any[][] = [['#', 'Fecha', 'Cliente', 'Teléfono', 'Vendedor', 'Total', 'Estado']];
     filtered.forEach(i => rows.push([i.invoice_number, i.date, i.customer_name, i.customer_phone || '', i.sold_by, i.total, i.status]));
     const ws = XLSX.utils.aoa_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, 'Facturas');
@@ -807,7 +807,7 @@ function ExpensesManager({ expenses, setExpenses }: { expenses: Expense[]; setEx
 
   const exportExpenses = () => {
     const wb = XLSX.utils.book_new();
-    const rows = [['Fecha', 'Categoría', 'Descripción', 'Monto']];
+    const rows: any[][] = [['Fecha', 'Categoría', 'Descripción', 'Monto']];
     filtered.forEach(e => rows.push([e.date, e.category, e.description, e.amount]));
     rows.push([]);
     rows.push(['', '', 'TOTAL', total]);
@@ -1084,7 +1084,7 @@ ${notes ? `<div style="margin-top:20px;font-size:11px;font-style:italic">Notas: 
 
           <div className="border p-5" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
             <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8B6F47' }}>NOTAS</div>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="3" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
           </div>
         </div>
       </div>

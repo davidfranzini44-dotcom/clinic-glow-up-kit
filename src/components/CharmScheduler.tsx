@@ -297,7 +297,7 @@ const rowToApt = (row: ApptRow): Apt => ({
   client: row.client,
   time: row.time,
   timeMins: row.time_mins,
-  employee: row.employee,
+  employee: row.employee as EmpKey,
   cabin: row.cabin,
   cancelled: row.cancelled,
   noShow: row.no_show,
@@ -409,7 +409,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
     const channel = supabase
       .channel("appointments-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload: ApptChangePayload) => {
+      .on("postgres_changes" as any, { event: "*", schema: "public", table: "appointments" }, (payload: ApptChangePayload) => {
         if (payload.eventType === "INSERT") {
           const row = payload.new;
           setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
@@ -1334,7 +1334,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         )}
 
         {view === "sales" && isAdmin && (
-          <SalesModule profile={profile} isAdmin={isAdmin} />
+          <SalesModule profile={profile as any} isAdmin={isAdmin} />
         )}
 
         {view === "inventory" && (

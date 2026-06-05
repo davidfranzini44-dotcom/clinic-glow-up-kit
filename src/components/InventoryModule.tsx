@@ -64,7 +64,7 @@ const Section = ({ title, subtitle, action, children }: { title: ReactNode; subt
 
 const Stat = ({ label, value, icon, color }: { label: ReactNode; value: ReactNode; icon?: ReactNode; color?: string }) => (
   <div className="border p-4" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", borderLeft: `4px solid ${color}` }}>
-    <div className="text-xs tracking-[0.2em] flex items-center gap-1" style={{ color: "#8B6F47" }}>{icon} {label.toUpperCase()}</div>
+    <div className="text-xs tracking-[0.2em] flex items-center gap-1" style={{ color: "#8B6F47" }}>{icon} {String(label).toUpperCase()}</div>
     <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", fontWeight: 400, color, lineHeight: 1.1, marginTop: "4px" }}>{value}</div>
   </div>
 );
