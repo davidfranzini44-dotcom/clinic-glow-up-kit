@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock } from "lucide-react";
+import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
@@ -190,6 +190,19 @@ const dateLabelShortES = (dateStr: string) => {
   const d = new Date(dateStr + "T12:00:00");
   return `${DAYS_ES_SHORT[d.getDay()]} ${d.getDate()}`;
 };
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const ymd = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const addDaysStr = (dateStr: string, n: number) => {
+  const d = new Date(dateStr + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  return ymd(d);
+};
+const mondayOf = (dateStr: string) => {
+  const d = new Date(dateStr + "T12:00:00");
+  const day = d.getDay();
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  return ymd(d);
+};
 
 const formatSantoDomingoDateTime = (value: string | null) => {
   if (!value) return "";
@@ -260,6 +273,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const myEmployee = (profile?.employee_name || "Yaira") as EmpKey;
   const [days, setDays] = useState<Record<string, Apt[]>>({});
   const [activeDate, setActiveDate] = useState<string | null>(null);
+  const [weekStart, setWeekStart] = useState<string | null>(null);
   const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory" | "history" | "settings">(isAdmin ? "schedule" : "individual");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [profileClient, setProfileClient] = useState<string | null>(null);
@@ -585,6 +599,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const sortedDates = useMemo(() => Object.keys(days).filter(d => d > HISTORY_CUTOFF).sort(), [days]);
   const currentAppts = useMemo(() => (activeDate ? (days[activeDate] || []) : []), [activeDate, days]);
   const activeWeekday = activeDate ? weekdayOf(activeDate) : 1;
+  useEffect(() => { if (activeDate) setWeekStart(mondayOf(activeDate)); }, [activeDate]);
 
   const updateApt = async (id: string, changes: Partial<Apt>) => {
     if (!activeDate) return;
@@ -969,21 +984,45 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             </div>
           </div>
         )}
-        {(view === "schedule" || view === "individual") && (
-          <div className="max-w-7xl mx-auto px-4 md:px-6 pb-3 flex items-center gap-1 overflow-x-auto">
-            {sortedDates.map(d => (
-              <button key={d} onClick={() => setActiveDate(d)}
-                className="px-3 md:px-4 py-2 text-xs font-label border border-primary whitespace-nowrap transition-opacity"
-                style={{
-                  backgroundColor: activeDate === d ? "hsl(var(--primary))" : "transparent",
-                  color: activeDate === d ? "hsl(var(--primary-foreground))" : "hsl(var(--primary))",
-                  opacity: activeDate === d ? 1 : 0.6,
-                }}>
-                {dateLabelShortES(d)}
-              </button>
-            ))}
-          </div>
-        )}
+        {(view === "schedule" || view === "individual") && weekStart && (() => {
+          const wkEnd = addDaysStr(weekStart, 5);
+          const d0 = new Date(weekStart + "T12:00:00");
+          const d1 = new Date(wkEnd + "T12:00:00");
+          const rangeLabel = d0.getMonth() === d1.getMonth()
+            ? `${d0.getDate()}–${d1.getDate()} ${MONTHS_ES[d0.getMonth()]} ${d0.getFullYear()}`
+            : `${d0.getDate()} ${MONTHS_ES[d0.getMonth()]} – ${d1.getDate()} ${MONTHS_ES[d1.getMonth()]} ${d1.getFullYear()}`;
+          return (
+            <div className="max-w-7xl mx-auto px-4 md:px-6 pb-3">
+              <div className="text-center text-[10px] font-label text-accent mb-1.5 tracking-[0.15em] uppercase">{rangeLabel}</div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setWeekStart(addDaysStr(weekStart, -7))} className="px-2 py-3 border border-primary text-primary bg-card hover:bg-accent/10" aria-label="Semana anterior"><ChevronLeft size={16} /></button>
+                <div className="grid grid-cols-6 gap-1.5 flex-1">
+                  {[0, 1, 2, 3, 4, 5].map((i) => {
+                    const d = addDaysStr(weekStart, i);
+                    const dd = new Date(d + "T12:00:00");
+                    const count = (days[d] || []).filter((a) => !a.cancelled).length;
+                    const isActive = activeDate === d;
+                    const has = count > 0;
+                    return (
+                      <button key={d} onClick={() => setActiveDate(d)} className="text-center py-2 border transition-colors"
+                        style={{
+                          borderColor: isActive ? "hsl(var(--primary))" : "hsl(var(--border))",
+                          backgroundColor: isActive ? "hsl(var(--primary))" : "hsl(var(--card))",
+                          color: isActive ? "hsl(var(--primary-foreground))" : "hsl(var(--primary))",
+                          opacity: isActive ? 1 : (has ? 1 : 0.45),
+                        }}>
+                        <div className="text-[10px] font-label" style={{ opacity: 0.85 }}>{DAYS_ES_SHORT[dd.getDay()]}</div>
+                        <div style={{ fontSize: 20, fontWeight: 500, lineHeight: 1.1 }}>{dd.getDate()}</div>
+                        <div className="text-[9px] font-label" style={{ opacity: 0.7 }}>{has ? count : "·"}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button onClick={() => setWeekStart(addDaysStr(weekStart, 7))} className="px-2 py-3 border border-primary text-primary bg-card hover:bg-accent/10" aria-label="Semana siguiente"><ChevronRight size={16} /></button>
+              </div>
+            </div>
+          );
+        })()}
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6">
