@@ -22,6 +22,20 @@ export type Employee = {
 
 export type TimeOffMap = Record<string, Set<string>>; // name -> set of "YYYY-MM-DD"
 
+// End-of-shift buffer: don't auto-assign within N minutes of an employee's end time. 0 = off.
+const END_BUFFER_KEY = "charm_end_buffer_min";
+export const getEndBuffer = (): number => {
+  try { const v = typeof localStorage !== "undefined" ? localStorage.getItem(END_BUFFER_KEY) : null; const n = v ? parseInt(v, 10) : 0; return isNaN(n) ? 0 : n; } catch { return 0; }
+};
+export const setEndBuffer = (mins: number) => {
+  try { if (typeof localStorage !== "undefined") localStorage.setItem(END_BUFFER_KEY, String(Math.max(0, mins | 0))); } catch { /* ignore */ }
+};
+
+// In-memory cache so multiple useRoster() callers don't each re-query.
+let rosterCache: { employees: Employee[]; timeOff: TimeOffMap } | null = null;
+let rosterInflight: Promise<{ employees: Employee[]; timeOff: TimeOffMap }> | null = null;
+export const invalidateRoster = () => { rosterCache = null; rosterInflight = null; };
+
 // ─── Fallback defaults (mirror the pre-DB hardcoded roster) ───────────
 const DEFAULT_DEF = [
   { name: "Yaira",  cabin: 2, color: "hsl(var(--emp-yaira))",  max: null as number | null, s: 540, e: 1080, l: 720 },
@@ -75,7 +89,18 @@ export function buildEmployees(settings: SettingRow[], scheds: SchedRow[]): Empl
   return Object.values(byName).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-export async function fetchRoster(): Promise<{ employees: Employee[]; timeOff: TimeOffMap }> {
+export async function fetchRoster(force = false): Promise<{ employees: Employee[]; timeOff: TimeOffMap }> {
+  if (!force && rosterCache) return rosterCache;
+  if (!force && rosterInflight) return rosterInflight;
+  const run = _fetchRosterUncached();
+  rosterInflight = run;
+  const result = await run;
+  rosterCache = result;
+  rosterInflight = null;
+  return result;
+}
+
+async function _fetchRosterUncached(): Promise<{ employees: Employee[]; timeOff: TimeOffMap }> {
   const [settingsRes, schedRes, offRes] = await Promise.all([
     supabase.from("employee_settings").select("*").eq("active", true).order("sort_order"),
     supabase.from("employee_schedules").select("*"),
@@ -96,9 +121,9 @@ export function useRoster() {
   const [employees, setEmployees] = useState<Employee[]>(DEFAULT_EMPLOYEES);
   const [timeOff, setTimeOff] = useState<TimeOffMap>({});
   const [loading, setLoading] = useState(true);
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (force = true) => {
     try {
-      const r = await fetchRoster();
+      const r = await fetchRoster(force);
       if (r.employees.length) setEmployees(r.employees);
       setTimeOff(r.timeOff);
     } catch (e) {
@@ -107,7 +132,7 @@ export function useRoster() {
       setLoading(false);
     }
   }, []);
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => { void reload(false); }, [reload]);
   return { employees, timeOff, loading, reload };
 }
 
@@ -116,10 +141,10 @@ export function weekdayOf(dateStr: string): number {
   return new Date(dateStr + "T12:00:00").getDay();
 }
 
-export function isWorkingOn(emp: Employee, mins: number, weekday: number): boolean {
+export function isWorkingOn(emp: Employee, mins: number, weekday: number, endBufferMin = 0): boolean {
   const d = emp.schedule[weekday];
   if (!d || !d.works) return false;
-  if (mins < d.startMin || mins >= d.endMin) return false;
+  if (mins < d.startMin || mins >= d.endMin - endBufferMin) return false;
   if (d.lunchStartMin != null && mins >= d.lunchStartMin && mins < d.lunchStartMin + d.lunchMinutes) return false;
   return true;
 }
@@ -146,7 +171,8 @@ export function autoAssign<T extends AssignableAppt>(
   appts: T[],
   dateStr: string,
   employees: Employee[],
-  timeOff: TimeOffMap
+  timeOff: TimeOffMap,
+  endBufferMin = 0
 ): T[] {
   const wd = weekdayOf(dateStr);
   const roster = employees.length ? employees : DEFAULT_EMPLOYEES;
@@ -184,10 +210,10 @@ export function autoAssign<T extends AssignableAppt>(
     const slotUsed = usedAtSlot[t];
 
     let available = roster.filter(e =>
-      isWorkingOn(e, t, wd) && !isOffOn(timeOff, e.name, dateStr) &&
+      isWorkingOn(e, t, wd, endBufferMin) && !isOffOn(timeOff, e.name, dateStr) &&
       (e.maxClients == null || counts[e.name] < e.maxClients)
     );
-    if (available.length === 0) available = roster.filter(e => isWorkingOn(e, t, wd) && !isOffOn(timeOff, e.name, dateStr));
+    if (available.length === 0) available = roster.filter(e => isWorkingOn(e, t, wd, endBufferMin) && !isOffOn(timeOff, e.name, dateStr));
     if (available.length === 0) available = roster.filter(e => !isOffOn(timeOff, e.name, dateStr));
     if (available.length === 0) available = [...roster];
 
