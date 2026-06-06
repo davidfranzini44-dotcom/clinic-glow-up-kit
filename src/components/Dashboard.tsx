@@ -3,14 +3,8 @@ import { Calendar, Download, TrendingUp, Clock, Users, AlertCircle, Activity, Fi
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import type { Profile } from "./CharmScheduler";
+import { useRoster, repHours } from "@/lib/roster";
 
-const EMPLOYEES: Record<string, { startM: number; endM: number; lunchM: number; color: string }> = {
-  Yaira:  { startM: 9*60,  endM: 18*60, lunchM: 12*60, color: "#C8956D" },
-  Belkis: { startM: 10*60, endM: 19*60, lunchM: 13*60, color: "#8B6F47" },
-  Cielo:  { startM: 11*60, endM: 20*60, lunchM: 12*60, color: "#A67B5B" },
-  Lisa:   { startM: 12*60, endM: 20*60, lunchM: 13*60, color: "#6B4423" },
-};
-const EMP_LIST = Object.keys(EMPLOYEES);
 const TREATMENT_MIN = 20;
 
 const DAYS_ES_SHORT = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
@@ -49,22 +43,22 @@ type EmpStats = {
   timeWorkedMin: number; timeIdleMin: number; daysWorked: number; utilizationPct: number;
 };
 
-const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string) => {
+const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string, empList: string[], empInfo: Record<string, { startM: number; endM: number; color: string }>) => {
   const filtered = appointments.filter(a => a.date >= dateFrom && a.date <= dateTo);
 
   const empDates: Record<string, Set<string>> = {};
-  EMP_LIST.forEach(emp => empDates[emp] = new Set());
+  empList.forEach(emp => empDates[emp] = new Set());
   filtered.forEach(a => {
-    if (a.employee && EMP_LIST.includes(a.employee)) empDates[a.employee].add(a.date);
+    if (a.employee && empList.includes(a.employee)) empDates[a.employee].add(a.date);
   });
 
   const stats: Record<string, EmpStats> = {};
-  EMP_LIST.forEach(emp => {
+  empList.forEach(emp => {
     stats[emp] = { total: 0, attended: 0, noShow: 0, cancelled: 0, walkIns: 0, timeWorkedMin: 0, timeIdleMin: 0, daysWorked: 0, utilizationPct: 0 };
   });
 
   filtered.forEach(a => {
-    if (!a.employee || !EMP_LIST.includes(a.employee)) return;
+    if (!a.employee || !empList.includes(a.employee)) return;
     const s = stats[a.employee];
     s.total++;
     if (a.no_show) s.noShow++;
@@ -72,8 +66,8 @@ const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string) =
     else { s.attended++; if (a.walk_in) s.walkIns++; }
   });
 
-  EMP_LIST.forEach(emp => {
-    const e = EMPLOYEES[emp]; const s = stats[emp];
+  empList.forEach(emp => {
+    const e = empInfo[emp] || { startM: 540, endM: 1080, color: "#999" }; const s = stats[emp];
     s.daysWorked = empDates[emp].size;
     s.timeWorkedMin = s.attended * TREATMENT_MIN;
     const availablePerDay = (e.endM - e.startM) - 60;
@@ -106,6 +100,7 @@ const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string) =
 };
 
 export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAdmin: boolean }) {
+  const { employees } = useRoster();
   const [allAppointments, setAllAppointments] = useState<Apt[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState(startOfWeekISO());
@@ -128,12 +123,23 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
     })();
   }, []);
 
+  const empList = useMemo(
+    () => Array.from(new Set([...employees.map((e) => e.name), ...(allAppointments.map((a) => a.employee).filter(Boolean) as string[])])),
+    [employees, allAppointments]
+  );
+  const empInfo = useMemo(() => {
+    const info: Record<string, { startM: number; endM: number; color: string }> = {};
+    for (const e of employees) { const h = repHours(e); info[e.name] = { startM: h.startMin, endM: h.endMin, color: e.color }; }
+    for (const n of empList) { if (!info[n]) info[n] = { startM: 540, endM: 1080, color: "#999" }; }
+    return info;
+  }, [employees, empList]);
+
   const { stats, totals, dailyBreakdown, filtered } = useMemo(
-    () => calculateStats(allAppointments, dateFrom, dateTo),
-    [allAppointments, dateFrom, dateTo]
+    () => calculateStats(allAppointments, dateFrom, dateTo, empList, empInfo),
+    [allAppointments, dateFrom, dateTo, empList, empInfo]
   );
 
-  const visibleEmployees = isAdmin ? EMP_LIST : [myEmployee].filter(e => EMP_LIST.includes(e));
+  const visibleEmployees = isAdmin ? empList : [myEmployee].filter(e => empList.includes(e));
 
   const applyPreset = (preset: string) => {
     setActivePreset(preset);
@@ -271,7 +277,7 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
 
       <div className="space-y-4">
         {visibleEmployees.map(emp => {
-          const s = stats[emp]; const e = EMPLOYEES[emp];
+          const s = stats[emp]; const e = empInfo[emp];
           if (!s || !e) return null;
           const showRate = s.attended + s.noShow + s.cancelled > 0
             ? Math.round((s.attended / (s.attended + s.noShow + s.cancelled)) * 100) : 0;
@@ -329,7 +335,7 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
                           {v > 0 && (
                             <>
                               <div className="text-[9px] text-primary">{v}</div>
-                              <div style={{ width: "100%", height: `${heightPct}%`, backgroundColor: EMPLOYEES[emp].color, minHeight: 2 }} />
+                              <div style={{ width: "100%", height: `${heightPct}%`, backgroundColor: empInfo[emp]?.color || "#999", minHeight: 2 }} />
                             </>
                           )}
                         </div>
@@ -346,7 +352,7 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
           <div className="flex gap-3 flex-wrap mt-4 text-[11px]">
             {visibleEmployees.map(emp => (
               <div key={emp} className="flex items-center gap-1.5">
-                <div style={{ width: 10, height: 10, backgroundColor: EMPLOYEES[emp].color }} />
+                <div style={{ width: 10, height: 10, backgroundColor: empInfo[emp]?.color || "#999" }} />
                 <span className="text-muted-foreground">{emp}</span>
               </div>
             ))}

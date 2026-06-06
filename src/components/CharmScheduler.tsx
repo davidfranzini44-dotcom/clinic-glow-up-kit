@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
 import { markSaveError, markSaveStart, markSaveSuccess, syncLastSavedAt, useGlobalSaveStatus } from "@/lib/saveSync";
+import { useRoster, autoAssign, isWorkingOn, onLunchOn, isOffOn, weekdayOf, type Employee } from "@/lib/roster";
 import type { Session } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -16,22 +17,13 @@ import SalesModule from "./SalesModule";
 import InventoryModule from "./InventoryModule";
 import ClientProfileModal from "./ClientProfileModal";
 import HistoryView from "./HistoryView";
+import SettingsModule from "./SettingsModule";
 
 // ─── History cutoff: dates on or before this are hidden from the main agenda ─
 const HISTORY_CUTOFF = "2026-04-26";
 
 // ─── Employee config ──────────────────────────────────────────────────────
-type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
-const EMPLOYEES: Record<EmpKey, {
-  startM: number; endM: number; assignEndM: number; lunchM: number;
-  cabin: number; color: string; maxClients: number | null;
-}> = {
-  Yaira:  { startM: 9*60,  endM: 18*60, assignEndM: 18*60,     lunchM: 12*60, cabin: 2, color: "hsl(var(--emp-yaira))",  maxClients: null },
-  Belkis: { startM: 10*60, endM: 19*60, assignEndM: 18*60 + 1, lunchM: 13*60, cabin: 1, color: "hsl(var(--emp-belkis))", maxClients: null },
-  Cielo:  { startM: 11*60, endM: 20*60, assignEndM: 20*60,     lunchM: 12*60, cabin: 1, color: "hsl(var(--emp-cielo))",  maxClients: null },
-  Lisa:   { startM: 12*60, endM: 20*60, assignEndM: 20*60,     lunchM: 13*60, cabin: 2, color: "hsl(var(--emp-lisa))",   maxClients: 8 },
-};
-const EMP_LIST: EmpKey[] = Object.keys(EMPLOYEES) as EmpKey[];
+type EmpKey = string;
 
 export type Profile = {
   id: string;
@@ -77,69 +69,6 @@ const formatTime = (mins: number) => {
   let h12 = h24 % 12;
   if (h12 === 0) h12 = 12;
   return `${h12}:${m.toString().padStart(2, "0")} ${ap}`;
-};
-
-const isWorking = (emp: EmpKey, mins: number) => {
-  const e = EMPLOYEES[emp];
-  if (mins < e.startM || mins >= e.assignEndM) return false;
-  if (mins >= e.lunchM && mins < e.lunchM + 60) return false;
-  return true;
-};
-const onLunch = (emp: EmpKey, mins: number) => {
-  const e = EMPLOYEES[emp];
-  return mins >= e.lunchM && mins < e.lunchM + 60;
-};
-
-// ─── Auto-assignment v3 ───────────────────────────────────────────────────
-const autoAssign = (appointments: Apt[]): Apt[] => {
-  const sorted = [...appointments].sort((a, b) => a.timeMins - b.timeMins);
-  const total = sorted.filter(a => !a.cancelled).length;
-
-  const lisaTarget = Math.min(8, Math.max(5, Math.round(total * 0.16)));
-  const others = total - lisaTarget;
-  const yairaTarget = Math.round(others / 3);
-  const belkisTarget = Math.round(others / 3);
-  const cieloTarget = others - yairaTarget - belkisTarget;
-  const targets: Record<EmpKey, number> = { Yaira: yairaTarget, Belkis: belkisTarget, Cielo: cieloTarget, Lisa: lisaTarget };
-
-  const counts: Record<EmpKey, number> = { Yaira: 0, Belkis: 0, Cielo: 0, Lisa: 0 };
-  const lastSeen: Record<EmpKey, number> = { Yaira: -999, Belkis: -999, Cielo: -999, Lisa: -999 };
-  const usedAtSlot: Record<number, Set<EmpKey>> = {};
-
-  return sorted.map((apt) => {
-    if (apt.cancelled) return { ...apt };
-    const t = apt.timeMins;
-    if (!usedAtSlot[t]) usedAtSlot[t] = new Set();
-    const slotUsed = usedAtSlot[t];
-
-    let available = EMP_LIST.filter(e => isWorking(e, t));
-    if (available.length === 0) available = [...EMP_LIST];
-
-    const notYetAtSlot = available.filter(e => !slotUsed.has(e));
-    let pool: EmpKey[];
-    if (notYetAtSlot.length > 0) {
-      const under = notYetAtSlot.filter(e => counts[e] < targets[e]);
-      pool = under.length > 0 ? under : notYetAtSlot;
-    } else {
-      const under = available.filter(e => counts[e] < targets[e]);
-      pool = under.length > 0 ? under : available;
-    }
-
-    pool.sort((a, b) => {
-      const deficitA = targets[a] - counts[a];
-      const deficitB = targets[b] - counts[b];
-      if (deficitA !== deficitB) return deficitB - deficitA;
-      const gapA = t - lastSeen[a];
-      const gapB = t - lastSeen[b];
-      return gapB - gapA;
-    });
-
-    const chosen = pool[0];
-    counts[chosen]++;
-    lastSeen[chosen] = t;
-    slotUsed.add(chosen);
-    return { ...apt, employee: chosen, cabin: EMPLOYEES[chosen].cabin };
-  });
 };
 
 // ─── Excel parser ─────────────────────────────────────────────────────────
@@ -297,7 +226,7 @@ const rowToApt = (row: ApptRow): Apt => ({
   client: row.client,
   time: row.time,
   timeMins: row.time_mins,
-  employee: row.employee as EmpKey,
+  employee: row.employee,
   cabin: row.cabin,
   cancelled: row.cancelled,
   noShow: row.no_show,
@@ -325,10 +254,13 @@ const aptToRow = (apt: Apt, dateStr: string) => ({
 type Props = { session: Session; profile: Profile; isAdmin: boolean; onSignOut: () => void };
 
 export default function CharmScheduler({ session, profile, isAdmin, onSignOut }: Props) {
+  const { employees, timeOff, reload: reloadRoster } = useRoster();
+  const empMap = useMemo<Record<string, Employee>>(() => Object.fromEntries(employees.map((e) => [e.name, e])), [employees]);
+  const empNames = useMemo(() => employees.map((e) => e.name), [employees]);
   const myEmployee = (profile?.employee_name || "Yaira") as EmpKey;
   const [days, setDays] = useState<Record<string, Apt[]>>({});
   const [activeDate, setActiveDate] = useState<string | null>(null);
-  const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory" | "history">(isAdmin ? "schedule" : "individual");
+  const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory" | "history" | "settings">(isAdmin ? "schedule" : "individual");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [profileClient, setProfileClient] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<EmpKey>(isAdmin ? "Yaira" : myEmployee);
@@ -409,7 +341,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
     const channel = supabase
       .channel("appointments-changes")
-      .on("postgres_changes" as any, { event: "*", schema: "public", table: "appointments" }, (payload: ApptChangePayload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload: ApptChangePayload) => {
         if (payload.eventType === "INSERT") {
           const row = payload.new;
           setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
@@ -632,7 +564,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       const assignedDays: Record<string, Apt[]> = {};
       const allRows: ReturnType<typeof aptToRow>[] = [];
       Object.keys(parsed).forEach(d => {
-        assignedDays[d] = autoAssign(parsed[d]);
+        assignedDays[d] = autoAssign(parsed[d], d, employees, timeOff);
         assignedDays[d].forEach(apt => allRows.push(aptToRow(apt, d)));
       });
       markSaveStart();
@@ -652,6 +584,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
   const sortedDates = useMemo(() => Object.keys(days).filter(d => d > HISTORY_CUTOFF).sort(), [days]);
   const currentAppts = useMemo(() => (activeDate ? (days[activeDate] || []) : []), [activeDate, days]);
+  const activeWeekday = activeDate ? weekdayOf(activeDate) : 1;
 
   const updateApt = async (id: string, changes: Partial<Apt>) => {
     if (!activeDate) return;
@@ -687,22 +620,24 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     if (!time.trim() || !client.trim()) { alert("Por favor ingresa hora y nombre del cliente."); return; }
     const timeMins = parseTime(time);
     if (timeMins === null) { alert("Formato de hora inválido. Ejemplo: 2:30 p.m."); return; }
-    const counts: Record<EmpKey, number> = { Yaira: 0, Belkis: 0, Cielo: 0, Lisa: 0 };
-    const lastSeen: Record<EmpKey, number> = { Yaira: -999, Belkis: -999, Cielo: -999, Lisa: -999 };
+    const wd = weekdayOf(activeDate);
+    const counts: Record<string, number> = {};
+    const lastSeen: Record<string, number> = {};
+    empNames.forEach((n) => { counts[n] = 0; lastSeen[n] = -999; });
     currentAppts.forEach(a => {
-      if (a.employee && !a.cancelled && !a.noShow) {
+      if (a.employee && counts[a.employee] != null && !a.cancelled && !a.noShow) {
         counts[a.employee]++;
         lastSeen[a.employee] = Math.max(lastSeen[a.employee], a.timeMins);
       }
     });
-    let cands = EMP_LIST.filter(e => isWorking(e, timeMins) && (EMPLOYEES[e].maxClients === null || counts[e] < (EMPLOYEES[e].maxClients as number)));
-    if (cands.length === 0) cands = EMP_LIST.filter(e => isWorking(e, timeMins));
-    if (cands.length === 0) cands = [...EMP_LIST];
+    let cands = employees.filter(e => isWorkingOn(e, timeMins, wd) && !isOffOn(timeOff, e.name, activeDate) && (e.maxClients == null || counts[e.name] < e.maxClients));
+    if (cands.length === 0) cands = employees.filter(e => isWorkingOn(e, timeMins, wd) && !isOffOn(timeOff, e.name, activeDate));
+    if (cands.length === 0) cands = [...employees];
     cands.sort((a, b) => {
-      const gapA = timeMins - lastSeen[a];
-      const gapB = timeMins - lastSeen[b];
+      const gapA = timeMins - lastSeen[a.name];
+      const gapB = timeMins - lastSeen[b.name];
       if (gapA !== gapB) return gapB - gapA;
-      return counts[a] - counts[b];
+      return counts[a.name] - counts[b.name];
     });
     const chosen = cands[0];
     const newApt: Apt = {
@@ -710,8 +645,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       client: client.trim(),
       time: formatTime(timeMins),
       timeMins,
-      employee: chosen,
-      cabin: EMPLOYEES[chosen].cabin,
+      employee: chosen.name,
+      cabin: chosen.cabin,
       cancelled: false, noShow: false, walkIn: true, changed: "", swapLocked: false,
     };
     setDays(prev => ({
@@ -726,7 +661,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     if (!isAdmin || !activeDate) return;
     if (!confirm("¿Volver a asignar todo el día?")) return;
     const reset = (days[activeDate] || []).map(a => ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
-    const assigned = autoAssign(reset);
+    const assigned = autoAssign(reset, activeDate, employees, timeOff);
     setDays(prev => ({ ...prev, [activeDate]: assigned }));
     const rows = assigned.map(a => aptToRow(a, activeDate));
     try {
@@ -741,24 +676,21 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   };
 
   const employeeStats = useMemo(() => {
-    const stats: Record<EmpKey, { total: number; attended: number; noShow: number; cancelled: number }> =
-      { Yaira: { total: 0, attended: 0, noShow: 0, cancelled: 0 },
-        Belkis: { total: 0, attended: 0, noShow: 0, cancelled: 0 },
-        Cielo:  { total: 0, attended: 0, noShow: 0, cancelled: 0 },
-        Lisa:   { total: 0, attended: 0, noShow: 0, cancelled: 0 } };
+    const stats: Record<string, { total: number; attended: number; noShow: number; cancelled: number }> = {};
+    empNames.forEach((n) => { stats[n] = { total: 0, attended: 0, noShow: 0, cancelled: 0 }; });
     currentAppts.forEach(a => {
-      if (!a.employee) return;
+      if (!a.employee || !stats[a.employee]) return;
       stats[a.employee].total++;
       if (a.noShow) stats[a.employee].noShow++;
       else if (a.cancelled) stats[a.employee].cancelled++;
       else stats[a.employee].attended++;
     });
     return stats;
-  }, [currentAppts]);
+  }, [currentAppts, empNames]);
 
   const exportIndividualText = (emp: EmpKey) => {
     const list = currentAppts.filter(a => a.employee === emp && !a.cancelled).sort((a, b) => a.timeMins - b.timeMins);
-    const header = `📋 ${emp} — ${dateLabelES(activeDate)}\nCabina ${EMPLOYEES[emp].cabin}\n\n`;
+    const header = `📋 ${emp} — ${dateLabelES(activeDate)}\nCabina ${empMap[emp]?.cabin ?? "?"}\n\n`;
     const lines = list.map(a => {
       const flag = a.noShow ? " ❌ NO ASISTIÓ" : (a.walkIn ? " ✨ SIN CITA" : "");
       return `${a.time}  —  ${a.client}${flag}`;
@@ -920,7 +852,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           <div className="flex items-center gap-2 flex-wrap">
             <GlobalSearch
               isAdmin={isAdmin}
-              employees={EMP_LIST}
+              employees={empNames}
               onPickDate={(d) => { if (days[d]) setActiveDate(d); else toast("Esa fecha no tiene citas cargadas"); }}
               onPickEmployee={(e) => { setSelectedEmployee(e); setView("individual"); }}
               onOpenSwaps={() => setView("swaps")}
@@ -964,6 +896,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 <TabBtn active={view === "sales"} onClick={() => setView("sales")}>Ventas</TabBtn>
                 <TabBtn active={view === "inventory"} onClick={() => setView("inventory")}>Inventario</TabBtn>
                 <TabBtn active={view === "history"} onClick={() => setView("history")}>Historial</TabBtn>
+                <TabBtn active={view === "settings"} onClick={() => setView("settings")}>Ajustes</TabBtn>
                 <button onClick={exportAgendaExcel} className="px-3 md:px-4 py-2 text-xs font-label bg-primary text-primary-foreground flex items-center gap-2">
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
                 </button>
@@ -1098,8 +1031,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
             {/* Stats grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              {EMP_LIST.map(emp => {
-                const e = EMPLOYEES[emp];
+              {empNames.map(emp => {
+                const e = empMap[emp];
                 const s = employeeStats[emp];
                 const overCap = e.maxClients && s.attended > e.maxClients;
                 return (
@@ -1132,7 +1065,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
               </div>
               {currentAppts.length === 0 && <div className="p-8 text-center text-sm italic text-muted-foreground">No hay citas para este día.</div>}
               {currentAppts.map((a, idx) => {
-                const empColor = a.employee ? EMPLOYEES[a.employee].color : "hsl(var(--muted-foreground))";
+                const empColor = a.employee ? (empMap[a.employee]?.color ?? "hsl(var(--muted-foreground))") : "hsl(var(--muted-foreground))";
                 const dimmed = a.cancelled || a.noShow;
                 return (
                   <div key={a.id} className="grid gap-3 px-4 py-3 border-b items-center"
@@ -1149,13 +1082,13 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     </div>
                     <div>
                       <select value={a.employee || ""}
-                        onChange={(e) => updateApt(a.id, { employee: (e.target.value || null) as EmpKey | null, cabin: e.target.value ? EMPLOYEES[e.target.value as EmpKey].cabin : null })}
+                        onChange={(e) => updateApt(a.id, { employee: (e.target.value || null) as EmpKey | null, cabin: e.target.value ? (empMap[e.target.value]?.cabin ?? null) : null })}
                         className="w-full px-2 py-1 text-sm bg-background text-foreground"
                         style={{ border: `1px solid hsl(var(--border))`, borderLeftWidth: 3, borderLeftColor: empColor }}>
                         <option value="">—</option>
-                        {EMP_LIST.map(emp => {
-                          const working = isWorking(emp, a.timeMins);
-                          const lunch = onLunch(emp, a.timeMins);
+                        {empNames.map(emp => {
+                          const working = empMap[emp] ? isWorkingOn(empMap[emp], a.timeMins, activeWeekday) : false;
+                          const lunch = empMap[emp] ? onLunchOn(empMap[emp], a.timeMins, activeWeekday) : false;
                           return <option key={emp} value={emp}>{emp}{!working ? (lunch ? " (almuerzo)" : " (fuera)") : ""}</option>;
                         })}
                       </select>
@@ -1188,7 +1121,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             <div className="md:hidden space-y-2">
               {currentAppts.length === 0 && <div className="p-8 text-center text-sm italic border border-border bg-card text-muted-foreground">No hay citas para este día.</div>}
               {currentAppts.map((a) => {
-                const empColor = a.employee ? EMPLOYEES[a.employee].color : "hsl(var(--muted-foreground))";
+                const empColor = a.employee ? (empMap[a.employee]?.color ?? "hsl(var(--muted-foreground))") : "hsl(var(--muted-foreground))";
                 const dimmed = a.cancelled || a.noShow;
                 return (
                   <div key={a.id} className="border border-border bg-card p-3" style={{ borderLeft: `4px solid ${empColor}`, opacity: dimmed ? 0.55 : 1 }}>
@@ -1204,13 +1137,13 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     </div>
                     <div className="flex items-center gap-2 mb-2">
                       <select value={a.employee || ""}
-                        onChange={(e) => updateApt(a.id, { employee: (e.target.value || null) as EmpKey | null, cabin: e.target.value ? EMPLOYEES[e.target.value as EmpKey].cabin : null })}
+                        onChange={(e) => updateApt(a.id, { employee: (e.target.value || null) as EmpKey | null, cabin: e.target.value ? (empMap[e.target.value]?.cabin ?? null) : null })}
                         className="flex-1 px-2 py-2 text-sm bg-background text-foreground"
                         style={{ border: `1px solid hsl(var(--border))`, borderLeftWidth: 3, borderLeftColor: empColor }}>
                         <option value="">— Sin asignar —</option>
-                        {EMP_LIST.map(emp => {
-                          const working = isWorking(emp, a.timeMins);
-                          const lunch = onLunch(emp, a.timeMins);
+                        {empNames.map(emp => {
+                          const working = empMap[emp] ? isWorkingOn(empMap[emp], a.timeMins, activeWeekday) : false;
+                          const lunch = empMap[emp] ? onLunchOn(empMap[emp], a.timeMins, activeWeekday) : false;
                           return <option key={emp} value={emp}>{emp}{!working ? (lunch ? " (almuerzo)" : " (fuera)") : ""}</option>;
                         })}
                       </select>
@@ -1238,13 +1171,13 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
             {isAdmin && (
               <div className="flex gap-2 mb-6 flex-wrap">
-                {EMP_LIST.map(emp => (
+                {empNames.map(emp => (
                   <button key={emp} onClick={() => setSelectedEmployee(emp)}
                     className="px-5 py-2 text-xs font-label border"
                     style={{
-                      backgroundColor: selectedEmployee === emp ? EMPLOYEES[emp].color : "transparent",
-                      color: selectedEmployee === emp ? "hsl(var(--card))" : EMPLOYEES[emp].color,
-                      borderColor: EMPLOYEES[emp].color,
+                      backgroundColor: selectedEmployee === emp ? (empMap[emp]?.color ?? "transparent") : "transparent",
+                      color: selectedEmployee === emp ? "hsl(var(--card))" : (empMap[emp]?.color ?? "hsl(var(--primary))"),
+                      borderColor: empMap[emp]?.color ?? "hsl(var(--border))",
                     }}>
                     {emp}
                   </button>
@@ -1255,12 +1188,14 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             <div className="border border-border bg-card p-6 md:p-8">
               <div className="flex items-baseline justify-between mb-6 flex-wrap gap-3">
                 <div>
-                  <div className="font-display" style={{ fontSize: 36, fontWeight: 500, lineHeight: 1, color: EMPLOYEES[selectedEmployee]?.color }}>
+                  <div className="font-display" style={{ fontSize: 36, fontWeight: 500, lineHeight: 1, color: empMap[selectedEmployee]?.color }}>
                     {selectedEmployee}
                   </div>
-                  {EMPLOYEES[selectedEmployee] && (
+                  {empMap[selectedEmployee] && (
                     <div className="text-xs font-label mt-1 text-accent">
-                      CABINA {EMPLOYEES[selectedEmployee].cabin} · {formatTime(EMPLOYEES[selectedEmployee].startM).replace(" a.m.","am").replace(" p.m.","pm")} – {formatTime(EMPLOYEES[selectedEmployee].endM).replace(" a.m.","am").replace(" p.m.","pm")}
+                      CABINA {empMap[selectedEmployee].cabin ?? "—"}{empMap[selectedEmployee].schedule[activeWeekday]?.works
+                        ? ` · ${formatTime(empMap[selectedEmployee].schedule[activeWeekday].startMin).replace(" a.m.","am").replace(" p.m.","pm")} – ${formatTime(empMap[selectedEmployee].schedule[activeWeekday].endMin).replace(" a.m.","am").replace(" p.m.","pm")}`
+                        : " · Descansa hoy"}
                     </div>
                   )}
                 </div>
@@ -1334,7 +1269,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         )}
 
         {view === "sales" && isAdmin && (
-          <SalesModule profile={profile as any} isAdmin={isAdmin} />
+          <SalesModule profile={profile} isAdmin={isAdmin} />
         )}
 
         {view === "inventory" && (
@@ -1347,6 +1282,10 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             cutoff={HISTORY_CUTOFF}
             onClientClick={(name) => setProfileClient(name)}
           />
+        )}
+
+        {view === "settings" && isAdmin && (
+          <SettingsModule isAdmin={isAdmin} onChanged={reloadRoster} />
         )}
       </main>
 
@@ -1362,7 +1301,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         } : null}
         myEmployee={myEmployee}
         myUserId={session.user.id}
-        employees={EMP_LIST}
+        employees={empNames}
       />
 
       <ClientProfileModal

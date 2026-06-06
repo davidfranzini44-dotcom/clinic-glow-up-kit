@@ -4,7 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import { Check, X, Send, Inbox, Clock, Lock, Unlock, AlertTriangle, ArrowLeftRight, Gift } from "lucide-react";
 import { toast } from "sonner";
 
-type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
+type EmpKey = string;
 
 export type SwapRequest = {
   id: string;

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
 
-type EmpKey = "Yaira" | "Belkis" | "Cielo" | "Lisa";
+type EmpKey = string;
 
 type AptRow = {
   id: string;
