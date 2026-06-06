@@ -2,70 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Charm Clínica Estética — Design System ────────────────────────── */
-/* All colors HSL. Aesthetic clinic warm-neutral palette. */
+/* ─── Charm Clínica Estética — Design System v2 (modern) ───────────── */
+/* Warm-white surfaces, deep wine brand, terracotta accent. Colors in HSL. */
 
 @layer base {
   :root {
     /* Surfaces */
-    --background: 36 36% 93%;          /* #F5EFE6 cream */
-    --foreground: 24 39% 17%;          /* #3E2A1A deep cocoa */
+    --background: 24 33% 98%;          /* #FBF8F6 warm white */
+    --foreground: 330 14% 14%;         /* #2B2024 wine ink */
 
-    --card: 38 56% 96%;                /* #FBF7F0 ivory */
-    --card-foreground: 24 39% 17%;
+    --card: 0 0% 100%;                 /* white */
+    --card-foreground: 330 14% 14%;
 
-    --popover: 38 56% 96%;
-    --popover-foreground: 24 39% 17%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 330 14% 14%;
 
     /* Brand */
-    --primary: 24 39% 17%;             /* deep cocoa */
-    --primary-foreground: 36 36% 93%;
+    --primary: 345 38% 30%;            /* #6A2F40 deep wine */
+    --primary-foreground: 24 33% 98%;
 
-    --secondary: 36 28% 75%;           /* #D4C4A8 sand */
-    --secondary-foreground: 24 39% 17%;
+    --secondary: 344 35% 94%;          /* #F4E7EB soft blush */
+    --secondary-foreground: 345 38% 30%;
 
-    --muted: 36 28% 88%;
-    --muted-foreground: 30 18% 35%;    /* #6B5B47 */
+    --muted: 24 22% 95%;               /* #F2ECE8 */
+    --muted-foreground: 25 10% 42%;    /* #786C66 */
 
-    --accent: 30 33% 41%;              /* #8B6F47 caramel */
-    --accent-foreground: 38 56% 96%;
+    --accent: 14 55% 56%;              /* #CC6A4E terracotta */
+    --accent-foreground: 24 33% 98%;
 
-    --destructive: 0 43% 44%;          /* #A04040 muted brick */
-    --destructive-foreground: 38 56% 96%;
+    --destructive: 6 62% 48%;          /* #C53A2D clean red */
+    --destructive-foreground: 0 0% 100%;
 
-    --success: 99 22% 45%;             /* #6B8E5A sage */
-    --success-foreground: 38 56% 96%;
+    --success: 152 38% 38%;            /* #3A8769 modern green */
+    --success-foreground: 0 0% 100%;
 
-    --warning: 27 33% 32%;             /* #6B4423 toasted */
-    --warning-foreground: 38 56% 96%;
+    --warning: 32 65% 47%;             /* #C5832B amber */
+    --warning-foreground: 0 0% 100%;
 
-    --border: 36 28% 75%;              /* sand */
-    --input: 36 28% 75%;
-    --ring: 24 39% 17%;
+    --border: 24 20% 90%;              /* #E8E0DB warm border */
+    --input: 24 20% 88%;
+    --ring: 345 38% 30%;
 
-    --radius: 0.125rem;
+    --radius: 0.625rem;
 
-    /* Employee accent colors (HSL) */
-    --emp-yaira:  28 41% 60%;          /* #C8956D */
-    --emp-belkis: 30 33% 41%;          /* #8B6F47 */
-    --emp-cielo:  25 32% 50%;          /* #A67B5B */
-    --emp-lisa:   27 50% 27%;          /* #6B4423 */
+    /* Employee accent colors — distinct hues for easy reading */
+    --emp-yaira:  345 47% 55%;         /* rose   #C2566E */
+    --emp-belkis: 330 22% 45%;         /* wine   #8A5A6E */
+    --emp-cielo:  35 55% 50%;          /* amber  #C58A3A */
+    --emp-lisa:   16 50% 36%;          /* terra  #8A4A2E */
 
     /* Chips */
-    --chip-walkin-bg: 36 50% 83%;      /* #E8D9BF */
-    --chip-walkin-fg: 27 50% 27%;      /* #6B4423 */
-    --chip-noshow-bg: 0 50% 89%;       /* #F0D4D4 */
-    --chip-noshow-fg: 0 43% 44%;
+    --chip-walkin-bg: 344 45% 92%;     /* blush */
+    --chip-walkin-fg: 345 38% 30%;     /* wine */
+    --chip-noshow-bg: 6 60% 93%;       /* soft red */
+    --chip-noshow-fg: 6 62% 42%;
 
-    /* Sidebar (kept default) */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar (kept neutral) */
+    --sidebar-background: 24 33% 98%;
+    --sidebar-foreground: 330 14% 14%;
+    --sidebar-primary: 345 38% 30%;
+    --sidebar-primary-foreground: 24 33% 98%;
+    --sidebar-accent: 24 22% 95%;
+    --sidebar-accent-foreground: 345 38% 30%;
+    --sidebar-border: 24 20% 90%;
+    --sidebar-ring: 345 38% 30%;
   }
 }
 
@@ -75,16 +75,22 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Lora', Georgia, serif;
+    font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
   .font-display {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-weight: 300;
+    font-weight: 500;
     letter-spacing: -0.01em;
   }
   .font-label {
-    font-family: 'Lora', Georgia, serif;
-    letter-spacing: 0.25em;
+    font-family: 'Manrope', system-ui, sans-serif;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
+    font-weight: 600;
+  }
+  /* Modern touch: soften interactive controls globally (utilities like rounded-full still win) */
+  button, input, select, textarea {
+    border-radius: var(--radius);
   }
 }
