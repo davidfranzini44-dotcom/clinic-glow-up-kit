@@ -14,6 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      employee_settings: {
+        Row: {
+          name: string
+          cabin: number | null
+          color: string | null
+          max_clients: number | null
+          active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          name: string
+          cabin?: number | null
+          color?: string | null
+          max_clients?: number | null
+          active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          cabin?: number | null
+          color?: string | null
+          max_clients?: number | null
+          active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      employee_schedules: {
+        Row: {
+          id: string
+          employee_name: string
+          weekday: number
+          works: boolean
+          start_min: number | null
+          end_min: number | null
+          lunch_start_min: number | null
+          lunch_minutes: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          employee_name: string
+          weekday: number
+          works?: boolean
+          start_min?: number | null
+          end_min?: number | null
+          lunch_start_min?: number | null
+          lunch_minutes?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          employee_name?: string
+          weekday?: number
+          works?: boolean
+          start_min?: number | null
+          end_min?: number | null
+          lunch_start_min?: number | null
+          lunch_minutes?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      employee_time_off: {
+        Row: {
+          id: string
+          employee_name: string
+          date: string
+          reason: string
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          employee_name: string
+          date: string
+          reason?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          employee_name?: string
+          date?: string
+          reason?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           id: number
@@ -400,105 +499,6 @@ export type Database = {
           phone?: string | null
           source?: string | null
           updated_at?: string
-        }
-        Relationships: []
-      }
-      employee_schedules: {
-        Row: {
-          created_at: string
-          employee_name: string
-          end_min: number | null
-          id: string
-          lunch_minutes: number
-          lunch_start_min: number | null
-          start_min: number | null
-          updated_at: string
-          weekday: number
-          works: boolean
-        }
-        Insert: {
-          created_at?: string
-          employee_name: string
-          end_min?: number | null
-          id?: string
-          lunch_minutes?: number
-          lunch_start_min?: number | null
-          start_min?: number | null
-          updated_at?: string
-          weekday: number
-          works?: boolean
-        }
-        Update: {
-          created_at?: string
-          employee_name?: string
-          end_min?: number | null
-          id?: string
-          lunch_minutes?: number
-          lunch_start_min?: number | null
-          start_min?: number | null
-          updated_at?: string
-          weekday?: number
-          works?: boolean
-        }
-        Relationships: []
-      }
-      employee_settings: {
-        Row: {
-          active: boolean
-          cabin: number | null
-          color: string | null
-          created_at: string
-          max_clients: number | null
-          name: string
-          sort_order: number
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean
-          cabin?: number | null
-          color?: string | null
-          created_at?: string
-          max_clients?: number | null
-          name: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean
-          cabin?: number | null
-          color?: string | null
-          created_at?: string
-          max_clients?: number | null
-          name?: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      employee_time_off: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          date: string
-          employee_name: string
-          id: string
-          reason: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          date: string
-          employee_name: string
-          id?: string
-          reason?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          date?: string
-          employee_name?: string
-          id?: string
-          reason?: string
         }
         Relationships: []
       }
