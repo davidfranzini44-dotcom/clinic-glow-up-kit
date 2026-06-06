@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getEndBuffer, setEndBuffer } from "@/lib/roster";
 import { toast } from "sonner";
 import { Plus, Trash2, Save, CalendarOff, Check } from "lucide-react";
 
@@ -40,6 +41,8 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
   const [newName, setNewName] = useState("");
   const [offEmp, setOffEmp] = useState("");
   const [offDate, setOffDate] = useState(todayISO());
+  const [bufferOn, setBufferOn] = useState(getEndBuffer() > 0);
+  const [bufferMin, setBufferMin] = useState(getEndBuffer() || 30);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -111,7 +114,7 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
     if (!name) return;
     try {
       const sort = (emps.reduce((m, e) => Math.max(m, e.sort_order), 0)) + 1;
-      const { error: e1 } = await supabase.from("employee_settings").insert({ name, cabin: 1, color: "#8B6F47", max_clients: null, active: true, sort_order: sort });
+      const { error: e1 } = await supabase.from("employee_settings").insert({ name, cabin: 1, color: "#8A5A6E", max_clients: null, active: true, sort_order: sort });
       if (e1) throw e1;
       const rows = blankSchedule().map((r) => ({ ...r, employee_name: name }));
       const { error: e2 } = await supabase.from("employee_schedules").upsert(rows, { onConflict: "employee_name,weekday" });
@@ -205,7 +208,7 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
 
         <div className="space-y-4">
           {activeEmps.map((emp) => (
-            <div key={emp.name} className="border border-border bg-card p-4" style={{ borderLeft: `4px solid ${emp.color || "#8B6F47"}` }}>
+            <div key={emp.name} className="border border-border bg-card p-4" style={{ borderLeft: `4px solid ${emp.color || "#8A5A6E"}` }}>
               <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
                 <span className="font-display text-primary" style={{ fontSize: 22, fontWeight: 500 }}>{emp.name}</span>
                 <div className="flex items-center gap-3 flex-wrap text-xs">
@@ -282,6 +285,26 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ── Assignment rules ── */}
+      <div>
+        <h2 className="font-display text-primary mb-4" style={{ fontSize: 28, fontWeight: 500 }}>Reglas de asignación</h2>
+        <div className="border border-border bg-card p-4">
+          <label className="flex items-center gap-2 text-sm text-primary cursor-pointer">
+            <input type="checkbox" checked={bufferOn} onChange={(e) => { const on = e.target.checked; setBufferOn(on); setEndBuffer(on ? bufferMin : 0); }} />
+            No asignar citas cerca de la hora de salida de la empleada
+          </label>
+          <div className="flex items-center gap-2 mt-3 text-xs" style={{ opacity: bufferOn ? 1 : 0.4 }}>
+            <span className="text-muted-foreground">Minutos antes de su salida:</span>
+            <input type="number" min={0} step={5} value={bufferMin} disabled={!bufferOn}
+              onChange={(e) => { const m = Math.max(0, parseInt(e.target.value) || 0); setBufferMin(m); if (bufferOn) setEndBuffer(m); }}
+              className="w-16 px-2 py-1 border border-border bg-background text-foreground" />
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            Ej.: si una empleada termina a las 6:00 pm y pones 30, la asignación automática no le dará citas nuevas después de las 5:30 pm.
+          </p>
         </div>
       </div>
 

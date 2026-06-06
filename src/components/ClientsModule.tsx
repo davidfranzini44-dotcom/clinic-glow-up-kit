@@ -24,10 +24,10 @@ type EnrichedCustomer = Customer & {
 };
 
 const EMPLOYEES: Record<string, { color: string }> = {
-  Yaira:  { color: "#C8956D" },
-  Belkis: { color: "#8B6F47" },
-  Cielo:  { color: "#A67B5B" },
-  Lisa:   { color: "#6B4423" },
+  Yaira:  { color: "#C2566E" },
+  Belkis: { color: "#8A5A6E" },
+  Cielo:  { color: "#C58A3A" },
+  Lisa:   { color: "#8A4A2E" },
 };
 
 const fmtMoney = (n: number | string | null | undefined) => {
@@ -42,7 +42,7 @@ const todayISO = () => {
 
 const SubNavBtn = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) => (
   <button onClick={onClick} className="px-3 py-1.5 text-xs tracking-[0.15em] uppercase whitespace-nowrap"
-    style={{ backgroundColor: active ? "#3E2A1A" : "transparent", color: active ? "#F5EFE6" : "#3E2A1A", border: "1px solid #3E2A1A", opacity: active ? 1 : 0.65, fontFamily: "Lora, serif" }}>
+    style={{ backgroundColor: active ? "#2B2024" : "transparent", color: active ? "#FBF8F6" : "#2B2024", border: "1px solid #2B2024", opacity: active ? 1 : 0.65, fontFamily: "Lora, serif" }}>
     {children}
   </button>
 );
@@ -51,8 +51,8 @@ const Section = ({ title, subtitle, action, children }: { title: ReactNode; subt
   <>
     <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
       <div>
-        {subtitle && <div className="text-xs tracking-[0.3em]" style={{ color: "#8B6F47" }}>{subtitle}</div>}
-        <h2 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "clamp(28px, 5vw, 44px)", color: "#3E2A1A", fontWeight: 400, lineHeight: 1.1 }}>{title}</h2>
+        {subtitle && <div className="text-xs tracking-[0.3em]" style={{ color: "#8A5A6E" }}>{subtitle}</div>}
+        <h2 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "clamp(28px, 5vw, 44px)", color: "#2B2024", fontWeight: 400, lineHeight: 1.1 }}>{title}</h2>
       </div>
       {action}
     </div>
@@ -183,14 +183,14 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
     XLSX.writeFile(wb, `CLIENTES_CHARM_${todayISO()}.xlsx`);
   };
 
-  if (loading) return <div className="p-12 text-center text-xs tracking-[0.3em]" style={{ color: "#8B6F47" }}>CARGANDO CLIENTES…</div>;
+  if (loading) return <div className="p-12 text-center text-xs tracking-[0.3em]" style={{ color: "#8A5A6E" }}>CARGANDO CLIENTES…</div>;
 
   return (
     <Section title="Clientes" subtitle="BASE DE CLIENTES"
       action={isAdmin && (
         <div className="flex gap-2 flex-wrap">
-          <button onClick={exportClients} className="px-4 py-2 text-xs tracking-[0.2em] uppercase border flex items-center gap-2" style={{ borderColor: "#3E2A1A", color: "#3E2A1A" }}><Download size={14} /> Exportar</button>
-          <button onClick={() => setEditForm({ name: "", phone: "", email: "", birthday: "", address: "", notes: "", allergies: "" })} className="px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: "#3E2A1A", color: "#F5EFE6" }}><Plus size={14} /> Nuevo</button>
+          <button onClick={exportClients} className="px-4 py-2 text-xs tracking-[0.2em] uppercase border flex items-center gap-2" style={{ borderColor: "#2B2024", color: "#2B2024" }}><Download size={14} /> Exportar</button>
+          <button onClick={() => setEditForm({ name: "", phone: "", email: "", birthday: "", address: "", notes: "", allergies: "" })} className="px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: "#2B2024", color: "#FBF8F6" }}><Plus size={14} /> Nuevo</button>
         </div>
       )}>
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -203,11 +203,11 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
 
       {view === "list" && (
         <>
-          <div className="border p-4 mb-4 flex items-center gap-2" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
-            <Search size={14} style={{ color: "#8B6F47" }} />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, teléfono o correo…" className="flex-1 px-2 py-1 text-sm bg-transparent outline-none" style={{ color: "#3E2A1A" }} />
+          <div className="border p-4 mb-4 flex items-center gap-2" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
+            <Search size={14} style={{ color: "#8A5A6E" }} />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, teléfono o correo…" className="flex-1 px-2 py-1 text-sm bg-transparent outline-none" style={{ color: "#2B2024" }} />
           </div>
-          {filtered.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", color: "#6B5B47" }}>{customers.length === 0 ? "Aún no hay clientes. Sube una agenda y se agregarán automáticamente." : "Sin resultados."}</div>}
+          {filtered.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF", color: "#786C66" }}>{customers.length === 0 ? "Aún no hay clientes. Sube una agenda y se agregarán automáticamente." : "Sin resultados."}</div>}
           <div className="space-y-2">
             {filtered.map(c => <ClientRow key={c.id} c={c} onClick={() => setSelectedClientId(c.id)} />)}
           </div>
@@ -216,18 +216,18 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
 
       {view === "birthdays" && (
         <div className="space-y-2">
-          {birthdaysThisMonth.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", color: "#6B5B47" }}>Nadie cumple años este mes.</div>}
+          {birthdaysThisMonth.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF", color: "#786C66" }}>Nadie cumple años este mes.</div>}
           {birthdaysThisMonth.map(c => (
-            <div key={c.id} className="border p-4 flex items-center gap-3 flex-wrap" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", borderLeft: "4px solid #C8956D" }}>
+            <div key={c.id} className="border p-4 flex items-center gap-3 flex-wrap" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF", borderLeft: "4px solid #C2566E" }}>
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <Cake size={18} style={{ color: "#C8956D" }} />
+                <Cake size={18} style={{ color: "#C2566E" }} />
                 <div>
-                  <div className="text-sm font-medium" style={{ color: "#3E2A1A" }}>{c.name}</div>
-                  <div className="text-xs" style={{ color: "#8B6F47" }}>Día {new Date(c.birthday).getDate()} · {c.phone || "Sin teléfono"}</div>
+                  <div className="text-sm font-medium" style={{ color: "#2B2024" }}>{c.name}</div>
+                  <div className="text-xs" style={{ color: "#8A5A6E" }}>Día {new Date(c.birthday).getDate()} · {c.phone || "Sin teléfono"}</div>
                 </div>
               </div>
               {c.phone && <button onClick={() => sendBirthdayWA(c)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: "#25D366", color: "white" }}><MessageCircle size={12} /> Felicitar</button>}
-              <button onClick={() => setSelectedClientId(c.id)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#3E2A1A", color: "#3E2A1A" }}>Ver perfil</button>
+              <button onClick={() => setSelectedClientId(c.id)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#2B2024", color: "#2B2024" }}>Ver perfil</button>
             </div>
           ))}
         </div>
@@ -235,17 +235,17 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
 
       {view === "inactive" && (
         <div className="space-y-2">
-          {inactive.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", color: "#6B5B47" }}>No hay clientes inactivos.</div>}
+          {inactive.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF", color: "#786C66" }}>No hay clientes inactivos.</div>}
           {inactive.map(c => {
             const daysSince = c.lastVisit ? Math.floor((+new Date() - +new Date(c.lastVisit + "T12:00:00")) / (1000 * 60 * 60 * 24)) : 0;
             return (
-              <div key={c.id} className="border p-4 flex items-center gap-3 flex-wrap" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", borderLeft: "4px solid #A04040" }}>
+              <div key={c.id} className="border p-4 flex items-center gap-3 flex-wrap" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF", borderLeft: "4px solid #C53A2D" }}>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium" style={{ color: "#3E2A1A" }}>{c.name}</div>
-                  <div className="text-xs" style={{ color: "#8B6F47" }}>{daysSince} días sin venir · Última: {c.lastVisit}</div>
+                  <div className="text-sm font-medium" style={{ color: "#2B2024" }}>{c.name}</div>
+                  <div className="text-xs" style={{ color: "#8A5A6E" }}>{daysSince} días sin venir · Última: {c.lastVisit}</div>
                 </div>
                 {c.phone && <button onClick={() => sendReactivationWA(c)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: "#25D366", color: "white" }}><MessageCircle size={12} /> Reactivar</button>}
-                <button onClick={() => setSelectedClientId(c.id)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#3E2A1A", color: "#3E2A1A" }}>Ver perfil</button>
+                <button onClick={() => setSelectedClientId(c.id)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#2B2024", color: "#2B2024" }}>Ver perfil</button>
               </div>
             );
           })}
@@ -257,64 +257,64 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
 
 function ClientRow({ c, onClick }: { c: EnrichedCustomer; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="w-full border p-4 flex items-center gap-3 text-left hover:opacity-90 flex-wrap" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
-      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0" style={{ backgroundColor: "#E8D9BF", color: "#6B4423" }}>
+    <button onClick={onClick} className="w-full border p-4 flex items-center gap-3 text-left hover:opacity-90 flex-wrap" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
+      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0" style={{ backgroundColor: "#F4E7EB", color: "#8A4A2E" }}>
         {(c.name || "?").split(" ").map((p: string) => p[0]).slice(0, 2).join("").toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium" style={{ color: "#3E2A1A" }}>{c.name}</div>
-        <div className="text-xs flex items-center gap-2 flex-wrap" style={{ color: "#8B6F47" }}>
+        <div className="text-sm font-medium" style={{ color: "#2B2024" }}>{c.name}</div>
+        <div className="text-xs flex items-center gap-2 flex-wrap" style={{ color: "#8A5A6E" }}>
           {c.phone && <span><Phone size={10} className="inline mr-1" />{c.phone}</span>}
           {c.email && <span><Mail size={10} className="inline mr-1" />{c.email}</span>}
         </div>
       </div>
       <div className="text-right">
-        <div className="text-xs" style={{ color: "#6B5B47" }}>{c.visits} visita{c.visits === 1 ? "" : "s"}</div>
-        {c.totalSpent > 0 && <div className="text-sm" style={{ color: "#3E2A1A", fontWeight: 500 }}>{fmtMoney(c.totalSpent)}</div>}
-        {c.lastVisit && <div className="text-[10px] italic" style={{ color: "#8B6F47" }}>Últ: {c.lastVisit}</div>}
+        <div className="text-xs" style={{ color: "#786C66" }}>{c.visits} visita{c.visits === 1 ? "" : "s"}</div>
+        {c.totalSpent > 0 && <div className="text-sm" style={{ color: "#2B2024", fontWeight: 500 }}>{fmtMoney(c.totalSpent)}</div>}
+        {c.lastVisit && <div className="text-[10px] italic" style={{ color: "#8A5A6E" }}>Últ: {c.lastVisit}</div>}
       </div>
-      {c.activePkgs?.length > 0 && <span className="text-[10px] px-2 py-0.5" style={{ backgroundColor: "#E8D9BF", color: "#6B4423" }}>📦 {c.activePkgs.length}</span>}
+      {c.activePkgs?.length > 0 && <span className="text-[10px] px-2 py-0.5" style={{ backgroundColor: "#F4E7EB", color: "#8A4A2E" }}>📦 {c.activePkgs.length}</span>}
     </button>
   );
 }
 
 function ClientEditForm({ form, setForm, onSave, onCancel }: { form: ClientForm; setForm: Dispatch<SetStateAction<ClientForm | null>>; onSave: () => void; onCancel: () => void }) {
   return (
-    <div className="border p-5 mb-6" style={{ borderColor: "#8B6F47", backgroundColor: "#FBF7F0" }}>
-      <div className="text-xs tracking-[0.25em] mb-4" style={{ color: "#8B6F47" }}>{form.id ? "EDITAR CLIENTE" : "NUEVO CLIENTE"}</div>
+    <div className="border p-5 mb-6" style={{ borderColor: "#8A5A6E", backgroundColor: "#FFFFFF" }}>
+      <div className="text-xs tracking-[0.25em] mb-4" style={{ color: "#8A5A6E" }}>{form.id ? "EDITAR CLIENTE" : "NUEVO CLIENTE"}</div>
       <div className="grid md:grid-cols-2 gap-3">
         <div className="md:col-span-2">
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Nombre completo *</label>
-          <input type="text" value={form.name || ""} onChange={e => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Nombre completo *</label>
+          <input type="text" value={form.name || ""} onChange={e => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Teléfono / WhatsApp</label>
-          <input type="tel" value={form.phone || ""} onChange={e => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="809-555-1234" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Teléfono / WhatsApp</label>
+          <input type="tel" value={form.phone || ""} onChange={e => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="809-555-1234" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Correo</label>
-          <input type="email" value={form.email || ""} onChange={e => setForm((f) => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Correo</label>
+          <input type="email" value={form.email || ""} onChange={e => setForm((f) => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Cumpleaños</label>
-          <input type="date" value={form.birthday || ""} onChange={e => setForm((f) => ({ ...f, birthday: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Cumpleaños</label>
+          <input type="date" value={form.birthday || ""} onChange={e => setForm((f) => ({ ...f, birthday: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Dirección</label>
-          <input type="text" value={form.address || ""} onChange={e => setForm((f) => ({ ...f, address: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Dirección</label>
+          <input type="text" value={form.address || ""} onChange={e => setForm((f) => ({ ...f, address: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div className="md:col-span-2">
-          <label className="text-xs tracking-[0.2em] uppercase mb-1 flex items-center gap-1" style={{ color: "#A04040" }}><AlertTriangle size={11} /> Alergias / Condiciones médicas</label>
-          <textarea value={form.allergies || ""} onChange={e => setForm((f) => ({ ...f, allergies: e.target.value }))} rows={2} placeholder="Ej. Embarazo, alergia a..., medicamentos actuales" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="text-xs tracking-[0.2em] uppercase mb-1 flex items-center gap-1" style={{ color: "#C53A2D" }}><AlertTriangle size={11} /> Alergias / Condiciones médicas</label>
+          <textarea value={form.allergies || ""} onChange={e => setForm((f) => ({ ...f, allergies: e.target.value }))} rows={2} placeholder="Ej. Embarazo, alergia a..., medicamentos actuales" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div className="md:col-span-2">
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Notas generales</label>
-          <textarea value={form.notes || ""} onChange={e => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Preferencias, observaciones..." className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Notas generales</label>
+          <textarea value={form.notes || ""} onChange={e => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Preferencias, observaciones..." className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
       </div>
       <div className="flex gap-2 mt-4">
-        <button onClick={onSave} className="px-5 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: "#3E2A1A", color: "#F5EFE6" }}>Guardar</button>
-        <button onClick={onCancel} className="px-5 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#3E2A1A", color: "#3E2A1A" }}>Cancelar</button>
+        <button onClick={onSave} className="px-5 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: "#2B2024", color: "#FBF8F6" }}>Guardar</button>
+        <button onClick={onCancel} className="px-5 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#2B2024", color: "#2B2024" }}>Cancelar</button>
       </div>
     </div>
   );
@@ -360,64 +360,64 @@ function ClientDetail({ client, setCustomers, invoices, packages, appointments, 
 
   return (
     <div>
-      <button onClick={onBack} className="flex items-center gap-2 text-xs tracking-[0.2em] uppercase mb-4" style={{ color: "#8B6F47", fontFamily: "Lora, serif" }}>
+      <button onClick={onBack} className="flex items-center gap-2 text-xs tracking-[0.2em] uppercase mb-4" style={{ color: "#8A5A6E", fontFamily: "Lora, serif" }}>
         <ChevronLeft size={14} /> Volver a clientes
       </button>
 
       {editing ? (
         <ClientEditForm form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={() => { setEditing(false); setEditForm({ ...client }); }} />
       ) : (
-        <div className="border p-6 mb-6" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
+        <div className="border p-6 mb-6" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
           <div className="flex items-start gap-4 flex-wrap">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-medium flex-shrink-0" style={{ backgroundColor: "#E8D9BF", color: "#6B4423" }}>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-medium flex-shrink-0" style={{ backgroundColor: "#F4E7EB", color: "#8A4A2E" }}>
               {(client.name || "?").split(" ").map((p: string) => p[0]).slice(0, 2).join("").toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "32px", color: "#3E2A1A", fontWeight: 500, lineHeight: 1.1 }}>{client.name}</div>
-              <div className="text-xs flex items-center gap-3 flex-wrap mt-2" style={{ color: "#6B5B47" }}>
+              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "32px", color: "#2B2024", fontWeight: 500, lineHeight: 1.1 }}>{client.name}</div>
+              <div className="text-xs flex items-center gap-3 flex-wrap mt-2" style={{ color: "#786C66" }}>
                 {client.phone && <span className="flex items-center gap-1"><Phone size={11} /> {client.phone}</span>}
                 {client.email && <span className="flex items-center gap-1"><Mail size={11} /> {client.email}</span>}
                 {client.birthday && <span className="flex items-center gap-1"><Cake size={11} /> {client.birthday}</span>}
               </div>
-              {client.address && <div className="text-xs mt-1" style={{ color: "#8B6F47" }}>{client.address}</div>}
+              {client.address && <div className="text-xs mt-1" style={{ color: "#8A5A6E" }}>{client.address}</div>}
             </div>
             <div className="flex gap-2 flex-wrap">
               {client.phone && <button onClick={() => sendWA(`Hola ${client.name}, le saluda Charm Clínica Estética.`)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: "#25D366", color: "white" }}><MessageCircle size={12} /> WhatsApp</button>}
-              {isAdmin && <button onClick={() => setEditing(true)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase border flex items-center gap-2" style={{ borderColor: "#3E2A1A", color: "#3E2A1A" }}><Edit2 size={12} /> Editar</button>}
+              {isAdmin && <button onClick={() => setEditing(true)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase border flex items-center gap-2" style={{ borderColor: "#2B2024", color: "#2B2024" }}><Edit2 size={12} /> Editar</button>}
             </div>
           </div>
 
           {client.allergies && (
-            <div className="mt-4 p-3 border" style={{ borderColor: "#A04040", backgroundColor: "#FAEBEB" }}>
-              <div className="text-xs flex items-center gap-1 mb-1" style={{ color: "#A04040", fontWeight: 600 }}><AlertTriangle size={12} /> ALERGIAS / CONDICIONES</div>
-              <div className="text-sm" style={{ color: "#3E2A1A" }}>{client.allergies}</div>
+            <div className="mt-4 p-3 border" style={{ borderColor: "#C53A2D", backgroundColor: "#FBEAEA" }}>
+              <div className="text-xs flex items-center gap-1 mb-1" style={{ color: "#C53A2D", fontWeight: 600 }}><AlertTriangle size={12} /> ALERGIAS / CONDICIONES</div>
+              <div className="text-sm" style={{ color: "#2B2024" }}>{client.allergies}</div>
             </div>
           )}
           {client.notes && (
-            <div className="mt-4 p-3" style={{ backgroundColor: "#F5EFE6" }}>
-              <div className="text-xs tracking-[0.2em] mb-1" style={{ color: "#8B6F47" }}>NOTAS</div>
-              <div className="text-sm italic" style={{ color: "#3E2A1A" }}>{client.notes}</div>
+            <div className="mt-4 p-3" style={{ backgroundColor: "#FBF8F6" }}>
+              <div className="text-xs tracking-[0.2em] mb-1" style={{ color: "#8A5A6E" }}>NOTAS</div>
+              <div className="text-sm italic" style={{ color: "#2B2024" }}>{client.notes}</div>
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-3 mt-6 pt-4 border-t" style={{ borderColor: "#D4C4A8" }}>
+          <div className="grid grid-cols-3 gap-3 mt-6 pt-4 border-t" style={{ borderColor: "#E8E0DB" }}>
             <div>
-              <div className="text-xs tracking-[0.2em]" style={{ color: "#8B6F47" }}>VISITAS</div>
-              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#3E2A1A", fontWeight: 500, lineHeight: 1 }}>{allAppts.filter((a) => !a.cancelled && !a.no_show).length}</div>
+              <div className="text-xs tracking-[0.2em]" style={{ color: "#8A5A6E" }}>VISITAS</div>
+              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#2B2024", fontWeight: 500, lineHeight: 1 }}>{allAppts.filter((a) => !a.cancelled && !a.no_show).length}</div>
             </div>
             <div>
-              <div className="text-xs tracking-[0.2em]" style={{ color: "#8B6F47" }}>GASTADO</div>
-              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#3E2A1A", fontWeight: 500, lineHeight: 1 }}>{fmtMoney(totalSpent)}</div>
+              <div className="text-xs tracking-[0.2em]" style={{ color: "#8A5A6E" }}>GASTADO</div>
+              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#2B2024", fontWeight: 500, lineHeight: 1 }}>{fmtMoney(totalSpent)}</div>
             </div>
             <div>
-              <div className="text-xs tracking-[0.2em]" style={{ color: "#8B6F47" }}>PAQUETES</div>
-              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#3E2A1A", fontWeight: 500, lineHeight: 1 }}>{clientPackages.filter((p) => p.used_sessions < p.total_sessions).length}</div>
+              <div className="text-xs tracking-[0.2em]" style={{ color: "#8A5A6E" }}>PAQUETES</div>
+              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#2B2024", fontWeight: 500, lineHeight: 1 }}>{clientPackages.filter((p) => p.used_sessions < p.total_sessions).length}</div>
             </div>
           </div>
 
           {upcomingAppt && client.phone && (
-            <div className="mt-4 pt-4 border-t flex items-center justify-between flex-wrap gap-2" style={{ borderColor: "#D4C4A8" }}>
-              <div className="text-xs" style={{ color: "#8B6F47" }}>Próxima cita: <span style={{ color: "#3E2A1A", fontWeight: 500 }}>{upcomingAppt.date} a las {upcomingAppt.time}</span></div>
+            <div className="mt-4 pt-4 border-t flex items-center justify-between flex-wrap gap-2" style={{ borderColor: "#E8E0DB" }}>
+              <div className="text-xs" style={{ color: "#8A5A6E" }}>Próxima cita: <span style={{ color: "#2B2024", fontWeight: 500 }}>{upcomingAppt.date} a las {upcomingAppt.time}</span></div>
               <button onClick={() => sendWA(`Hola ${client.name}, le recordamos su cita en Charm el ${upcomingAppt.date} a las ${upcomingAppt.time}.`)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: "#25D366", color: "white" }}><MessageCircle size={12} /> Recordatorio</button>
             </div>
           )}
@@ -432,45 +432,45 @@ function ClientDetail({ client, setCustomers, invoices, packages, appointments, 
 
       {tab === "history" && (
         <div className="space-y-2">
-          {allAppts.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", color: "#6B5B47" }}>Sin historial.</div>}
+          {allAppts.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF", color: "#786C66" }}>Sin historial.</div>}
           {allAppts.map((apt) => <AppointmentNoteRow key={apt.id} apt={apt} appointmentNotes={appointmentNotes} setAppointmentNotes={setAppointmentNotes} />)}
         </div>
       )}
       {tab === "invoices" && (
         <div className="space-y-2">
-          {clientInvoices.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", color: "#6B5B47" }}>Sin facturas.</div>}
+          {clientInvoices.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF", color: "#786C66" }}>Sin facturas.</div>}
           {clientInvoices.map((inv) => (
-            <div key={inv.id} className="border p-4 flex items-center gap-3 flex-wrap" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
-              <div className="text-xs" style={{ color: "#8B6F47" }}>#{inv.invoice_number}</div>
-              <div className="text-xs" style={{ color: "#6B5B47" }}>{inv.date}</div>
+            <div key={inv.id} className="border p-4 flex items-center gap-3 flex-wrap" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
+              <div className="text-xs" style={{ color: "#8A5A6E" }}>#{inv.invoice_number}</div>
+              <div className="text-xs" style={{ color: "#786C66" }}>{inv.date}</div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm" style={{ color: "#3E2A1A" }}>{(inv.invoice_items || []).map((i) => i.name).join(", ")}</div>
-                <div className="text-xs" style={{ color: "#8B6F47" }}>Vendido por {inv.sold_by}</div>
+                <div className="text-sm" style={{ color: "#2B2024" }}>{(inv.invoice_items || []).map((i) => i.name).join(", ")}</div>
+                <div className="text-xs" style={{ color: "#8A5A6E" }}>Vendido por {inv.sold_by}</div>
               </div>
-              <div className="text-sm font-medium" style={{ color: "#3E2A1A" }}>{fmtMoney(inv.total)}</div>
+              <div className="text-sm font-medium" style={{ color: "#2B2024" }}>{fmtMoney(inv.total)}</div>
             </div>
           ))}
         </div>
       )}
       {tab === "packages" && (
         <div className="space-y-2">
-          {clientPackages.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", color: "#6B5B47" }}>Sin paquetes.</div>}
+          {clientPackages.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF", color: "#786C66" }}>Sin paquetes.</div>}
           {clientPackages.map((p) => {
             const remaining = p.total_sessions - p.used_sessions;
             const isDone = remaining === 0;
             return (
-              <div key={p.id} className="border p-4" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", borderLeft: `4px solid ${isDone ? "#8B6F47" : "#6B8E5A"}` }}>
+              <div key={p.id} className="border p-4" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF", borderLeft: `4px solid ${isDone ? "#8A5A6E" : "#3A8769"}` }}>
                 <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
-                  <div className="text-sm font-medium" style={{ color: "#3E2A1A" }}>{p.package_name}</div>
-                  <div className="text-xs" style={{ color: "#8B6F47" }}>Comprado: {p.purchased_date}</div>
+                  <div className="text-sm font-medium" style={{ color: "#2B2024" }}>{p.package_name}</div>
+                  <div className="text-xs" style={{ color: "#8A5A6E" }}>Comprado: {p.purchased_date}</div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <div className="h-2 w-full" style={{ backgroundColor: "#EAE0CC" }}>
-                      <div style={{ width: `${(p.used_sessions / p.total_sessions) * 100}%`, height: "100%", backgroundColor: isDone ? "#8B6F47" : "#6B8E5A" }} />
+                    <div className="h-2 w-full" style={{ backgroundColor: "#EFE7E2" }}>
+                      <div style={{ width: `${(p.used_sessions / p.total_sessions) * 100}%`, height: "100%", backgroundColor: isDone ? "#8A5A6E" : "#3A8769" }} />
                     </div>
                   </div>
-                  <div className="text-sm" style={{ color: "#3E2A1A" }}>
+                  <div className="text-sm" style={{ color: "#2B2024" }}>
                     <span style={{ fontWeight: 600 }}>{remaining}</span> de {p.total_sessions} restantes
                   </div>
                 </div>
@@ -505,36 +505,36 @@ function AppointmentNoteRow({ apt, appointmentNotes, setAppointmentNotes }: { ap
   };
 
   return (
-    <div className="border p-4" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", borderLeft: `4px solid ${empColor}`, opacity: dimmed ? 0.6 : 1 }}>
+    <div className="border p-4" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF", borderLeft: `4px solid ${empColor}`, opacity: dimmed ? 0.6 : 1 }}>
       <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
         <div className="text-sm flex items-center gap-2 flex-wrap">
-          <span className="font-medium" style={{ color: "#3E2A1A" }}>{apt.date}</span>
-          <span style={{ color: "#8B6F47" }}>{apt.time}</span>
-          {apt.employee && <span className="text-xs px-2 py-0.5" style={{ backgroundColor: empColor, color: "#FBF7F0" }}>{apt.employee}</span>}
-          {apt.cabin && <span className="text-xs" style={{ color: "#8B6F47" }}>· Cabina {apt.cabin}</span>}
-          {apt.cancelled && <span className="text-[10px] px-2 py-0.5" style={{ backgroundColor: "#8B6F47", color: "white" }}>CANCELÓ</span>}
-          {apt.no_show && <span className="text-[10px] px-2 py-0.5" style={{ backgroundColor: "#A04040", color: "white" }}>NO ASISTIÓ</span>}
+          <span className="font-medium" style={{ color: "#2B2024" }}>{apt.date}</span>
+          <span style={{ color: "#8A5A6E" }}>{apt.time}</span>
+          {apt.employee && <span className="text-xs px-2 py-0.5" style={{ backgroundColor: empColor, color: "#FFFFFF" }}>{apt.employee}</span>}
+          {apt.cabin && <span className="text-xs" style={{ color: "#8A5A6E" }}>· Cabina {apt.cabin}</span>}
+          {apt.cancelled && <span className="text-[10px] px-2 py-0.5" style={{ backgroundColor: "#8A5A6E", color: "white" }}>CANCELÓ</span>}
+          {apt.no_show && <span className="text-[10px] px-2 py-0.5" style={{ backgroundColor: "#C53A2D", color: "white" }}>NO ASISTIÓ</span>}
         </div>
         {past && !dimmed && !editing && (
-          <button onClick={() => { setDraft(note); setEditing(true); }} className="text-xs flex items-center gap-1" style={{ color: "#8B6F47" }}>
+          <button onClick={() => { setDraft(note); setEditing(true); }} className="text-xs flex items-center gap-1" style={{ color: "#8A5A6E" }}>
             <Edit2 size={11} /> {note.observations || note.treatments ? "Editar notas" : "Agregar notas"}
           </button>
         )}
       </div>
       {editing ? (
         <div className="mt-3 space-y-2">
-          <input type="text" value={draft.treatments || ""} onChange={e => setDraft((d) => ({ ...d, treatments: e.target.value }))} placeholder="Tratamientos: Ej. Láser axilas + bigote" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
-          <textarea value={draft.observations || ""} onChange={e => setDraft((d) => ({ ...d, observations: e.target.value }))} rows={2} placeholder="Observaciones..." className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <input type="text" value={draft.treatments || ""} onChange={e => setDraft((d) => ({ ...d, treatments: e.target.value }))} placeholder="Tratamientos: Ej. Láser axilas + bigote" className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
+          <textarea value={draft.observations || ""} onChange={e => setDraft((d) => ({ ...d, observations: e.target.value }))} rows={2} placeholder="Observaciones..." className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
           <div className="flex gap-2">
-            <button onClick={save} className="px-4 py-1.5 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: "#3E2A1A", color: "#F5EFE6" }}>Guardar</button>
-            <button onClick={() => setEditing(false)} className="px-4 py-1.5 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#3E2A1A", color: "#3E2A1A" }}>Cancelar</button>
+            <button onClick={save} className="px-4 py-1.5 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: "#2B2024", color: "#FBF8F6" }}>Guardar</button>
+            <button onClick={() => setEditing(false)} className="px-4 py-1.5 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#2B2024", color: "#2B2024" }}>Cancelar</button>
           </div>
         </div>
       ) : (
         (note.treatments || note.observations) && (
           <div className="mt-2 space-y-1">
-            {note.treatments && <div className="text-xs" style={{ color: "#3E2A1A" }}><span style={{ color: "#8B6F47", fontWeight: 500 }}>Tratamientos:</span> {note.treatments}</div>}
-            {note.observations && <div className="text-xs italic" style={{ color: "#6B5B47" }}>{note.observations}</div>}
+            {note.treatments && <div className="text-xs" style={{ color: "#2B2024" }}><span style={{ color: "#8A5A6E", fontWeight: 500 }}>Tratamientos:</span> {note.treatments}</div>}
+            {note.observations && <div className="text-xs italic" style={{ color: "#786C66" }}>{note.observations}</div>}
           </div>
         )
       )}

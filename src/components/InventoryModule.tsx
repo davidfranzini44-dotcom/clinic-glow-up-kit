@@ -44,7 +44,7 @@ const dateLabelES = (dateStr: string) => {
 
 const SubNavBtn = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) => (
   <button onClick={onClick} className="px-3 py-1.5 text-xs tracking-[0.15em] uppercase whitespace-nowrap"
-    style={{ backgroundColor: active ? "#3E2A1A" : "transparent", color: active ? "#F5EFE6" : "#3E2A1A", border: "1px solid #3E2A1A", opacity: active ? 1 : 0.65, fontFamily: "Lora, serif" }}>
+    style={{ backgroundColor: active ? "#2B2024" : "transparent", color: active ? "#FBF8F6" : "#2B2024", border: "1px solid #2B2024", opacity: active ? 1 : 0.65, fontFamily: "Lora, serif" }}>
     {children}
   </button>
 );
@@ -53,8 +53,8 @@ const Section = ({ title, subtitle, action, children }: { title: ReactNode; subt
   <>
     <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
       <div>
-        {subtitle && <div className="text-xs tracking-[0.3em]" style={{ color: "#8B6F47" }}>{subtitle}</div>}
-        <h2 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "clamp(28px, 5vw, 44px)", color: "#3E2A1A", fontWeight: 400, lineHeight: 1.1 }}>{title}</h2>
+        {subtitle && <div className="text-xs tracking-[0.3em]" style={{ color: "#8A5A6E" }}>{subtitle}</div>}
+        <h2 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "clamp(28px, 5vw, 44px)", color: "#2B2024", fontWeight: 400, lineHeight: 1.1 }}>{title}</h2>
       </div>
       {action}
     </div>
@@ -63,8 +63,8 @@ const Section = ({ title, subtitle, action, children }: { title: ReactNode; subt
 );
 
 const Stat = ({ label, value, icon, color }: { label: ReactNode; value: ReactNode; icon?: ReactNode; color?: string }) => (
-  <div className="border p-4" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0", borderLeft: `4px solid ${color}` }}>
-    <div className="text-xs tracking-[0.2em] flex items-center gap-1" style={{ color: "#8B6F47" }}>{icon} {String(label).toUpperCase()}</div>
+  <div className="border p-4" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF", borderLeft: `4px solid ${color}` }}>
+    <div className="text-xs tracking-[0.2em] flex items-center gap-1" style={{ color: "#8A5A6E" }}>{icon} {label.toUpperCase()}</div>
     <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", fontWeight: 400, color, lineHeight: 1.1, marginTop: "4px" }}>{value}</div>
   </div>
 );
@@ -199,9 +199,9 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
 
   const getStatus = (item: InvItem) => {
     const s = Number(item.stock);
-    if (s === 0) return { label: "Sin stock", color: "#A04040", icon: "⚠" };
-    if (s < Number(item.min_stock || 0)) return { label: "Insuficiente", color: "#C8956D", icon: "↓" };
-    return { label: "Suficiente", color: "#6B8E5A", icon: "✓" };
+    if (s === 0) return { label: "Sin stock", color: "#C53A2D", icon: "⚠" };
+    if (s < Number(item.min_stock || 0)) return { label: "Insuficiente", color: "#C2566E", icon: "↓" };
+    return { label: "Suficiente", color: "#3A8769", icon: "✓" };
   };
 
   const totalValue = inventory.reduce((s, i) => s + (Number(i.stock) * Number(i.cost_per_unit || 0)), 0);
@@ -259,14 +259,14 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
     XLSX.writeFile(wb, `INVENTARIO_CHARM_${todayISO()}.xlsx`);
   };
 
-  if (loading) return <div className="p-12 text-center text-xs tracking-[0.3em]" style={{ color: "#8B6F47" }}>CARGANDO INVENTARIO…</div>;
+  if (loading) return <div className="p-12 text-center text-xs tracking-[0.3em]" style={{ color: "#8A5A6E" }}>CARGANDO INVENTARIO…</div>;
 
   return (
     <Section title="Inventario" subtitle="INSUMOS · CONTROL DE STOCK"
       action={isAdmin && (
         <div className="flex gap-2 flex-wrap">
-          <button onClick={exportInventory} className="px-4 py-2 text-xs tracking-[0.2em] uppercase border flex items-center gap-2" style={{ borderColor: "#3E2A1A", color: "#3E2A1A" }}><Download size={14} /> Exportar</button>
-          <button onClick={() => setEditForm({ sku: "", name: "", unit: "", stock: "", cost_per_unit: "", supplier: "", supplier_phone: "", min_stock: "", per_client_rate: "", category: "Limpieza" })} className="px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: "#3E2A1A", color: "#F5EFE6" }}><Plus size={14} /> Nuevo</button>
+          <button onClick={exportInventory} className="px-4 py-2 text-xs tracking-[0.2em] uppercase border flex items-center gap-2" style={{ borderColor: "#2B2024", color: "#2B2024" }}><Download size={14} /> Exportar</button>
+          <button onClick={() => setEditForm({ sku: "", name: "", unit: "", stock: "", cost_per_unit: "", supplier: "", supplier_phone: "", min_stock: "", per_client_rate: "", category: "Limpieza" })} className="px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: "#2B2024", color: "#FBF8F6" }}><Plus size={14} /> Nuevo</button>
         </div>
       )}>
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -276,14 +276,14 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
       </div>
 
       {inventory.length === 0 && view === "list" && (
-        <div className="border p-12 text-center" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
-          <Box size={36} className="mx-auto mb-3" style={{ color: "#8B6F47" }} strokeWidth={1.2} />
-          <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "24px", color: "#3E2A1A" }} className="mb-2">No hay insumos</h3>
-          <p className="text-sm mb-6" style={{ color: "#6B5B47" }}>Carga la lista predeterminada o agrega manualmente.</p>
+        <div className="border p-12 text-center" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
+          <Box size={36} className="mx-auto mb-3" style={{ color: "#8A5A6E" }} strokeWidth={1.2} />
+          <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "24px", color: "#2B2024" }} className="mb-2">No hay insumos</h3>
+          <p className="text-sm mb-6" style={{ color: "#786C66" }}>Carga la lista predeterminada o agrega manualmente.</p>
           {isAdmin && (
             <div className="flex gap-2 justify-center flex-wrap">
-              <button onClick={initDefaults} className="px-6 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: "#3E2A1A", color: "#F5EFE6" }}>Cargar predeterminados</button>
-              <button onClick={() => setEditForm({ sku: "", name: "", unit: "", stock: "", cost_per_unit: "", supplier: "", supplier_phone: "", min_stock: "", per_client_rate: "", category: "Limpieza" })} className="px-6 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#3E2A1A", color: "#3E2A1A" }}>Manual</button>
+              <button onClick={initDefaults} className="px-6 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: "#2B2024", color: "#FBF8F6" }}>Cargar predeterminados</button>
+              <button onClick={() => setEditForm({ sku: "", name: "", unit: "", stock: "", cost_per_unit: "", supplier: "", supplier_phone: "", min_stock: "", per_client_rate: "", category: "Limpieza" })} className="px-6 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#2B2024", color: "#2B2024" }}>Manual</button>
             </div>
           )}
         </div>
@@ -295,48 +295,48 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
       {view === "list" && inventory.length > 0 && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-            <Stat label="Total" value={inventory.length} icon={<Box size={14} />} color="#3E2A1A" />
-            <Stat label="Sin Stock" value={outOfStockCount} icon={<AlertTriangle size={14} />} color="#A04040" />
-            <Stat label="Stock Bajo" value={lowStockCount} icon={<TrendingDown size={14} />} color="#C8956D" />
-            <Stat label="Valor Total" value={fmtMoney(totalValue)} icon={<DollarSign size={14} />} color="#6B8E5A" />
+            <Stat label="Total" value={inventory.length} icon={<Box size={14} />} color="#2B2024" />
+            <Stat label="Sin Stock" value={outOfStockCount} icon={<AlertTriangle size={14} />} color="#C53A2D" />
+            <Stat label="Stock Bajo" value={lowStockCount} icon={<TrendingDown size={14} />} color="#C2566E" />
+            <Stat label="Valor Total" value={fmtMoney(totalValue)} icon={<DollarSign size={14} />} color="#3A8769" />
           </div>
 
-          <div className="border p-3 mb-4 flex items-center gap-2" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
-            <Search size={14} style={{ color: "#8B6F47" }} />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar…" className="flex-1 px-2 py-1 text-sm bg-transparent outline-none" style={{ color: "#3E2A1A" }} />
+          <div className="border p-3 mb-4 flex items-center gap-2" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
+            <Search size={14} style={{ color: "#8A5A6E" }} />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar…" className="flex-1 px-2 py-1 text-sm bg-transparent outline-none" style={{ color: "#2B2024" }} />
           </div>
 
-          <div className="border" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
-            <div className="hidden md:grid gap-3 px-4 py-3 text-xs tracking-[0.2em] uppercase border-b" style={{ borderColor: "#D4C4A8", color: "#8B6F47", gridTemplateColumns: "60px 1fr 90px 100px 100px 110px 100px 130px" }}>
+          <div className="border" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
+            <div className="hidden md:grid gap-3 px-4 py-3 text-xs tracking-[0.2em] uppercase border-b" style={{ borderColor: "#E8E0DB", color: "#8A5A6E", gridTemplateColumns: "60px 1fr 90px 100px 100px 110px 100px 130px" }}>
               <div>SKU</div><div>Producto</div><div>Unidad</div><div className="text-right">Stock</div><div className="text-right">Costo/U</div><div className="text-right">Valor</div><div>Estado</div><div className="text-right">Acciones</div>
             </div>
             {filtered.map((item, idx) => {
               const status = getStatus(item);
               return (
                 <div key={item.id}>
-                  <div className="hidden md:grid gap-3 px-4 py-3 border-b items-center" style={{ borderColor: "#EAE0CC", backgroundColor: idx % 2 === 0 ? "transparent" : "#F5EFE6", gridTemplateColumns: "60px 1fr 90px 100px 100px 110px 100px 130px" }}>
-                    <div className="text-xs" style={{ color: "#8B6F47" }}>{item.sku}</div>
-                    <div className="text-sm" style={{ color: "#3E2A1A" }}>{item.name}</div>
-                    <div className="text-xs" style={{ color: "#6B5B47" }}>{item.unit}</div>
+                  <div className="hidden md:grid gap-3 px-4 py-3 border-b items-center" style={{ borderColor: "#EFE7E2", backgroundColor: idx % 2 === 0 ? "transparent" : "#FBF8F6", gridTemplateColumns: "60px 1fr 90px 100px 100px 110px 100px 130px" }}>
+                    <div className="text-xs" style={{ color: "#8A5A6E" }}>{item.sku}</div>
+                    <div className="text-sm" style={{ color: "#2B2024" }}>{item.name}</div>
+                    <div className="text-xs" style={{ color: "#786C66" }}>{item.unit}</div>
                     <div className="text-right text-sm font-medium" style={{ color: status.color }}>{item.stock}</div>
-                    <div className="text-right text-xs" style={{ color: "#6B5B47" }}>{fmtMoney(item.cost_per_unit)}</div>
-                    <div className="text-right text-sm" style={{ color: "#3E2A1A" }}>{fmtMoney(Number(item.stock) * Number(item.cost_per_unit || 0))}</div>
+                    <div className="text-right text-xs" style={{ color: "#786C66" }}>{fmtMoney(item.cost_per_unit)}</div>
+                    <div className="text-right text-sm" style={{ color: "#2B2024" }}>{fmtMoney(Number(item.stock) * Number(item.cost_per_unit || 0))}</div>
                     <div className="text-xs" style={{ color: status.color }}>{status.icon} {status.label}</div>
                     <div className="flex justify-end gap-1">
                       {isAdmin && (
                         <>
-                          <button onClick={() => setMovementForm({ itemId: item.id, type: "in", qty: "", notes: "" })} className="p-1.5"><ArrowDownCircle size={16} style={{ color: "#6B8E5A" }} /></button>
-                          <button onClick={() => setMovementForm({ itemId: item.id, type: "out", qty: "", notes: "" })} className="p-1.5"><ArrowUpCircle size={16} style={{ color: "#A04040" }} /></button>
-                          <button onClick={() => setEditForm(item)} className="p-1.5"><Edit2 size={14} style={{ color: "#3E2A1A" }} /></button>
+                          <button onClick={() => setMovementForm({ itemId: item.id, type: "in", qty: "", notes: "" })} className="p-1.5"><ArrowDownCircle size={16} style={{ color: "#3A8769" }} /></button>
+                          <button onClick={() => setMovementForm({ itemId: item.id, type: "out", qty: "", notes: "" })} className="p-1.5"><ArrowUpCircle size={16} style={{ color: "#C53A2D" }} /></button>
+                          <button onClick={() => setEditForm(item)} className="p-1.5"><Edit2 size={14} style={{ color: "#2B2024" }} /></button>
                         </>
                       )}
                     </div>
                   </div>
-                  <div className="md:hidden border-b p-3" style={{ borderColor: "#EAE0CC", backgroundColor: idx % 2 === 0 ? "transparent" : "#F5EFE6" }}>
+                  <div className="md:hidden border-b p-3" style={{ borderColor: "#EFE7E2", backgroundColor: idx % 2 === 0 ? "transparent" : "#FBF8F6" }}>
                     <div className="flex items-baseline justify-between mb-2">
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs" style={{ color: "#8B6F47" }}>{item.sku} · {item.unit}</div>
-                        <div className="text-sm font-medium" style={{ color: "#3E2A1A" }}>{item.name}</div>
+                        <div className="text-xs" style={{ color: "#8A5A6E" }}>{item.sku} · {item.unit}</div>
+                        <div className="text-sm font-medium" style={{ color: "#2B2024" }}>{item.name}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-xs" style={{ color: status.color }}>{status.icon} {status.label}</div>
@@ -345,9 +345,9 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
                     </div>
                     {isAdmin && (
                       <div className="flex justify-end gap-1">
-                        <button onClick={() => setMovementForm({ itemId: item.id, type: "in", qty: "", notes: "" })} className="p-1.5"><ArrowDownCircle size={18} style={{ color: "#6B8E5A" }} /></button>
-                        <button onClick={() => setMovementForm({ itemId: item.id, type: "out", qty: "", notes: "" })} className="p-1.5"><ArrowUpCircle size={18} style={{ color: "#A04040" }} /></button>
-                        <button onClick={() => setEditForm(item)} className="p-1.5"><Edit2 size={14} style={{ color: "#3E2A1A" }} /></button>
+                        <button onClick={() => setMovementForm({ itemId: item.id, type: "in", qty: "", notes: "" })} className="p-1.5"><ArrowDownCircle size={18} style={{ color: "#3A8769" }} /></button>
+                        <button onClick={() => setMovementForm({ itemId: item.id, type: "out", qty: "", notes: "" })} className="p-1.5"><ArrowUpCircle size={18} style={{ color: "#C53A2D" }} /></button>
+                        <button onClick={() => setEditForm(item)} className="p-1.5"><Edit2 size={14} style={{ color: "#2B2024" }} /></button>
                       </div>
                     )}
                   </div>
@@ -366,55 +366,55 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
 
 function ItemEditForm({ form, setForm, onSave, onCancel }: { form: InvForm; setForm: Dispatch<SetStateAction<InvForm | null>>; onSave: () => void; onCancel: () => void }) {
   return (
-    <div className="border p-5 mb-6" style={{ borderColor: "#8B6F47", backgroundColor: "#FBF7F0" }}>
-      <div className="text-xs tracking-[0.25em] mb-4" style={{ color: "#8B6F47" }}>{form.id ? "EDITAR" : "NUEVO"} INSUMO</div>
+    <div className="border p-5 mb-6" style={{ borderColor: "#8A5A6E", backgroundColor: "#FFFFFF" }}>
+      <div className="text-xs tracking-[0.25em] mb-4" style={{ color: "#8A5A6E" }}>{form.id ? "EDITAR" : "NUEVO"} INSUMO</div>
       <div className="grid md:grid-cols-3 gap-3 mb-3">
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>SKU</label>
-          <input type="text" value={form.sku || ""} onChange={e => setForm((f) => ({ ...f, sku: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>SKU</label>
+          <input type="text" value={form.sku || ""} onChange={e => setForm((f) => ({ ...f, sku: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div className="md:col-span-2">
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Nombre *</label>
-          <input type="text" value={form.name || ""} onChange={e => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Nombre *</label>
+          <input type="text" value={form.name || ""} onChange={e => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Unidad</label>
-          <input type="text" value={form.unit || ""} onChange={e => setForm((f) => ({ ...f, unit: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Unidad</label>
+          <input type="text" value={form.unit || ""} onChange={e => setForm((f) => ({ ...f, unit: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Categoría</label>
-          <select value={form.category || "Limpieza"} onChange={e => setForm((f) => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }}>
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Categoría</label>
+          <select value={form.category || "Limpieza"} onChange={e => setForm((f) => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }}>
             <option>Camilla</option><option>Limpieza</option><option>Médicos</option><option>Láser</option><option>Baño</option><option>Otros</option>
           </select>
         </div>
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Stock</label>
-          <input type="number" step="0.01" value={form.stock || ""} onChange={e => setForm((f) => ({ ...f, stock: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Stock</label>
+          <input type="number" step="0.01" value={form.stock || ""} onChange={e => setForm((f) => ({ ...f, stock: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Costo/U (RD$)</label>
-          <input type="number" step="0.01" value={form.cost_per_unit || ""} onChange={e => setForm((f) => ({ ...f, cost_per_unit: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Costo/U (RD$)</label>
+          <input type="number" step="0.01" value={form.cost_per_unit || ""} onChange={e => setForm((f) => ({ ...f, cost_per_unit: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Stock mínimo</label>
-          <input type="number" step="0.1" value={form.min_stock || ""} onChange={e => setForm((f) => ({ ...f, min_stock: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Stock mínimo</label>
+          <input type="number" step="0.1" value={form.min_stock || ""} onChange={e => setForm((f) => ({ ...f, min_stock: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Tasa por cliente</label>
-          <input type="number" step="0.0001" value={form.per_client_rate || ""} onChange={e => setForm((f) => ({ ...f, per_client_rate: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Tasa por cliente</label>
+          <input type="number" step="0.0001" value={form.per_client_rate || ""} onChange={e => setForm((f) => ({ ...f, per_client_rate: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div className="md:col-span-2">
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Proveedor</label>
-          <input type="text" value={form.supplier || ""} onChange={e => setForm((f) => ({ ...f, supplier: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Proveedor</label>
+          <input type="text" value={form.supplier || ""} onChange={e => setForm((f) => ({ ...f, supplier: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#6B5B47" }}>Tel. proveedor</label>
-          <input type="tel" value={form.supplier_phone || ""} onChange={e => setForm((f) => ({ ...f, supplier_phone: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+          <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: "#786C66" }}>Tel. proveedor</label>
+          <input type="tel" value={form.supplier_phone || ""} onChange={e => setForm((f) => ({ ...f, supplier_phone: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
         </div>
       </div>
       <div className="flex gap-2">
-        <button onClick={onSave} className="px-5 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: "#3E2A1A", color: "#F5EFE6" }}>Guardar</button>
-        <button onClick={onCancel} className="px-5 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#3E2A1A", color: "#3E2A1A" }}>Cancelar</button>
+        <button onClick={onSave} className="px-5 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: "#2B2024", color: "#FBF8F6" }}>Guardar</button>
+        <button onClick={onCancel} className="px-5 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#2B2024", color: "#2B2024" }}>Cancelar</button>
       </div>
     </div>
   );
@@ -423,18 +423,18 @@ function ItemEditForm({ form, setForm, onSave, onCancel }: { form: InvForm; setF
 function MovementForm({ form, setForm, item, onSave, onCancel }: { form: MoveForm; setForm: Dispatch<SetStateAction<MoveForm | null>>; item: InvItem; onSave: () => void; onCancel: () => void }) {
   if (!item) return null;
   const titles: Record<string, string> = { in: "↓ ENTRADA", out: "↑ SALIDA", adjust: "⚖ AJUSTE" };
-  const colors: Record<string, string> = { in: "#6B8E5A", out: "#A04040", adjust: "#8B6F47" };
+  const colors: Record<string, string> = { in: "#3A8769", out: "#C53A2D", adjust: "#8A5A6E" };
   const helps: Record<string, string> = {
     in: `Se SUMARÁ al stock actual (${item.stock} ${item.unit}).`,
     out: `Se RESTARÁ del stock actual (${item.stock} ${item.unit}).`,
     adjust: `REEMPLAZARÁ el stock actual (${item.stock} ${item.unit}).`,
   };
   return (
-    <div className="border p-5 mb-6" style={{ borderColor: colors[form.type], backgroundColor: "#FBF7F0", borderLeftWidth: "4px" }}>
+    <div className="border p-5 mb-6" style={{ borderColor: colors[form.type], backgroundColor: "#FFFFFF", borderLeftWidth: "4px" }}>
       <div className="flex items-center justify-between mb-3">
         <div>
           <div className="text-xs tracking-[0.25em]" style={{ color: colors[form.type] }}>{titles[form.type]}</div>
-          <div className="text-sm mt-1" style={{ color: "#3E2A1A" }}>{item.name}</div>
+          <div className="text-sm mt-1" style={{ color: "#2B2024" }}>{item.name}</div>
         </div>
         <div className="flex gap-1">
           {["in", "out", "adjust"].map(t => (
@@ -444,14 +444,14 @@ function MovementForm({ form, setForm, item, onSave, onCancel }: { form: MoveFor
           ))}
         </div>
       </div>
-      <div className="text-xs italic mb-3" style={{ color: "#6B5B47" }}>{helps[form.type]}</div>
+      <div className="text-xs italic mb-3" style={{ color: "#786C66" }}>{helps[form.type]}</div>
       <div className="grid md:grid-cols-2 gap-3 mb-3">
-        <input type="number" step="0.01" value={form.qty || ""} onChange={e => setForm((f) => ({ ...f, qty: e.target.value }))} placeholder="Cantidad *" className="px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} autoFocus />
-        <input type="text" value={form.notes || ""} onChange={e => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Notas (opcional)" className="px-3 py-2 border text-sm" style={{ borderColor: "#D4C4A8", backgroundColor: "white" }} />
+        <input type="number" step="0.01" value={form.qty || ""} onChange={e => setForm((f) => ({ ...f, qty: e.target.value }))} placeholder="Cantidad *" className="px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} autoFocus />
+        <input type="text" value={form.notes || ""} onChange={e => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Notas (opcional)" className="px-3 py-2 border text-sm" style={{ borderColor: "#E8E0DB", backgroundColor: "white" }} />
       </div>
       <div className="flex gap-2">
         <button onClick={onSave} className="px-5 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: colors[form.type], color: "white" }}>Confirmar</button>
-        <button onClick={onCancel} className="px-5 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#3E2A1A", color: "#3E2A1A" }}>Cancelar</button>
+        <button onClick={onCancel} className="px-5 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: "#2B2024", color: "#2B2024" }}>Cancelar</button>
       </div>
     </div>
   );
@@ -472,68 +472,68 @@ function ForecastView({ forecast, totalValue }: { forecast: Forecast; totalValue
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Stat label="Clientes Próx. 7 Días" value={forecast.totalClients} icon={<Users size={14} />} color="#3E2A1A" />
-        <Stat label="A Reordenar" value={deficits.length} icon={<AlertTriangle size={14} />} color="#A04040" />
-        <Stat label="Costo Reorden" value={fmtMoney(reorderTotal)} icon={<Truck size={14} />} color="#C8956D" />
-        <Stat label="Valor Inventario" value={fmtMoney(totalValue)} icon={<DollarSign size={14} />} color="#6B8E5A" />
+        <Stat label="Clientes Próx. 7 Días" value={forecast.totalClients} icon={<Users size={14} />} color="#2B2024" />
+        <Stat label="A Reordenar" value={deficits.length} icon={<AlertTriangle size={14} />} color="#C53A2D" />
+        <Stat label="Costo Reorden" value={fmtMoney(reorderTotal)} icon={<Truck size={14} />} color="#C2566E" />
+        <Stat label="Valor Inventario" value={fmtMoney(totalValue)} icon={<DollarSign size={14} />} color="#3A8769" />
       </div>
 
-      <div className="border p-4 mb-6" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
-        <div className="text-xs tracking-[0.25em] mb-3" style={{ color: "#8B6F47" }}>CITAS PRÓXIMOS 7 DÍAS</div>
+      <div className="border p-4 mb-6" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
+        <div className="text-xs tracking-[0.25em] mb-3" style={{ color: "#8A5A6E" }}>CITAS PRÓXIMOS 7 DÍAS</div>
         <div className="grid grid-cols-7 gap-2">
           {forecast.next7Days.map((d) => (
             <div key={d.date} className="text-center">
-              <div className="text-xs" style={{ color: "#8B6F47" }}>{d.dayName}</div>
-              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "24px", color: "#3E2A1A", fontWeight: 500 }}>{d.clients}</div>
-              <div className="text-[10px]" style={{ color: "#6B5B47" }}>{d.dayNum}</div>
+              <div className="text-xs" style={{ color: "#8A5A6E" }}>{d.dayName}</div>
+              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "24px", color: "#2B2024", fontWeight: 500 }}>{d.clients}</div>
+              <div className="text-[10px]" style={{ color: "#786C66" }}>{d.dayNum}</div>
             </div>
           ))}
         </div>
       </div>
 
       {deficits.length > 0 && (
-        <div className="border mb-6" style={{ borderColor: "#A04040", backgroundColor: "#FBF7F0", borderLeftWidth: "4px" }}>
-          <div className="p-4 border-b" style={{ borderColor: "#D4C4A8" }}>
-            <div className="text-xs tracking-[0.25em] flex items-center gap-2" style={{ color: "#A04040" }}><AlertTriangle size={12} /> LISTA DE REORDEN</div>
-            <div className="text-sm mt-1" style={{ color: "#3E2A1A" }}>{deficits.length} producto{deficits.length === 1 ? "" : "s"} no alcanza{deficits.length === 1 ? "" : "n"}</div>
+        <div className="border mb-6" style={{ borderColor: "#C53A2D", backgroundColor: "#FFFFFF", borderLeftWidth: "4px" }}>
+          <div className="p-4 border-b" style={{ borderColor: "#E8E0DB" }}>
+            <div className="text-xs tracking-[0.25em] flex items-center gap-2" style={{ color: "#C53A2D" }}><AlertTriangle size={12} /> LISTA DE REORDEN</div>
+            <div className="text-sm mt-1" style={{ color: "#2B2024" }}>{deficits.length} producto{deficits.length === 1 ? "" : "s"} no alcanza{deficits.length === 1 ? "" : "n"}</div>
           </div>
           {deficits.map((item) => {
             const toBuy = Math.ceil(-item.deficit);
             const cost = toBuy * Number(item.cost_per_unit || 0);
             return (
-              <div key={item.id} className="px-4 py-3 border-b flex items-center gap-3 flex-wrap" style={{ borderColor: "#EAE0CC" }}>
+              <div key={item.id} className="px-4 py-3 border-b flex items-center gap-3 flex-wrap" style={{ borderColor: "#EFE7E2" }}>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium" style={{ color: "#3E2A1A" }}>{item.name}</div>
-                  <div className="text-xs" style={{ color: "#8B6F47" }}>Stock: {item.stock} · Necesario: {item.totalNeeded.toFixed(1)} · Comprar: <span style={{ color: "#A04040", fontWeight: 600 }}>{toBuy} {item.unit}</span></div>
+                  <div className="text-sm font-medium" style={{ color: "#2B2024" }}>{item.name}</div>
+                  <div className="text-xs" style={{ color: "#8A5A6E" }}>Stock: {item.stock} · Necesario: {item.totalNeeded.toFixed(1)} · Comprar: <span style={{ color: "#C53A2D", fontWeight: 600 }}>{toBuy} {item.unit}</span></div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-medium" style={{ color: "#3E2A1A" }}>{fmtMoney(cost)}</div>
+                  <div className="text-sm font-medium" style={{ color: "#2B2024" }}>{fmtMoney(cost)}</div>
                 </div>
                 {item.supplier_phone && <button onClick={() => sendReorderWA(item)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: "#25D366", color: "white" }}><MessageCircle size={12} /> Pedir</button>}
               </div>
             );
           })}
-          <div className="p-4 flex items-baseline justify-between" style={{ backgroundColor: "#F5EFE6" }}>
-            <span className="text-xs tracking-[0.2em]" style={{ color: "#8B6F47" }}>TOTAL</span>
-            <span style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#A04040", fontWeight: 500 }}>{fmtMoney(reorderTotal)}</span>
+          <div className="p-4 flex items-baseline justify-between" style={{ backgroundColor: "#FBF8F6" }}>
+            <span className="text-xs tracking-[0.2em]" style={{ color: "#8A5A6E" }}>TOTAL</span>
+            <span style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "28px", color: "#C53A2D", fontWeight: 500 }}>{fmtMoney(reorderTotal)}</span>
           </div>
         </div>
       )}
 
-      <div className="border" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
-        <div className="hidden md:grid gap-3 px-4 py-3 text-xs tracking-[0.2em] uppercase border-b" style={{ borderColor: "#D4C4A8", color: "#8B6F47", gridTemplateColumns: "60px 1fr 90px 100px 100px 110px" }}>
+      <div className="border" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
+        <div className="hidden md:grid gap-3 px-4 py-3 text-xs tracking-[0.2em] uppercase border-b" style={{ borderColor: "#E8E0DB", color: "#8A5A6E", gridTemplateColumns: "60px 1fr 90px 100px 100px 110px" }}>
           <div>SKU</div><div>Producto</div><div>Stock</div><div className="text-right">Necesario</div><div className="text-right">Saldo</div><div className="text-right">Costo</div>
         </div>
         {forecast.byItem.map((item, idx: number) => {
           const isDeficit = item.deficit < 0;
           return (
-            <div key={item.id} className="hidden md:grid gap-3 px-4 py-3 border-b items-center" style={{ borderColor: "#EAE0CC", backgroundColor: idx % 2 === 0 ? "transparent" : "#F5EFE6", gridTemplateColumns: "60px 1fr 90px 100px 100px 110px" }}>
-              <div className="text-xs" style={{ color: "#8B6F47" }}>{item.sku}</div>
-              <div className="text-sm" style={{ color: "#3E2A1A" }}>{item.name}</div>
-              <div className="text-sm" style={{ color: "#3E2A1A" }}>{item.stock}</div>
-              <div className="text-right text-sm" style={{ color: "#6B5B47" }}>{item.totalNeeded.toFixed(1)}</div>
-              <div className="text-right text-sm font-medium" style={{ color: isDeficit ? "#A04040" : "#6B8E5A" }}>{isDeficit ? "" : "+"}{item.deficit.toFixed(1)}</div>
-              <div className="text-right text-xs" style={{ color: "#6B5B47" }}>{fmtMoney(item.costNeeded)}</div>
+            <div key={item.id} className="hidden md:grid gap-3 px-4 py-3 border-b items-center" style={{ borderColor: "#EFE7E2", backgroundColor: idx % 2 === 0 ? "transparent" : "#FBF8F6", gridTemplateColumns: "60px 1fr 90px 100px 100px 110px" }}>
+              <div className="text-xs" style={{ color: "#8A5A6E" }}>{item.sku}</div>
+              <div className="text-sm" style={{ color: "#2B2024" }}>{item.name}</div>
+              <div className="text-sm" style={{ color: "#2B2024" }}>{item.stock}</div>
+              <div className="text-right text-sm" style={{ color: "#786C66" }}>{item.totalNeeded.toFixed(1)}</div>
+              <div className="text-right text-sm font-medium" style={{ color: isDeficit ? "#C53A2D" : "#3A8769" }}>{isDeficit ? "" : "+"}{item.deficit.toFixed(1)}</div>
+              <div className="text-right text-xs" style={{ color: "#786C66" }}>{fmtMoney(item.costNeeded)}</div>
             </div>
           );
         })}
@@ -545,28 +545,28 @@ function ForecastView({ forecast, totalValue }: { forecast: Forecast; totalValue
 function MovementsHistory({ movements }: { movements: Movement[] }) {
   if (movements.length === 0) {
     return (
-      <div className="border p-12 text-center" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
-        <History size={32} className="mx-auto mb-3" style={{ color: "#8B6F47" }} strokeWidth={1.2} />
-        <p className="text-sm italic" style={{ color: "#6B5B47" }}>Sin movimientos.</p>
+      <div className="border p-12 text-center" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
+        <History size={32} className="mx-auto mb-3" style={{ color: "#8A5A6E" }} strokeWidth={1.2} />
+        <p className="text-sm italic" style={{ color: "#786C66" }}>Sin movimientos.</p>
       </div>
     );
   }
   const labels: Record<string, string> = { in: "Entrada", out: "Salida", adjust: "Ajuste" };
-  const colors: Record<string, string> = { in: "#6B8E5A", out: "#A04040", adjust: "#8B6F47" };
+  const colors: Record<string, string> = { in: "#3A8769", out: "#C53A2D", adjust: "#8A5A6E" };
   const symbols: Record<string, string> = { in: "↓", out: "↑", adjust: "⚖" };
   return (
-    <div className="border" style={{ borderColor: "#D4C4A8", backgroundColor: "#FBF7F0" }}>
+    <div className="border" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
       {movements.map((m, idx: number) => (
-        <div key={m.id} className="px-4 py-3 border-b flex items-center gap-3 flex-wrap" style={{ borderColor: "#EAE0CC", backgroundColor: idx % 2 === 0 ? "transparent" : "#F5EFE6" }}>
-          <div className="text-xs" style={{ color: "#8B6F47", minWidth: "90px" }}>{m.date}</div>
+        <div key={m.id} className="px-4 py-3 border-b flex items-center gap-3 flex-wrap" style={{ borderColor: "#EFE7E2", backgroundColor: idx % 2 === 0 ? "transparent" : "#FBF8F6" }}>
+          <div className="text-xs" style={{ color: "#8A5A6E", minWidth: "90px" }}>{m.date}</div>
           <div className="px-2 py-0.5 text-xs tracking-[0.15em] uppercase" style={{ backgroundColor: colors[m.type], color: "white", minWidth: "70px", textAlign: "center" }}>{symbols[m.type]} {labels[m.type]}</div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm" style={{ color: "#3E2A1A" }}>{m.item_name} <span style={{ color: "#8B6F47" }}>· {m.sku}</span></div>
-            {m.notes && <div className="text-xs italic" style={{ color: "#6B5B47" }}>{m.notes}</div>}
+            <div className="text-sm" style={{ color: "#2B2024" }}>{m.item_name} <span style={{ color: "#8A5A6E" }}>· {m.sku}</span></div>
+            {m.notes && <div className="text-xs italic" style={{ color: "#786C66" }}>{m.notes}</div>}
           </div>
           <div className="text-right">
             <div className="text-sm font-medium" style={{ color: colors[m.type] }}>{m.type === "in" ? "+" : m.type === "out" ? "−" : "="}{m.qty}</div>
-            <div className="text-[10px]" style={{ color: "#8B6F47" }}>{m.previous_stock} → {m.new_stock}</div>
+            <div className="text-[10px]" style={{ color: "#8A5A6E" }}>{m.previous_stock} → {m.new_stock}</div>
           </div>
         </div>
       ))}

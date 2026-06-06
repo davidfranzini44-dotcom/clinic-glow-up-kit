@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
 import { markSaveError, markSaveStart, markSaveSuccess, syncLastSavedAt, useGlobalSaveStatus } from "@/lib/saveSync";
-import { useRoster, autoAssign, isWorkingOn, onLunchOn, isOffOn, weekdayOf, type Employee } from "@/lib/roster";
+import { useRoster, autoAssign, isWorkingOn, onLunchOn, isOffOn, weekdayOf, getEndBuffer, type Employee } from "@/lib/roster";
 import type { Session } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -578,7 +578,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       const assignedDays: Record<string, Apt[]> = {};
       const allRows: ReturnType<typeof aptToRow>[] = [];
       Object.keys(parsed).forEach(d => {
-        assignedDays[d] = autoAssign(parsed[d], d, employees, timeOff);
+        assignedDays[d] = autoAssign(parsed[d], d, employees, timeOff, getEndBuffer());
         assignedDays[d].forEach(apt => allRows.push(aptToRow(apt, d)));
       });
       markSaveStart();
@@ -676,7 +676,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     if (!isAdmin || !activeDate) return;
     if (!confirm("¿Volver a asignar todo el día?")) return;
     const reset = (days[activeDate] || []).map(a => ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
-    const assigned = autoAssign(reset, activeDate, employees, timeOff);
+    const assigned = autoAssign(reset, activeDate, employees, timeOff, getEndBuffer());
     setDays(prev => ({ ...prev, [activeDate]: assigned }));
     const rows = assigned.map(a => aptToRow(a, activeDate));
     try {

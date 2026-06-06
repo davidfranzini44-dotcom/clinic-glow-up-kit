@@ -58,7 +58,7 @@ const labelMethod = (m) => ({
 
 const SubNavBtn = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) => (
   <button onClick={onClick} className="px-3 py-1.5 text-xs tracking-[0.15em] uppercase whitespace-nowrap"
-    style={{ backgroundColor: active ? '#3E2A1A' : 'transparent', color: active ? '#F5EFE6' : '#3E2A1A', border: '1px solid #3E2A1A', opacity: active ? 1 : 0.65, fontFamily: 'Lora, serif' }}>
+    style={{ backgroundColor: active ? '#2B2024' : 'transparent', color: active ? '#FBF8F6' : '#2B2024', border: '1px solid #2B2024', opacity: active ? 1 : 0.65, fontFamily: 'Lora, serif' }}>
     {children}
   </button>
 );
@@ -67,8 +67,8 @@ const Section = ({ title, subtitle, action, children }: { title: ReactNode; subt
   <>
     <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
       <div>
-        {subtitle && <div className="text-xs tracking-[0.3em]" style={{ color: '#8B6F47' }}>{subtitle}</div>}
-        <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 'clamp(28px, 5vw, 44px)', color: '#3E2A1A', fontWeight: 400, lineHeight: 1.1 }}>{title}</h2>
+        {subtitle && <div className="text-xs tracking-[0.3em]" style={{ color: '#8A5A6E' }}>{subtitle}</div>}
+        <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 'clamp(28px, 5vw, 44px)', color: '#2B2024', fontWeight: 400, lineHeight: 1.1 }}>{title}</h2>
       </div>
       {action}
     </div>
@@ -77,8 +77,8 @@ const Section = ({ title, subtitle, action, children }: { title: ReactNode; subt
 );
 
 const Stat = ({ label, value, icon, color }: { label: ReactNode; value: ReactNode; icon?: ReactNode; color?: string }) => (
-  <div className="border p-4" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0', borderLeft: `4px solid ${color}` }}>
-    <div className="text-xs tracking-[0.2em] flex items-center gap-1" style={{ color: '#8B6F47' }}>{icon} {label.toUpperCase()}</div>
+  <div className="border p-4" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF', borderLeft: `4px solid ${color}` }}>
+    <div className="text-xs tracking-[0.2em] flex items-center gap-1" style={{ color: '#8A5A6E' }}>{icon} {label.toUpperCase()}</div>
     <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '28px', fontWeight: 400, color, lineHeight: 1.1, marginTop: '4px' }}>{value}</div>
   </div>
 );
@@ -120,7 +120,7 @@ export default function SalesModule({ profile, isAdmin }: { profile: SalesProfil
     })();
   }, []);
 
-  if (loading) return <div className="p-12 text-center text-xs tracking-[0.3em]" style={{ color: '#8B6F47' }}>CARGANDO VENTAS…</div>;
+  if (loading) return <div className="p-12 text-center text-xs tracking-[0.3em]" style={{ color: '#8A5A6E' }}>CARGANDO VENTAS…</div>;
 
   return (
     <>
@@ -164,20 +164,20 @@ function Overview({ invoices, expenses, packages, setView }: { invoices: Invoice
   return (
     <Section title="Resumen de Ventas" subtitle="VENTAS · HOY">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Stat label="Ingreso Hoy" value={fmtMoney(todayIncome)} icon={<TrendingUp size={14} />} color="#6B8E5A" />
-        <Stat label="Facturas Hoy" value={todayInvoices.length} icon={<Receipt size={14} />} color="#3E2A1A" />
-        <Stat label="Gastos Hoy" value={fmtMoney(todayExpensesTotal)} icon={<Wallet size={14} />} color="#A04040" />
-        <Stat label="Paquetes Activos" value={activePackages} icon={<Package size={14} />} color="#8B6F47" />
+        <Stat label="Ingreso Hoy" value={fmtMoney(todayIncome)} icon={<TrendingUp size={14} />} color="#3A8769" />
+        <Stat label="Facturas Hoy" value={todayInvoices.length} icon={<Receipt size={14} />} color="#2B2024" />
+        <Stat label="Gastos Hoy" value={fmtMoney(todayExpensesTotal)} icon={<Wallet size={14} />} color="#C53A2D" />
+        <Stat label="Paquetes Activos" value={activePackages} icon={<Package size={14} />} color="#8A5A6E" />
       </div>
 
-      <div className="border p-5 mb-6" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-        <div className="text-xs tracking-[0.25em] mb-4" style={{ color: '#8B6F47' }}>INGRESOS ÚLTIMOS 7 DÍAS</div>
+      <div className="border p-5 mb-6" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+        <div className="text-xs tracking-[0.25em] mb-4" style={{ color: '#8A5A6E' }}>INGRESOS ÚLTIMOS 7 DÍAS</div>
         <div className="flex items-end gap-2" style={{ minHeight: '160px' }}>
           {last7Days.map(d => (
             <div key={d.date} className="flex-1 flex flex-col items-center">
-              <div className="text-[10px] mb-1" style={{ color: '#3E2A1A' }}>{d.income > 0 ? fmtMoney(d.income).replace('RD$', '').trim() : ''}</div>
-              <div className="w-full" style={{ height: `${(d.income / maxIncome) * 120}px`, backgroundColor: '#8B6F47', minHeight: d.income > 0 ? '4px' : '0' }} />
-              <div className="text-[10px] mt-1 tracking-wide" style={{ color: '#6B5B47' }}>{d.label}</div>
+              <div className="text-[10px] mb-1" style={{ color: '#2B2024' }}>{d.income > 0 ? fmtMoney(d.income).replace('RD$', '').trim() : ''}</div>
+              <div className="w-full" style={{ height: `${(d.income / maxIncome) * 120}px`, backgroundColor: '#8A5A6E', minHeight: d.income > 0 ? '4px' : '0' }} />
+              <div className="text-[10px] mt-1 tracking-wide" style={{ color: '#786C66' }}>{d.label}</div>
             </div>
           ))}
         </div>
@@ -194,10 +194,10 @@ function Overview({ invoices, expenses, packages, setView }: { invoices: Invoice
 
 function ActionCard({ title, desc, icon, onClick }: { title: ReactNode; desc: ReactNode; icon?: ReactNode; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="border p-5 text-left hover:opacity-80 transition-opacity" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-      <div className="flex items-center gap-2 mb-2" style={{ color: '#8B6F47' }}>{icon}</div>
-      <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '22px', color: '#3E2A1A', fontWeight: 500 }}>{title}</div>
-      <div className="text-xs mt-1" style={{ color: '#6B5B47' }}>{desc}</div>
+    <button onClick={onClick} className="border p-5 text-left hover:opacity-80 transition-opacity" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+      <div className="flex items-center gap-2 mb-2" style={{ color: '#8A5A6E' }}>{icon}</div>
+      <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '22px', color: '#2B2024', fontWeight: 500 }}>{title}</div>
+      <div className="text-xs mt-1" style={{ color: '#786C66' }}>{desc}</div>
     </button>
   );
 }
@@ -242,64 +242,64 @@ function CatalogManager({ catalog, setCatalog }: { catalog: CatalogItem[]; setCa
 
   return (
     <Section title="Catálogo" subtitle="PRODUCTOS · SERVICIOS · PAQUETES"
-      action={<button onClick={() => setForm({ type: 'service', name: '', price: '', sessions: 1 })} className="px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: '#3E2A1A', color: '#F5EFE6' }}><Plus size={14} /> Agregar</button>}>
+      action={<button onClick={() => setForm({ type: 'service', name: '', price: '', sessions: 1 })} className="px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: '#2B2024', color: '#FBF8F6' }}><Plus size={14} /> Agregar</button>}>
 
       {form && (
-        <div className="border p-5 mb-6" style={{ borderColor: '#8B6F47', backgroundColor: '#FBF7F0' }}>
-          <div className="text-xs tracking-[0.25em] mb-4" style={{ color: '#8B6F47' }}>{form.id ? 'EDITAR' : 'NUEVO'} ITEM</div>
+        <div className="border p-5 mb-6" style={{ borderColor: '#8A5A6E', backgroundColor: '#FFFFFF' }}>
+          <div className="text-xs tracking-[0.25em] mb-4" style={{ color: '#8A5A6E' }}>{form.id ? 'EDITAR' : 'NUEVO'} ITEM</div>
           <div className="grid md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: '#6B5B47' }}>Tipo</label>
-              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }}>
+              <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: '#786C66' }}>Tipo</label>
+              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }}>
                 <option value="service">Servicio</option>
                 <option value="product">Producto</option>
                 <option value="package">Paquete (con sesiones)</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: '#6B5B47' }}>Nombre</label>
-              <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+              <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: '#786C66' }}>Nombre</label>
+              <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
             </div>
             <div>
-              <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: '#6B5B47' }}>Precio (RD$)</label>
-              <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+              <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: '#786C66' }}>Precio (RD$)</label>
+              <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
             </div>
             {form.type === 'package' && (
               <div>
-                <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: '#6B5B47' }}>Sesiones</label>
-                <input type="number" value={form.sessions} onChange={e => setForm(f => ({ ...f, sessions: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+                <label className="block text-xs tracking-[0.2em] uppercase mb-1" style={{ color: '#786C66' }}>Sesiones</label>
+                <input type="number" value={form.sessions} onChange={e => setForm(f => ({ ...f, sessions: e.target.value }))} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
               </div>
             )}
           </div>
           <div className="flex gap-2 mt-4">
-            <button onClick={save} className="px-5 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: '#3E2A1A', color: '#F5EFE6' }}>Guardar</button>
-            <button onClick={() => setForm(null)} className="px-5 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: '#3E2A1A', color: '#3E2A1A' }}>Cancelar</button>
+            <button onClick={save} className="px-5 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: '#2B2024', color: '#FBF8F6' }}>Guardar</button>
+            <button onClick={() => setForm(null)} className="px-5 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: '#2B2024', color: '#2B2024' }}>Cancelar</button>
           </div>
         </div>
       )}
 
       {catalog.length === 0 && !form && (
-        <div className="border p-12 text-center" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-          <Tag size={36} className="mx-auto mb-3" style={{ color: '#8B6F47' }} strokeWidth={1.2} />
-          <p className="text-sm" style={{ color: '#6B5B47' }}>Aún no hay items en el catálogo.</p>
+        <div className="border p-12 text-center" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+          <Tag size={36} className="mx-auto mb-3" style={{ color: '#8A5A6E' }} strokeWidth={1.2} />
+          <p className="text-sm" style={{ color: '#786C66' }}>Aún no hay items en el catálogo.</p>
         </div>
       )}
 
       {['service', 'product', 'package'].map(type => grouped[type].length > 0 && (
         <div key={type} className="mb-6">
-          <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8B6F47' }}>
+          <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8A5A6E' }}>
             {type === 'service' && 'SERVICIOS'}{type === 'product' && 'PRODUCTOS'}{type === 'package' && 'PAQUETES'}
           </div>
-          <div className="border" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
+          <div className="border" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
             {grouped[type].map((item, idx) => (
-              <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: '#EAE0CC', backgroundColor: idx % 2 === 0 ? 'transparent' : '#F5EFE6' }}>
+              <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: '#EFE7E2', backgroundColor: idx % 2 === 0 ? 'transparent' : '#FBF8F6' }}>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm" style={{ color: '#3E2A1A' }}>{item.name}</div>
-                  {item.type === 'package' && <div className="text-xs italic" style={{ color: '#8B6F47' }}>{item.sessions} sesión{item.sessions === 1 ? '' : 'es'}</div>}
+                  <div className="text-sm" style={{ color: '#2B2024' }}>{item.name}</div>
+                  {item.type === 'package' && <div className="text-xs italic" style={{ color: '#8A5A6E' }}>{item.sessions} sesión{item.sessions === 1 ? '' : 'es'}</div>}
                 </div>
-                <div className="text-sm font-medium" style={{ color: '#3E2A1A', minWidth: '110px', textAlign: 'right' }}>{fmtMoney(item.price)}</div>
-                <button onClick={() => setForm(item)} className="p-2"><Edit2 size={14} style={{ color: '#3E2A1A' }} /></button>
-                <button onClick={() => remove(item.id)} className="p-2"><Trash2 size={14} style={{ color: '#A04040' }} /></button>
+                <div className="text-sm font-medium" style={{ color: '#2B2024', minWidth: '110px', textAlign: 'right' }}>{fmtMoney(item.price)}</div>
+                <button onClick={() => setForm(item)} className="p-2"><Edit2 size={14} style={{ color: '#2B2024' }} /></button>
+                <button onClick={() => remove(item.id)} className="p-2"><Trash2 size={14} style={{ color: '#C53A2D' }} /></button>
               </div>
             ))}
           </div>
@@ -429,121 +429,121 @@ function NewSale({ catalog, customers, setCustomers, setInvoices, setPackages, s
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-4">
           {/* Customer */}
-          <div className="border p-4" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8B6F47' }}>CLIENTE</div>
+          <div className="border p-4" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8A5A6E' }}>CLIENTE</div>
             <div className="relative mb-3">
               <input type="text" value={customerSearch}
                 onChange={e => { setCustomerSearch(e.target.value); setCustomer(c => ({ ...c, name: e.target.value })); setShowSugg(true); }}
                 onFocus={() => setShowSugg(true)}
                 onBlur={() => setTimeout(() => setShowSugg(false), 200)}
-                placeholder="Buscar o crear cliente…" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+                placeholder="Buscar o crear cliente…" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
               {showSugg && filteredCustomers.length > 0 && customerSearch && (
-                <div className="absolute z-20 w-full mt-1 border max-h-48 overflow-y-auto" style={{ borderColor: '#8B6F47', backgroundColor: 'white' }}>
+                <div className="absolute z-20 w-full mt-1 border max-h-48 overflow-y-auto" style={{ borderColor: '#8A5A6E', backgroundColor: 'white' }}>
                   {filteredCustomers.map(c => (
-                    <button key={c.id} onClick={() => { setCustomer({ name: c.name, phone: c.phone || '', email: c.email || '' }); setCustomerSearch(c.name); setShowSugg(false); }} className="w-full text-left px-3 py-2 text-sm border-b" style={{ borderColor: '#EAE0CC' }}>
-                      <div style={{ color: '#3E2A1A' }}>{c.name}</div>
-                      {c.phone && <div className="text-xs" style={{ color: '#8B6F47' }}>{c.phone}</div>}
+                    <button key={c.id} onClick={() => { setCustomer({ name: c.name, phone: c.phone || '', email: c.email || '' }); setCustomerSearch(c.name); setShowSugg(false); }} className="w-full text-left px-3 py-2 text-sm border-b" style={{ borderColor: '#EFE7E2' }}>
+                      <div style={{ color: '#2B2024' }}>{c.name}</div>
+                      {c.phone && <div className="text-xs" style={{ color: '#8A5A6E' }}>{c.phone}</div>}
                     </button>
                   ))}
                 </div>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <input type="tel" value={customer.phone} onChange={e => setCustomer(c => ({ ...c, phone: e.target.value }))} placeholder="Teléfono" className="px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
-              <input type="email" value={customer.email} onChange={e => setCustomer(c => ({ ...c, email: e.target.value }))} placeholder="Correo (opcional)" className="px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+              <input type="tel" value={customer.phone} onChange={e => setCustomer(c => ({ ...c, phone: e.target.value }))} placeholder="Teléfono" className="px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
+              <input type="email" value={customer.email} onChange={e => setCustomer(c => ({ ...c, email: e.target.value }))} placeholder="Correo (opcional)" className="px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
             </div>
           </div>
 
           {/* Items */}
-          <div className="border p-4" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8B6F47' }}>PRODUCTOS Y SERVICIOS</div>
+          <div className="border p-4" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8A5A6E' }}>PRODUCTOS Y SERVICIOS</div>
             <div className="relative mb-3">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#8B6F47' }} />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#8A5A6E' }} />
               <input type="text" value={itemSearch} onChange={e => setItemSearch(e.target.value)}
                 placeholder={catalog.length === 0 ? 'Agrega items al catálogo primero' : 'Buscar en catálogo…'}
                 disabled={catalog.length === 0}
-                className="w-full pl-9 pr-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+                className="w-full pl-9 pr-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
               {itemSearch && filteredCatalog.length > 0 && (
-                <div className="absolute z-20 w-full mt-1 border max-h-48 overflow-y-auto" style={{ borderColor: '#8B6F47', backgroundColor: 'white' }}>
+                <div className="absolute z-20 w-full mt-1 border max-h-48 overflow-y-auto" style={{ borderColor: '#8A5A6E', backgroundColor: 'white' }}>
                   {filteredCatalog.map(c => (
-                    <button key={c.id} onClick={() => addItem(c)} className="w-full text-left px-3 py-2 text-sm border-b flex justify-between" style={{ borderColor: '#EAE0CC' }}>
+                    <button key={c.id} onClick={() => addItem(c)} className="w-full text-left px-3 py-2 text-sm border-b flex justify-between" style={{ borderColor: '#EFE7E2' }}>
                       <div>
-                        <div style={{ color: '#3E2A1A' }}>{c.name}</div>
-                        {c.type === 'package' && <div className="text-xs" style={{ color: '#8B6F47' }}>📦 {c.sessions} sesiones</div>}
+                        <div style={{ color: '#2B2024' }}>{c.name}</div>
+                        {c.type === 'package' && <div className="text-xs" style={{ color: '#8A5A6E' }}>📦 {c.sessions} sesiones</div>}
                       </div>
-                      <div style={{ color: '#3E2A1A', fontWeight: 500 }}>{fmtMoney(c.price)}</div>
+                      <div style={{ color: '#2B2024', fontWeight: 500 }}>{fmtMoney(c.price)}</div>
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            {items.length === 0 && <div className="text-xs italic text-center py-4" style={{ color: '#8B6F47' }}>Aún no hay items.</div>}
+            {items.length === 0 && <div className="text-xs italic text-center py-4" style={{ color: '#8A5A6E' }}>Aún no hay items.</div>}
             {items.map(item => (
-              <div key={item.tempId} className="flex items-center gap-2 py-2 border-b" style={{ borderColor: '#EAE0CC' }}>
+              <div key={item.tempId} className="flex items-center gap-2 py-2 border-b" style={{ borderColor: '#EFE7E2' }}>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm" style={{ color: '#3E2A1A' }}>{item.name}</div>
-                  {item.isPackage && <div className="text-[10px]" style={{ color: '#8B6F47' }}>📦 {item.packageSessions} ses. × {item.qty}</div>}
+                  <div className="text-sm" style={{ color: '#2B2024' }}>{item.name}</div>
+                  {item.isPackage && <div className="text-[10px]" style={{ color: '#8A5A6E' }}>📦 {item.packageSessions} ses. × {item.qty}</div>}
                 </div>
                 <input type="number" value={item.qty} min="1" onChange={e => {
                   const q = Math.max(1, parseInt(e.target.value) || 1);
                   setItems(prev => prev.map(i => i.tempId === item.tempId ? { ...i, qty: q, total: q * i.unitPrice } : i));
-                }} className="w-14 px-2 py-1 border text-sm text-center" style={{ borderColor: '#D4C4A8' }} />
-                <div className="w-24 text-right text-sm" style={{ color: '#3E2A1A' }}>{fmtMoney(item.total)}</div>
-                <button onClick={() => setItems(prev => prev.filter(i => i.tempId !== item.tempId))} className="p-1"><X size={14} style={{ color: '#A04040' }} /></button>
+                }} className="w-14 px-2 py-1 border text-sm text-center" style={{ borderColor: '#E8E0DB' }} />
+                <div className="w-24 text-right text-sm" style={{ color: '#2B2024' }}>{fmtMoney(item.total)}</div>
+                <button onClick={() => setItems(prev => prev.filter(i => i.tempId !== item.tempId))} className="p-1"><X size={14} style={{ color: '#C53A2D' }} /></button>
               </div>
             ))}
           </div>
 
-          <div className="border p-4" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-            <div className="text-xs tracking-[0.25em] mb-2" style={{ color: '#8B6F47' }}>NOTAS (OPCIONAL)</div>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="2" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+          <div className="border p-4" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+            <div className="text-xs tracking-[0.25em] mb-2" style={{ color: '#8A5A6E' }}>NOTAS (OPCIONAL)</div>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="2" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
           </div>
         </div>
 
         {/* Right column */}
         <div className="space-y-4">
-          <div className="border p-4" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8B6F47' }}>VENDIDO POR</div>
-            <select value={soldBy} onChange={e => setSoldBy(e.target.value)} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }}>
+          <div className="border p-4" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8A5A6E' }}>VENDIDO POR</div>
+            <select value={soldBy} onChange={e => setSoldBy(e.target.value)} className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }}>
               {empNames.map(e => <option key={e} value={e}>{e}</option>)}
             </select>
           </div>
 
-          <div className="border p-4" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8B6F47' }}>TOTAL</div>
-            <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '40px', color: '#3E2A1A', fontWeight: 400, lineHeight: 1 }}>{fmtMoney(subtotal)}</div>
+          <div className="border p-4" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8A5A6E' }}>TOTAL</div>
+            <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '40px', color: '#2B2024', fontWeight: 400, lineHeight: 1 }}>{fmtMoney(subtotal)}</div>
           </div>
 
-          <div className="border p-4" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
+          <div className="border p-4" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
             <div className="flex items-center justify-between mb-3">
-              <div className="text-xs tracking-[0.25em]" style={{ color: '#8B6F47' }}>PAGOS</div>
-              <button onClick={() => setPayments(p => [...p, { method: 'cash', amount: '' }])} className="text-xs flex items-center gap-1" style={{ color: '#3E2A1A' }}><Plus size={12} /> Agregar</button>
+              <div className="text-xs tracking-[0.25em]" style={{ color: '#8A5A6E' }}>PAGOS</div>
+              <button onClick={() => setPayments(p => [...p, { method: 'cash', amount: '' }])} className="text-xs flex items-center gap-1" style={{ color: '#2B2024' }}><Plus size={12} /> Agregar</button>
             </div>
             {payments.map((p, idx) => (
               <div key={idx} className="flex gap-2 mb-2">
-                <select value={p.method} onChange={e => setPayments(prev => prev.map((x, i) => i === idx ? { ...x, method: e.target.value } : x))} className="px-2 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }}>
+                <select value={p.method} onChange={e => setPayments(prev => prev.map((x, i) => i === idx ? { ...x, method: e.target.value } : x))} className="px-2 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }}>
                   <option value="cash">Efectivo</option>
                   <option value="transfer">Transferencia</option>
                   <option value="azul">Azul Link</option>
                   <option value="card_terminal">Terminal Tarjeta</option>
                 </select>
-                <input type="number" value={p.amount} onChange={e => setPayments(prev => prev.map((x, i) => i === idx ? { ...x, amount: e.target.value } : x))} placeholder="0.00" className="flex-1 px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
-                {payments.length > 1 && <button onClick={() => setPayments(prev => prev.filter((_, i) => i !== idx))} className="p-2"><X size={14} style={{ color: '#A04040' }} /></button>}
+                <input type="number" value={p.amount} onChange={e => setPayments(prev => prev.map((x, i) => i === idx ? { ...x, amount: e.target.value } : x))} placeholder="0.00" className="flex-1 px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
+                {payments.length > 1 && <button onClick={() => setPayments(prev => prev.filter((_, i) => i !== idx))} className="p-2"><X size={14} style={{ color: '#C53A2D' }} /></button>}
               </div>
             ))}
-            <div className="text-xs flex justify-between mt-3 pt-2 border-t" style={{ borderColor: '#EAE0CC' }}>
-              <span style={{ color: '#6B5B47' }}>Pagado:</span>
-              <span style={{ color: totalPaid >= subtotal - 0.01 ? '#6B8E5A' : '#A04040', fontWeight: 500 }}>{fmtMoney(totalPaid)}</span>
+            <div className="text-xs flex justify-between mt-3 pt-2 border-t" style={{ borderColor: '#EFE7E2' }}>
+              <span style={{ color: '#786C66' }}>Pagado:</span>
+              <span style={{ color: totalPaid >= subtotal - 0.01 ? '#3A8769' : '#C53A2D', fontWeight: 500 }}>{fmtMoney(totalPaid)}</span>
             </div>
             {Math.abs(remaining) > 0.01 && (
               <div className="text-xs flex justify-between mt-1">
-                <span style={{ color: '#6B5B47' }}>{remaining > 0 ? 'Falta:' : 'Sobra:'}</span>
-                <span style={{ color: '#A04040', fontWeight: 500 }}>{fmtMoney(Math.abs(remaining))}</span>
+                <span style={{ color: '#786C66' }}>{remaining > 0 ? 'Falta:' : 'Sobra:'}</span>
+                <span style={{ color: '#C53A2D', fontWeight: 500 }}>{fmtMoney(Math.abs(remaining))}</span>
               </div>
             )}
           </div>
 
-          <button onClick={completeSale} disabled={items.length === 0} className="w-full px-5 py-4 text-xs tracking-[0.25em] uppercase flex items-center justify-center gap-2" style={{ backgroundColor: items.length === 0 ? '#D4C4A8' : '#3E2A1A', color: '#F5EFE6', cursor: items.length === 0 ? 'not-allowed' : 'pointer' }}>
+          <button onClick={completeSale} disabled={items.length === 0} className="w-full px-5 py-4 text-xs tracking-[0.25em] uppercase flex items-center justify-center gap-2" style={{ backgroundColor: items.length === 0 ? '#E8E0DB' : '#2B2024', color: '#FBF8F6', cursor: items.length === 0 ? 'not-allowed' : 'pointer' }}>
             <Check size={16} /> Completar Venta
           </button>
         </div>
@@ -578,32 +578,32 @@ function InvoicesList({ invoices, packages, profile }: { invoices: Invoice[]; pa
 
   return (
     <Section title="Facturas" subtitle="HISTORIAL DE VENTAS"
-      action={<button onClick={exportInvoices} className="px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: '#3E2A1A', color: '#F5EFE6' }}><Download size={14} /> Exportar</button>}>
+      action={<button onClick={exportInvoices} className="px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: '#2B2024', color: '#FBF8F6' }}><Download size={14} /> Exportar</button>}>
 
-      <div className="border p-4 mb-6" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
+      <div className="border p-4 mb-6" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
         <div className="grid md:grid-cols-3 gap-3">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#8B6F47' }} />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." className="w-full pl-9 pr-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#8A5A6E' }} />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." className="w-full pl-9 pr-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
           </div>
-          <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} className="px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
-          <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className="px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+          <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} className="px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
+          <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className="px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
         </div>
       </div>
 
-      {filtered.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0', color: '#6B5B47' }}>No hay facturas.</div>}
+      {filtered.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF', color: '#786C66' }}>No hay facturas.</div>}
 
-      <div className="border" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
+      <div className="border" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
         {filtered.map((inv, idx) => (
-          <div key={inv.id} className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: '#EAE0CC', backgroundColor: idx % 2 === 0 ? 'transparent' : '#F5EFE6' }}>
-            <div className="text-xs" style={{ color: '#8B6F47', minWidth: '50px' }}>#{inv.invoice_number}</div>
-            <div className="text-xs" style={{ color: '#6B5B47', minWidth: '90px' }}>{inv.date}</div>
+          <div key={inv.id} className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: '#EFE7E2', backgroundColor: idx % 2 === 0 ? 'transparent' : '#FBF8F6' }}>
+            <div className="text-xs" style={{ color: '#8A5A6E', minWidth: '50px' }}>#{inv.invoice_number}</div>
+            <div className="text-xs" style={{ color: '#786C66', minWidth: '90px' }}>{inv.date}</div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm truncate" style={{ color: '#3E2A1A' }}>{inv.customer_name}</div>
-              <div className="text-xs" style={{ color: '#8B6F47' }}>{inv.sold_by} · {(inv.invoice_items || []).length} item{(inv.invoice_items || []).length === 1 ? '' : 's'}</div>
+              <div className="text-sm truncate" style={{ color: '#2B2024' }}>{inv.customer_name}</div>
+              <div className="text-xs" style={{ color: '#8A5A6E' }}>{inv.sold_by} · {(inv.invoice_items || []).length} item{(inv.invoice_items || []).length === 1 ? '' : 's'}</div>
             </div>
-            <div className="text-sm font-medium" style={{ color: '#3E2A1A' }}>{fmtMoney(inv.total)}</div>
-            <button onClick={() => setSelected(inv)} className="px-3 py-1 text-xs tracking-[0.15em] uppercase border" style={{ borderColor: '#3E2A1A', color: '#3E2A1A' }}>Ver</button>
+            <div className="text-sm font-medium" style={{ color: '#2B2024' }}>{fmtMoney(inv.total)}</div>
+            <button onClick={() => setSelected(inv)} className="px-3 py-1 text-xs tracking-[0.15em] uppercase border" style={{ borderColor: '#2B2024', color: '#2B2024' }}>Ver</button>
           </div>
         ))}
       </div>
@@ -628,56 +628,56 @@ function InvoiceDetail({ invoice, packages, onClose }: { invoice: Invoice; packa
 
   return (
     <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(62, 42, 26, 0.6)' }}>
-      <div onClick={e => e.stopPropagation()} className="max-w-2xl w-full max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#FBF7F0', border: '1px solid #D4C4A8' }}>
+      <div onClick={e => e.stopPropagation()} className="max-w-2xl w-full max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E0DB' }}>
         <div className="p-6">
           <div className="flex items-start justify-between mb-6">
             <div>
-              <div className="text-xs tracking-[0.3em]" style={{ color: '#8B6F47' }}>FACTURA</div>
-              <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '36px', color: '#3E2A1A', fontWeight: 400, lineHeight: 1 }}>#{String(invoice.invoice_number).padStart(5, '0')}</div>
-              <div className="text-xs mt-1" style={{ color: '#6B5B47' }}>{invoice.date} · Vendida por {invoice.sold_by}</div>
+              <div className="text-xs tracking-[0.3em]" style={{ color: '#8A5A6E' }}>FACTURA</div>
+              <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '36px', color: '#2B2024', fontWeight: 400, lineHeight: 1 }}>#{String(invoice.invoice_number).padStart(5, '0')}</div>
+              <div className="text-xs mt-1" style={{ color: '#786C66' }}>{invoice.date} · Vendida por {invoice.sold_by}</div>
             </div>
-            <button onClick={onClose} className="p-1"><X size={20} style={{ color: '#3E2A1A' }} /></button>
+            <button onClick={onClose} className="p-1"><X size={20} style={{ color: '#2B2024' }} /></button>
           </div>
 
-          <div className="mb-6 pb-4 border-b" style={{ borderColor: '#D4C4A8' }}>
-            <div className="text-[10px] tracking-[0.2em] uppercase" style={{ color: '#8B6F47' }}>Cliente</div>
-            <div className="text-sm font-medium" style={{ color: '#3E2A1A' }}>{invoice.customer_name}</div>
-            {invoice.customer_phone && <div className="text-xs" style={{ color: '#6B5B47' }}>{invoice.customer_phone}</div>}
-            {invoice.customer_email && <div className="text-xs" style={{ color: '#6B5B47' }}>{invoice.customer_email}</div>}
+          <div className="mb-6 pb-4 border-b" style={{ borderColor: '#E8E0DB' }}>
+            <div className="text-[10px] tracking-[0.2em] uppercase" style={{ color: '#8A5A6E' }}>Cliente</div>
+            <div className="text-sm font-medium" style={{ color: '#2B2024' }}>{invoice.customer_name}</div>
+            {invoice.customer_phone && <div className="text-xs" style={{ color: '#786C66' }}>{invoice.customer_phone}</div>}
+            {invoice.customer_email && <div className="text-xs" style={{ color: '#786C66' }}>{invoice.customer_email}</div>}
           </div>
 
           <div className="mb-6">
-            <div className="text-[10px] tracking-[0.2em] uppercase mb-2" style={{ color: '#8B6F47' }}>Detalle</div>
+            <div className="text-[10px] tracking-[0.2em] uppercase mb-2" style={{ color: '#8A5A6E' }}>Detalle</div>
             {items.map(item => (
-              <div key={item.id} className="flex items-baseline justify-between py-2 border-b" style={{ borderColor: '#EAE0CC' }}>
+              <div key={item.id} className="flex items-baseline justify-between py-2 border-b" style={{ borderColor: '#EFE7E2' }}>
                 <div className="flex-1">
-                  <div className="text-sm" style={{ color: '#3E2A1A' }}>{item.name} {item.quantity > 1 && `× ${item.quantity}`}</div>
-                  {item.is_package && <div className="text-[10px]" style={{ color: '#8B6F47' }}>📦 Paquete con {item.package_sessions} sesiones</div>}
+                  <div className="text-sm" style={{ color: '#2B2024' }}>{item.name} {item.quantity > 1 && `× ${item.quantity}`}</div>
+                  {item.is_package && <div className="text-[10px]" style={{ color: '#8A5A6E' }}>📦 Paquete con {item.package_sessions} sesiones</div>}
                 </div>
-                <div className="text-sm" style={{ color: '#3E2A1A' }}>{fmtMoney(item.total)}</div>
+                <div className="text-sm" style={{ color: '#2B2024' }}>{fmtMoney(item.total)}</div>
               </div>
             ))}
-            <div className="flex items-baseline justify-between py-3 mt-2 border-t-2" style={{ borderColor: '#3E2A1A' }}>
-              <div className="text-sm tracking-[0.2em] uppercase" style={{ color: '#3E2A1A' }}>Total</div>
-              <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '32px', color: '#3E2A1A', fontWeight: 500, lineHeight: 1 }}>{fmtMoney(invoice.total)}</div>
+            <div className="flex items-baseline justify-between py-3 mt-2 border-t-2" style={{ borderColor: '#2B2024' }}>
+              <div className="text-sm tracking-[0.2em] uppercase" style={{ color: '#2B2024' }}>Total</div>
+              <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '32px', color: '#2B2024', fontWeight: 500, lineHeight: 1 }}>{fmtMoney(invoice.total)}</div>
             </div>
           </div>
 
           <div className="mb-6">
-            <div className="text-[10px] tracking-[0.2em] uppercase mb-2" style={{ color: '#8B6F47' }}>Pagos</div>
+            <div className="text-[10px] tracking-[0.2em] uppercase mb-2" style={{ color: '#8A5A6E' }}>Pagos</div>
             {pays.map((p, idx) => (
               <div key={idx} className="flex justify-between text-sm py-1">
-                <span style={{ color: '#6B5B47' }}>{labelMethod(p.method)}</span>
-                <span style={{ color: '#3E2A1A' }}>{fmtMoney(p.amount)}</span>
+                <span style={{ color: '#786C66' }}>{labelMethod(p.method)}</span>
+                <span style={{ color: '#2B2024' }}>{fmtMoney(p.amount)}</span>
               </div>
             ))}
           </div>
 
           {pkgs.length > 0 && (
-            <div className="mb-6 p-3 border" style={{ borderColor: '#8B6F47', backgroundColor: '#F5EFE6' }}>
-              <div className="text-[10px] tracking-[0.2em] uppercase mb-2" style={{ color: '#8B6F47' }}>📦 Paquetes Activos</div>
+            <div className="mb-6 p-3 border" style={{ borderColor: '#8A5A6E', backgroundColor: '#FBF8F6' }}>
+              <div className="text-[10px] tracking-[0.2em] uppercase mb-2" style={{ color: '#8A5A6E' }}>📦 Paquetes Activos</div>
               {pkgs.map(p => (
-                <div key={p.id} className="text-xs flex justify-between" style={{ color: '#3E2A1A' }}>
+                <div key={p.id} className="text-xs flex justify-between" style={{ color: '#2B2024' }}>
                   <span>{p.package_name}</span>
                   <span>{p.total_sessions - p.used_sessions} de {p.total_sessions} disponibles</span>
                 </div>
@@ -685,13 +685,13 @@ function InvoiceDetail({ invoice, packages, onClose }: { invoice: Invoice; packa
             </div>
           )}
 
-          {invoice.notes && <div className="mb-6 text-xs italic" style={{ color: '#6B5B47' }}>"{invoice.notes}"</div>}
+          {invoice.notes && <div className="mb-6 text-xs italic" style={{ color: '#786C66' }}>"{invoice.notes}"</div>}
 
           <div className="flex gap-2 flex-wrap">
-            <button onClick={downloadPdf} className="flex-1 px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center justify-center gap-2" style={{ backgroundColor: '#3E2A1A', color: '#F5EFE6' }}>
+            <button onClick={downloadPdf} className="flex-1 px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center justify-center gap-2" style={{ backgroundColor: '#2B2024', color: '#FBF8F6' }}>
               <FileText size={14} /> Ver PDF
             </button>
-            <button onClick={sendWhatsApp} className="flex-1 px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center justify-center gap-2 border" style={{ borderColor: '#3E2A1A', color: '#3E2A1A' }}>
+            <button onClick={sendWhatsApp} className="flex-1 px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center justify-center gap-2 border" style={{ borderColor: '#2B2024', color: '#2B2024' }}>
               <MessageCircle size={14} /> WhatsApp
             </button>
           </div>
@@ -709,22 +709,22 @@ function showInvoicePdf(invoice) {
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Lora:wght@400;500;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Lora',serif;color:#3E2A1A;padding:40px;max-width:700px;margin:0 auto;background:white}
-.header{text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #3E2A1A}
+body{font-family:'Lora',serif;color:#2B2024;padding:40px;max-width:700px;margin:0 auto;background:white}
+.header{text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #2B2024}
 .brand{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300}
-.tag{font-size:10px;letter-spacing:0.4em;color:#8B6F47;margin-top:4px}
+.tag{font-size:10px;letter-spacing:0.4em;color:#8A5A6E;margin-top:4px}
 .meta{display:flex;justify-content:space-between;margin:30px 0 20px}
 .meta-block{font-size:12px}
-.meta-label{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#8B6F47;margin-bottom:4px}
+.meta-label{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#8A5A6E;margin-bottom:4px}
 .invoice-num{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:500}
 table{width:100%;border-collapse:collapse;margin:20px 0}
-th{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#8B6F47;padding:8px 4px;border-bottom:1px solid #D4C4A8;text-align:left}
+th{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#8A5A6E;padding:8px 4px;border-bottom:1px solid #E8E0DB;text-align:left}
 th:last-child,td:last-child{text-align:right}
-td{padding:12px 4px;border-bottom:1px solid #EAE0CC;font-size:13px}
-.total-row td{border-top:2px solid #3E2A1A;border-bottom:none;font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:500;padding-top:16px}
-.payments{margin-top:30px;padding-top:20px;border-top:1px solid #D4C4A8}
+td{padding:12px 4px;border-bottom:1px solid #EFE7E2;font-size:13px}
+.total-row td{border-top:2px solid #2B2024;border-bottom:none;font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:500;padding-top:16px}
+.payments{margin-top:30px;padding-top:20px;border-top:1px solid #E8E0DB}
 .payment-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 0}
-.footer{text-align:center;margin-top:50px;padding-top:20px;border-top:1px solid #D4C4A8;font-size:10px;color:#8B6F47;letter-spacing:0.2em}
+.footer{text-align:center;margin-top:50px;padding-top:20px;border-top:1px solid #E8E0DB;font-size:10px;color:#8A5A6E;letter-spacing:0.2em}
 @media print{body{padding:20px}}
 </style></head><body>
 <div class="header"><div class="brand">Charm</div><div class="tag">CLÍNICA ESTÉTICA</div></div>
@@ -732,25 +732,25 @@ td{padding:12px 4px;border-bottom:1px solid #EAE0CC;font-size:13px}
   <div class="meta-block">
     <div class="meta-label">Factura para</div>
     <div style="font-weight:500;font-size:14px">${invoice.customer_name}</div>
-    ${invoice.customer_phone ? `<div style="font-size:11px;color:#6B5B47">${invoice.customer_phone}</div>` : ''}
-    ${invoice.customer_email ? `<div style="font-size:11px;color:#6B5B47">${invoice.customer_email}</div>` : ''}
+    ${invoice.customer_phone ? `<div style="font-size:11px;color:#786C66">${invoice.customer_phone}</div>` : ''}
+    ${invoice.customer_email ? `<div style="font-size:11px;color:#786C66">${invoice.customer_email}</div>` : ''}
   </div>
   <div class="meta-block" style="text-align:right">
     <div class="meta-label">Factura N°</div>
     <div class="invoice-num">#${String(invoice.invoice_number).padStart(5, '0')}</div>
-    <div style="font-size:11px;color:#6B5B47;margin-top:4px">${invoice.date}</div>
-    <div style="font-size:11px;color:#6B5B47">Vendida por ${invoice.sold_by}</div>
+    <div style="font-size:11px;color:#786C66;margin-top:4px">${invoice.date}</div>
+    <div style="font-size:11px;color:#786C66">Vendida por ${invoice.sold_by}</div>
   </div>
 </div>
 <table><thead><tr><th>Descripción</th><th>Cant.</th><th>Precio</th><th>Total</th></tr></thead><tbody>
-${items.map(i => `<tr><td>${i.name}${i.is_package ? `<div style="font-size:10px;color:#8B6F47;font-style:italic">📦 Paquete con ${i.package_sessions} sesiones</div>` : ''}</td><td>${i.quantity}</td><td>${fmtMoney(i.unit_price)}</td><td>${fmtMoney(i.total)}</td></tr>`).join('')}
+${items.map(i => `<tr><td>${i.name}${i.is_package ? `<div style="font-size:10px;color:#8A5A6E;font-style:italic">📦 Paquete con ${i.package_sessions} sesiones</div>` : ''}</td><td>${i.quantity}</td><td>${fmtMoney(i.unit_price)}</td><td>${fmtMoney(i.total)}</td></tr>`).join('')}
 <tr class="total-row"><td colspan="3">TOTAL</td><td>${fmtMoney(invoice.total)}</td></tr>
 </tbody></table>
 <div class="payments">
   <div class="meta-label" style="margin-bottom:8px">Métodos de pago</div>
   ${payments.map(p => `<div class="payment-row"><span>${labelMethod(p.method)}</span><span>${fmtMoney(p.amount)}</span></div>`).join('')}
 </div>
-${invoice.notes ? `<div style="margin-top:30px;font-size:11px;font-style:italic;color:#6B5B47">Notas: ${invoice.notes}</div>` : ''}
+${invoice.notes ? `<div style="margin-top:30px;font-size:11px;font-style:italic;color:#786C66">Notas: ${invoice.notes}</div>` : ''}
 <div class="footer">CHARM CLÍNICA ESTÉTICA · GRACIAS POR SU PREFERENCIA</div>
 <script>setTimeout(()=>window.print(),500)</script>
 </body></html>`;
@@ -822,61 +822,61 @@ function ExpensesManager({ expenses, setExpenses }: { expenses: Expense[]; setEx
     <Section title="Gastos" subtitle="REGISTRO DE GASTOS"
       action={
         <div className="flex gap-2">
-          <button onClick={exportExpenses} className="px-4 py-2 text-xs tracking-[0.2em] uppercase border flex items-center gap-2" style={{ borderColor: '#3E2A1A', color: '#3E2A1A' }}><Download size={14} /> Exportar</button>
-          <button onClick={() => setForm({ date: todayISO(), category: 'Suministros', description: '', amount: '', receipt_url: '' })} className="px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: '#3E2A1A', color: '#F5EFE6' }}><Plus size={14} /> Nuevo</button>
+          <button onClick={exportExpenses} className="px-4 py-2 text-xs tracking-[0.2em] uppercase border flex items-center gap-2" style={{ borderColor: '#2B2024', color: '#2B2024' }}><Download size={14} /> Exportar</button>
+          <button onClick={() => setForm({ date: todayISO(), category: 'Suministros', description: '', amount: '', receipt_url: '' })} className="px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: '#2B2024', color: '#FBF8F6' }}><Plus size={14} /> Nuevo</button>
         </div>
       }>
 
-      <div className="border p-4 mb-6 flex items-center justify-between flex-wrap gap-3" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
+      <div className="border p-4 mb-6 flex items-center justify-between flex-wrap gap-3" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
         <div className="flex items-center gap-2">
-          <span className="text-xs tracking-[0.2em]" style={{ color: '#8B6F47' }}>FECHA:</span>
-          <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className="px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
-          <button onClick={() => setFilterDate('')} className="text-xs underline" style={{ color: '#8B6F47' }}>Ver todos</button>
+          <span className="text-xs tracking-[0.2em]" style={{ color: '#8A5A6E' }}>FECHA:</span>
+          <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className="px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
+          <button onClick={() => setFilterDate('')} className="text-xs underline" style={{ color: '#8A5A6E' }}>Ver todos</button>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-xs tracking-[0.2em]" style={{ color: '#8B6F47' }}>TOTAL:</span>
-          <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '28px', color: '#A04040', fontWeight: 500 }}>{fmtMoney(total)}</span>
+          <span className="text-xs tracking-[0.2em]" style={{ color: '#8A5A6E' }}>TOTAL:</span>
+          <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '28px', color: '#C53A2D', fontWeight: 500 }}>{fmtMoney(total)}</span>
         </div>
       </div>
 
       {form && (
-        <div className="border p-5 mb-6" style={{ borderColor: '#8B6F47', backgroundColor: '#FBF7F0' }}>
-          <div className="text-xs tracking-[0.25em] mb-4" style={{ color: '#8B6F47' }}>{form.id ? 'EDITAR' : 'NUEVO'} GASTO</div>
+        <div className="border p-5 mb-6" style={{ borderColor: '#8A5A6E', backgroundColor: '#FFFFFF' }}>
+          <div className="text-xs tracking-[0.25em] mb-4" style={{ color: '#8A5A6E' }}>{form.id ? 'EDITAR' : 'NUEVO'} GASTO</div>
           <div className="grid md:grid-cols-2 gap-3 mb-3">
-            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
-            <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }}>
+            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
+            <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }}>
               {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <input type="text" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripción" className="md:col-span-2 px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
-            <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="Monto" className="px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+            <input type="text" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripción" className="md:col-span-2 px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
+            <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="Monto" className="px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
             <div style={{ position: 'relative', display: 'inline-block' }}>
               <input type="file" accept="image/*" onChange={handlePhoto} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', fontSize: '100px' }} />
-              <span className="block w-full px-3 py-2 border text-sm flex items-center gap-2 pointer-events-none" style={{ borderColor: '#D4C4A8', backgroundColor: 'white', color: '#6B5B47' }}>
+              <span className="block w-full px-3 py-2 border text-sm flex items-center gap-2 pointer-events-none" style={{ borderColor: '#E8E0DB', backgroundColor: 'white', color: '#786C66' }}>
                 <Camera size={14} /> {form.receipt_url ? '✓ Foto cargada' : 'Foto recibo'}
               </span>
             </div>
           </div>
-          {form.receipt_url && <img src={form.receipt_url} alt="Recibo" className="max-h-40 mb-3 border" style={{ borderColor: '#D4C4A8' }} />}
+          {form.receipt_url && <img src={form.receipt_url} alt="Recibo" className="max-h-40 mb-3 border" style={{ borderColor: '#E8E0DB' }} />}
           <div className="flex gap-2">
-            <button onClick={save} className="px-5 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: '#3E2A1A', color: '#F5EFE6' }}>Guardar</button>
-            <button onClick={() => setForm(null)} className="px-5 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: '#3E2A1A', color: '#3E2A1A' }}>Cancelar</button>
+            <button onClick={save} className="px-5 py-2 text-xs tracking-[0.2em] uppercase" style={{ backgroundColor: '#2B2024', color: '#FBF8F6' }}>Guardar</button>
+            <button onClick={() => setForm(null)} className="px-5 py-2 text-xs tracking-[0.2em] uppercase border" style={{ borderColor: '#2B2024', color: '#2B2024' }}>Cancelar</button>
           </div>
         </div>
       )}
 
-      {filtered.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0', color: '#6B5B47' }}>No hay gastos.</div>}
+      {filtered.length === 0 && <div className="border p-12 text-center text-sm italic" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF', color: '#786C66' }}>No hay gastos.</div>}
 
-      <div className="border" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
+      <div className="border" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
         {filtered.map((e, idx) => (
-          <div key={e.id} className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: '#EAE0CC', backgroundColor: idx % 2 === 0 ? 'transparent' : '#F5EFE6' }}>
-            <div className="text-xs px-2 py-1" style={{ backgroundColor: '#E8D9BF', color: '#6B4423', minWidth: '90px', textAlign: 'center' }}>{e.category}</div>
+          <div key={e.id} className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: '#EFE7E2', backgroundColor: idx % 2 === 0 ? 'transparent' : '#FBF8F6' }}>
+            <div className="text-xs px-2 py-1" style={{ backgroundColor: '#F4E7EB', color: '#8A4A2E', minWidth: '90px', textAlign: 'center' }}>{e.category}</div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm" style={{ color: '#3E2A1A' }}>{e.description}</div>
-              <div className="text-xs" style={{ color: '#8B6F47' }}>{e.date}</div>
+              <div className="text-sm" style={{ color: '#2B2024' }}>{e.description}</div>
+              <div className="text-xs" style={{ color: '#8A5A6E' }}>{e.date}</div>
             </div>
-            {e.receipt_url && <img src={e.receipt_url} alt="Recibo" className="h-10 border" style={{ borderColor: '#D4C4A8' }} />}
-            <div className="text-sm font-medium" style={{ color: '#A04040' }}>{fmtMoney(e.amount)}</div>
-            <button onClick={() => remove(e.id)} className="p-1"><Trash2 size={14} style={{ color: '#A04040' }} /></button>
+            {e.receipt_url && <img src={e.receipt_url} alt="Recibo" className="h-10 border" style={{ borderColor: '#E8E0DB' }} />}
+            <div className="text-sm font-medium" style={{ color: '#C53A2D' }}>{fmtMoney(e.amount)}</div>
+            <button onClick={() => remove(e.id)} className="p-1"><Trash2 size={14} style={{ color: '#C53A2D' }} /></button>
           </div>
         ))}
       </div>
@@ -992,18 +992,18 @@ function CashClosure({ invoices, expenses, closures, setClosures, profile }: { i
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Lora:wght@400;500;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Lora',serif;color:#3E2A1A;padding:30px;max-width:700px;margin:0 auto}
-.header{text-align:center;margin-bottom:25px;padding-bottom:15px;border-bottom:2px solid #3E2A1A}
+body{font-family:'Lora',serif;color:#2B2024;padding:30px;max-width:700px;margin:0 auto}
+.header{text-align:center;margin-bottom:25px;padding-bottom:15px;border-bottom:2px solid #2B2024}
 .brand{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:300}
-.subtitle{font-size:10px;letter-spacing:0.4em;color:#8B6F47;margin-top:4px}
+.subtitle{font-size:10px;letter-spacing:0.4em;color:#8A5A6E;margin-top:4px}
 h2{font-family:'Cormorant Garamond',serif;font-size:22px;margin:25px 0 10px;font-weight:500}
 table{width:100%;border-collapse:collapse;margin-bottom:20px}
-th{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#8B6F47;padding:8px 4px;border-bottom:1px solid #D4C4A8;text-align:right}
+th{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#8A5A6E;padding:8px 4px;border-bottom:1px solid #E8E0DB;text-align:right}
 th:first-child{text-align:left}
-td{padding:6px 4px;border-bottom:1px solid #EAE0CC;font-size:12px;text-align:right}
+td{padding:6px 4px;border-bottom:1px solid #EFE7E2;font-size:12px;text-align:right}
 td:first-child{text-align:left}
-.total-row td{font-weight:600;border-top:2px solid #3E2A1A;padding-top:10px}
-.footer{text-align:center;margin-top:30px;padding-top:15px;border-top:1px solid #D4C4A8;font-size:9px;letter-spacing:0.2em;color:#8B6F47}
+.total-row td{font-weight:600;border-top:2px solid #2B2024;padding-top:10px}
+.footer{text-align:center;margin-top:30px;padding-top:15px;border-top:1px solid #E8E0DB;font-size:9px;letter-spacing:0.2em;color:#8A5A6E}
 @media print{body{padding:15px}}
 </style></head><body>
 <div class="header"><div class="brand">Charm</div><div class="subtitle">CIERRE DE CAJA</div><div style="font-size:13px;margin-top:8px">${dateLabelES(closureDate)}</div></div>
@@ -1036,93 +1036,93 @@ ${notes ? `<div style="margin-top:20px;font-size:11px;font-style:italic">Notas: 
 
   return (
     <Section title="Cierre de Caja" subtitle="CONTEO NOCTURNO">
-      <div className="border p-4 mb-6 flex items-center gap-3 flex-wrap" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-        <span className="text-xs tracking-[0.2em]" style={{ color: '#8B6F47' }}>FECHA:</span>
-        <input type="date" value={closureDate} onChange={e => setClosureDate(e.target.value)} className="px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
-        {existingClosure && <span className="text-xs italic" style={{ color: '#6B8E5A' }}>✓ Ya existe cierre (editable)</span>}
+      <div className="border p-4 mb-6 flex items-center gap-3 flex-wrap" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+        <span className="text-xs tracking-[0.2em]" style={{ color: '#8A5A6E' }}>FECHA:</span>
+        <input type="date" value={closureDate} onChange={e => setClosureDate(e.target.value)} className="px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
+        {existingClosure && <span className="text-xs italic" style={{ color: '#3A8769' }}>✓ Ya existe cierre (editable)</span>}
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="border p-5" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-          <div className="text-xs tracking-[0.25em] mb-4" style={{ color: '#8B6F47' }}>CONTEO DE EFECTIVO</div>
+        <div className="border p-5" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+          <div className="text-xs tracking-[0.25em] mb-4" style={{ color: '#8A5A6E' }}>CONTEO DE EFECTIVO</div>
           <div className="space-y-2">
             {DENOMINATIONS.map(d => {
               const qty = parseInt(counts[d.key]) || 0;
               const subtotal = qty * d.value;
               return (
                 <div key={d.key} className="flex items-center gap-3">
-                  <span className="text-sm" style={{ color: '#3E2A1A', minWidth: '85px' }}>{d.label}</span>
-                  <span className="text-xs" style={{ color: '#8B6F47' }}>×</span>
-                  <input type="number" min="0" value={counts[d.key]} onChange={e => setCounts(c => ({ ...c, [d.key]: e.target.value }))} placeholder="0" className="w-20 px-2 py-1 border text-sm text-center" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
-                  <span className="flex-1 text-right text-sm" style={{ color: subtotal > 0 ? '#3E2A1A' : '#8B6F47' }}>{fmtMoney(subtotal)}</span>
+                  <span className="text-sm" style={{ color: '#2B2024', minWidth: '85px' }}>{d.label}</span>
+                  <span className="text-xs" style={{ color: '#8A5A6E' }}>×</span>
+                  <input type="number" min="0" value={counts[d.key]} onChange={e => setCounts(c => ({ ...c, [d.key]: e.target.value }))} placeholder="0" className="w-20 px-2 py-1 border text-sm text-center" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
+                  <span className="flex-1 text-right text-sm" style={{ color: subtotal > 0 ? '#2B2024' : '#8A5A6E' }}>{fmtMoney(subtotal)}</span>
                 </div>
               );
             })}
           </div>
-          <div className="flex items-baseline justify-between pt-3 mt-3 border-t" style={{ borderColor: '#3E2A1A' }}>
-            <span className="text-xs tracking-[0.2em]" style={{ color: '#8B6F47' }}>TOTAL EFECTIVO</span>
-            <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '28px', color: '#3E2A1A', fontWeight: 500 }}>{fmtMoney(cashCounted)}</span>
+          <div className="flex items-baseline justify-between pt-3 mt-3 border-t" style={{ borderColor: '#2B2024' }}>
+            <span className="text-xs tracking-[0.2em]" style={{ color: '#8A5A6E' }}>TOTAL EFECTIVO</span>
+            <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '28px', color: '#2B2024', fontWeight: 500 }}>{fmtMoney(cashCounted)}</span>
           </div>
         </div>
 
         <div className="space-y-4">
-          <div className="border p-5" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8B6F47' }}>OTROS MÉTODOS</div>
+          <div className="border p-5" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8A5A6E' }}>OTROS MÉTODOS</div>
             <div className="space-y-3">
               <div>
-                <label className="text-xs flex items-center gap-2 mb-1" style={{ color: '#6B5B47' }}><Banknote size={12} /> Transferencias bancarias</label>
-                <input type="number" value={transfers} onChange={e => setTransfers(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+                <label className="text-xs flex items-center gap-2 mb-1" style={{ color: '#786C66' }}><Banknote size={12} /> Transferencias bancarias</label>
+                <input type="number" value={transfers} onChange={e => setTransfers(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
               </div>
               <div>
-                <label className="text-xs flex items-center gap-2 mb-1" style={{ color: '#6B5B47' }}><CreditCard size={12} /> Azul Payment Links</label>
-                <input type="number" value={azul} onChange={e => setAzul(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+                <label className="text-xs flex items-center gap-2 mb-1" style={{ color: '#786C66' }}><CreditCard size={12} /> Azul Payment Links</label>
+                <input type="number" value={azul} onChange={e => setAzul(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
               </div>
               <div>
-                <label className="text-xs flex items-center gap-2 mb-1" style={{ color: '#6B5B47' }}><CreditCard size={12} /> Terminal de tarjeta</label>
-                <input type="number" value={cardTerminal} onChange={e => setCardTerminal(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+                <label className="text-xs flex items-center gap-2 mb-1" style={{ color: '#786C66' }}><CreditCard size={12} /> Terminal de tarjeta</label>
+                <input type="number" value={cardTerminal} onChange={e => setCardTerminal(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
               </div>
             </div>
           </div>
 
-          <div className="border p-5" style={{ borderColor: '#D4C4A8', backgroundColor: '#FBF7F0' }}>
-            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8B6F47' }}>NOTAS</div>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="3" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#D4C4A8', backgroundColor: 'white' }} />
+          <div className="border p-5" style={{ borderColor: '#E8E0DB', backgroundColor: '#FFFFFF' }}>
+            <div className="text-xs tracking-[0.25em] mb-3" style={{ color: '#8A5A6E' }}>NOTAS</div>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="3" className="w-full px-3 py-2 border text-sm" style={{ borderColor: '#E8E0DB', backgroundColor: 'white' }} />
           </div>
         </div>
       </div>
 
-      <div className="border p-5 mt-6" style={{ borderColor: '#3E2A1A', backgroundColor: '#FBF7F0' }}>
-        <div className="text-xs tracking-[0.25em] mb-4" style={{ color: '#8B6F47' }}>CUADRE — CONTADO VS. SISTEMA</div>
+      <div className="border p-5 mt-6" style={{ borderColor: '#2B2024', backgroundColor: '#FFFFFF' }}>
+        <div className="text-xs tracking-[0.25em] mb-4" style={{ color: '#8A5A6E' }}>CUADRE — CONTADO VS. SISTEMA</div>
         <div className="space-y-2">
           <CuadreRow label="Efectivo" counted={cashCounted} system={systemTotals.cash} />
           <CuadreRow label="Transferencias" counted={transfersCounted} system={systemTotals.transfer} />
           <CuadreRow label="Azul Link" counted={azulCounted} system={systemTotals.azul} />
           <CuadreRow label="Tarjeta Terminal" counted={cardTerminalCounted} system={systemTotals.card_terminal} />
         </div>
-        <div className="grid grid-cols-2 gap-4 pt-4 mt-4 border-t" style={{ borderColor: '#3E2A1A' }}>
+        <div className="grid grid-cols-2 gap-4 pt-4 mt-4 border-t" style={{ borderColor: '#2B2024' }}>
           <div>
-            <div className="text-xs tracking-[0.2em]" style={{ color: '#8B6F47' }}>TOTAL INGRESOS</div>
-            <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '28px', color: '#3E2A1A', fontWeight: 500 }}>{fmtMoney(totalSystem)}</div>
+            <div className="text-xs tracking-[0.2em]" style={{ color: '#8A5A6E' }}>TOTAL INGRESOS</div>
+            <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '28px', color: '#2B2024', fontWeight: 500 }}>{fmtMoney(totalSystem)}</div>
           </div>
           <div>
-            <div className="text-xs tracking-[0.2em]" style={{ color: '#8B6F47' }}>TOTAL GASTOS</div>
-            <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '28px', color: '#A04040', fontWeight: 500 }}>−{fmtMoney(totalExpenses)}</div>
+            <div className="text-xs tracking-[0.2em]" style={{ color: '#8A5A6E' }}>TOTAL GASTOS</div>
+            <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '28px', color: '#C53A2D', fontWeight: 500 }}>−{fmtMoney(totalExpenses)}</div>
           </div>
         </div>
-        <div className="pt-4 mt-4 border-t flex items-baseline justify-between" style={{ borderColor: '#3E2A1A' }}>
-          <span className="text-xs tracking-[0.25em]" style={{ color: '#3E2A1A', fontWeight: 600 }}>NETO DEL DÍA</span>
-          <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '40px', color: netTotal >= 0 ? '#6B8E5A' : '#A04040', fontWeight: 500, lineHeight: 1 }}>{fmtMoney(netTotal)}</span>
+        <div className="pt-4 mt-4 border-t flex items-baseline justify-between" style={{ borderColor: '#2B2024' }}>
+          <span className="text-xs tracking-[0.25em]" style={{ color: '#2B2024', fontWeight: 600 }}>NETO DEL DÍA</span>
+          <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '40px', color: netTotal >= 0 ? '#3A8769' : '#C53A2D', fontWeight: 500, lineHeight: 1 }}>{fmtMoney(netTotal)}</span>
         </div>
       </div>
 
       <div className="flex gap-2 mt-6 flex-wrap">
-        <button onClick={saveClosure} className="px-5 py-3 text-xs tracking-[0.25em] uppercase flex items-center gap-2" style={{ backgroundColor: '#3E2A1A', color: '#F5EFE6' }}>
+        <button onClick={saveClosure} className="px-5 py-3 text-xs tracking-[0.25em] uppercase flex items-center gap-2" style={{ backgroundColor: '#2B2024', color: '#FBF8F6' }}>
           <Save size={14} /> {existingClosure ? 'Actualizar' : 'Guardar'} Cierre
         </button>
-        <button onClick={exportClosureExcel} className="px-5 py-3 text-xs tracking-[0.25em] uppercase flex items-center gap-2 border" style={{ borderColor: '#3E2A1A', color: '#3E2A1A' }}>
+        <button onClick={exportClosureExcel} className="px-5 py-3 text-xs tracking-[0.25em] uppercase flex items-center gap-2 border" style={{ borderColor: '#2B2024', color: '#2B2024' }}>
           <FileSpreadsheet size={14} /> Excel
         </button>
-        <button onClick={exportClosurePdf} className="px-5 py-3 text-xs tracking-[0.25em] uppercase flex items-center gap-2 border" style={{ borderColor: '#3E2A1A', color: '#3E2A1A' }}>
+        <button onClick={exportClosurePdf} className="px-5 py-3 text-xs tracking-[0.25em] uppercase flex items-center gap-2 border" style={{ borderColor: '#2B2024', color: '#2B2024' }}>
           <FileText size={14} /> PDF
         </button>
       </div>
@@ -1135,10 +1135,10 @@ function CuadreRow({ label, counted, system }: { label: ReactNode; counted: numb
   const isOk = Math.abs(diff) < 0.01;
   return (
     <div className="grid gap-2 items-center text-sm" style={{ gridTemplateColumns: '1fr 100px 100px 100px' }}>
-      <span style={{ color: '#3E2A1A' }}>{label}</span>
-      <span className="text-right" style={{ color: '#6B5B47' }}>{fmtMoney(counted)}</span>
-      <span className="text-right" style={{ color: '#6B5B47' }}>{fmtMoney(system)}</span>
-      <span className="text-right" style={{ color: isOk ? '#6B8E5A' : (diff > 0 ? '#C8956D' : '#A04040'), fontWeight: 500 }}>
+      <span style={{ color: '#2B2024' }}>{label}</span>
+      <span className="text-right" style={{ color: '#786C66' }}>{fmtMoney(counted)}</span>
+      <span className="text-right" style={{ color: '#786C66' }}>{fmtMoney(system)}</span>
+      <span className="text-right" style={{ color: isOk ? '#3A8769' : (diff > 0 ? '#C2566E' : '#C53A2D'), fontWeight: 500 }}>
         {isOk ? '✓' : (diff > 0 ? '+' : '') + fmtMoney(diff)}
       </span>
     </div>

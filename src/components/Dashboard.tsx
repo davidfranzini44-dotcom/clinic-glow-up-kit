@@ -268,10 +268,10 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
 
       {isAdmin && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <StatCard icon={<Users size={16} />} label="Atendidos" value={totals.attended} color="#6B8E5A" />
-          <StatCard icon={<AlertCircle size={16} />} label="No asistió" value={totals.noShow} color="#A04040" />
-          <StatCard icon={<AlertCircle size={16} />} label="Canceló" value={totals.cancelled} color="#8B6F47" />
-          <StatCard icon={<TrendingUp size={16} />} label="Sin cita" value={totals.walkIns} color="#C8956D" />
+          <StatCard icon={<Users size={16} />} label="Atendidos" value={totals.attended} color="#3A8769" />
+          <StatCard icon={<AlertCircle size={16} />} label="No asistió" value={totals.noShow} color="#C53A2D" />
+          <StatCard icon={<AlertCircle size={16} />} label="Canceló" value={totals.cancelled} color="#8A5A6E" />
+          <StatCard icon={<TrendingUp size={16} />} label="Sin cita" value={totals.walkIns} color="#C2566E" />
         </div>
       )}
 
@@ -294,7 +294,7 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
                   <div className="flex items-baseline gap-1">
                     <Award size={14} className="text-accent" />
                     <span className="text-xs font-label text-muted-foreground">UTILIZACIÓN</span>
-                    <span className="font-display" style={{ fontSize: 28, fontWeight: 500, color: s.utilizationPct >= 70 ? "#6B8E5A" : s.utilizationPct >= 40 ? "#C8956D" : "#A04040" }}>
+                    <span className="font-display" style={{ fontSize: 28, fontWeight: 500, color: s.utilizationPct >= 70 ? "#3A8769" : s.utilizationPct >= 40 ? "#C2566E" : "#C53A2D" }}>
                       {s.utilizationPct}%
                     </span>
                   </div>
@@ -302,14 +302,14 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <MiniStat label="Atendidos" value={s.attended} sub={`${showRate}% asistencia`} />
-                  <MiniStat label="No asistió" value={s.noShow} color="#A04040" />
-                  <MiniStat label="Canceló" value={s.cancelled} color="#8B6F47" />
-                  <MiniStat label="Sin cita" value={s.walkIns} color="#C8956D" />
+                  <MiniStat label="No asistió" value={s.noShow} color="#C53A2D" />
+                  <MiniStat label="Canceló" value={s.cancelled} color="#8A5A6E" />
+                  <MiniStat label="Sin cita" value={s.walkIns} color="#C2566E" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                  <TimeBar label="Tiempo trabajado" value={s.timeWorkedMin} max={s.timeWorkedMin + s.timeIdleMin} color="#6B8E5A" icon={<Activity size={12} />} />
-                  <TimeBar label="Tiempo inactivo" value={s.timeIdleMin} max={s.timeWorkedMin + s.timeIdleMin} color="#D4C4A8" icon={<Clock size={12} />} />
+                  <TimeBar label="Tiempo trabajado" value={s.timeWorkedMin} max={s.timeWorkedMin + s.timeIdleMin} color="#3A8769" icon={<Activity size={12} />} />
+                  <TimeBar label="Tiempo inactivo" value={s.timeIdleMin} max={s.timeWorkedMin + s.timeIdleMin} color="#E8E0DB" icon={<Clock size={12} />} />
                 </div>
               </div>
             </div>
@@ -396,7 +396,7 @@ function TimeBar({ label, value, max, color, icon }: { label: string; value: num
         <span className="flex items-center gap-1 text-muted-foreground">{icon} {label}</span>
         <span className="text-primary font-medium">{formatHours(value)}</span>
       </div>
-      <div className="h-2 w-full" style={{ backgroundColor: "#EAE0CC" }}>
+      <div className="h-2 w-full" style={{ backgroundColor: "#EFE7E2" }}>
         <div style={{ width: `${pct}%`, height: "100%", backgroundColor: color, transition: "width 0.3s" }} />
       </div>
     </div>
