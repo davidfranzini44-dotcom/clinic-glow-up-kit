@@ -20,11 +20,38 @@ type Props = {
   onLink?: (link: string) => void;
 };
 
+const notifSupported = () => typeof window !== "undefined" && "Notification" in window;
+
+// Fire a native OS-level browser notification (works while a tab is open, even in background).
+function showBrowserNotif(n: Notif, onLink?: (link: string) => void) {
+  try {
+    if (!notifSupported() || Notification.permission !== "granted") return;
+    const note = new Notification(n.title, { body: n.body || undefined, tag: n.id });
+    note.onclick = () => {
+      window.focus();
+      if (n.link && onLink) onLink(n.link);
+      note.close();
+    };
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function NotificationBell({ userId, onLink }: Props) {
   const [items, setItems] = useState<Notif[]>([]);
   const [open, setOpen] = useState(false);
+  const [perm, setPerm] = useState<NotificationPermission | "unsupported">(
+    notifSupported() ? Notification.permission : "unsupported"
+  );
   const ref = useRef<HTMLDivElement>(null);
   const firstLoad = useRef(true);
+  const onLinkRef = useRef(onLink);
+  onLinkRef.current = onLink;
+
+  const requestPerm = () => {
+    if (!notifSupported() || Notification.permission !== "default") return;
+    Notification.requestPermission().then((p) => setPerm(p)).catch(() => {});
+  };
 
   const load = async () => {
     const { data } = await supabase
@@ -36,6 +63,11 @@ export default function NotificationBell({ userId, onLink }: Props) {
     setItems((data || []) as Notif[]);
     firstLoad.current = false;
   };
+
+  // Ask for browser-notification permission once on mount.
+  useEffect(() => {
+    requestPerm();
+  }, []);
 
   useEffect(() => {
     load();
@@ -49,6 +81,7 @@ export default function NotificationBell({ userId, onLink }: Props) {
           setItems(prev => [n, ...prev].slice(0, 40));
           if (!firstLoad.current) {
             toast(n.title, { description: n.body || undefined });
+            showBrowserNotif(n, onLinkRef.current);
           }
         }
       )
@@ -85,12 +118,18 @@ export default function NotificationBell({ userId, onLink }: Props) {
     setOpen(false);
   };
 
+  const handleBell = () => {
+    // A click is a user gesture — good moment to (re)request permission if still undecided.
+    if (perm === "default") requestPerm();
+    setOpen(o => !o);
+  };
+
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={handleBell}
         className="relative p-2 border border-primary text-primary"
-        title="Notificaciones"
+        title={perm === "granted" ? "Notificaciones" : "Notificaciones (clic para activar avisos del navegador)"}
       >
         <Bell size={14} />
         {unread > 0 && (
@@ -109,6 +148,23 @@ export default function NotificationBell({ userId, onLink }: Props) {
               </button>
             )}
           </div>
+
+          {perm === "default" && (
+            <button
+              onClick={requestPerm}
+              className="w-full text-left px-3 py-2 border-b border-border bg-background hover:opacity-80"
+            >
+              <span className="text-xs text-primary flex items-center gap-2">
+                <Bell size={12} /> Activar avisos del navegador
+              </span>
+            </button>
+          )}
+          {perm === "denied" && (
+            <div className="px-3 py-2 border-b border-border text-[10px] text-muted-foreground">
+              Los avisos del navegador están bloqueados. Actívalos en la configuración del sitio para recibir alertas emergentes.
+            </div>
+          )}
+
           {items.length === 0 && (
             <div className="px-3 py-6 text-center text-xs italic text-muted-foreground">
               No hay notificaciones.
