@@ -395,7 +395,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
     const channel = supabase
       .channel("appointments-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload: ApptChangePayload) => {
+      .on("postgres_changes" as never, { event: "*", schema: "public", table: "appointments" }, (payload: ApptChangePayload) => {
         if (payload.eventType === "INSERT") {
           const row = payload.new;
           setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
