@@ -245,6 +245,11 @@ Deno.serve(async (req: Request) => {
       const totalChanges = insertedIds.length + chg.length;
       if (totalChanges > 0) {
         const fdm = (d: string) => d.slice(8, 10) + "/" + d.slice(5, 7);
+        // Only ping employees about citas of today or tomorrow (Santo Domingo time)
+        const sdNow = new Date(Date.now() - 4 * 3600 * 1000);
+        const todaySD = sdNow.toISOString().slice(0, 10);
+        const tomorrowSD = new Date(sdNow.getTime() + 86400000).toISOString().slice(0, 10);
+        const dayWord = (d: string): string | null => d === todaySD ? "hoy" : d === tomorrowSD ? "mañana" : null;
         const notifs: { user_id: string; kind: string; title: string; body: string; link: string }[] = [];
         const { data: profs } = await sb.from("profiles").select("id,employee_name");
         const userByEmp = new Map<string, string>();
@@ -255,15 +260,24 @@ Deno.serve(async (req: Request) => {
           if (insertedIds.length) {
             const { data: ins } = await sb.from("appointments").select("id,employee,client,date,time").in("id", insertedIds);
             for (const r of (ins ?? []) as { id: string; employee: string | null; client: string; date: string; time: string }[]) {
+              const w = dayWord(r.date);
+              if (!w) continue;
               const uid = r.employee ? userByEmp.get(r.employee) : undefined;
-              if (uid) notifs.push({ user_id: uid, kind: "dnsuite_new", title: "Nueva cita asignada", body: `${r.client} · ${r.time} · ${fdm(r.date)}`, link: `apt:${r.id}:${r.date}` });
+              if (uid) notifs.push({ user_id: uid, kind: "dnsuite_new", title: "Nueva cita asignada", body: `Se te asignó una cita ${w} a las ${r.time} — ${r.client}`, link: `apt:${r.id}:${r.date}` });
             }
           }
           for (const ch of chg) {
+            const w = dayWord(ch.date);
+            if (!w) continue;
             const uid = ch.emp ? userByEmp.get(ch.emp) : undefined;
             if (!uid) continue;
             const title = ch.t === "cancel" ? "Cita cancelada" : ch.t === "move" ? "Cita cambiada de hora" : "Cita eliminada";
-            notifs.push({ user_id: uid, kind: "dnsuite_" + ch.t, title, body: `${ch.client}${ch.time ? " · " + ch.time : ""} · ${fdm(ch.date)}`, link: ch.t === "removed" ? `date:${ch.date}` : `apt:${ch.id}:${ch.date}` });
+            const body = ch.t === "cancel"
+              ? `Tu cita de ${w} a las ${ch.time} fue cancelada — ${ch.client}`
+              : ch.t === "move"
+              ? `Tu cita de ${ch.client} cambió: ${w} a las ${ch.time}`
+              : `Se eliminó tu cita de ${w} — ${ch.client}`;
+            notifs.push({ user_id: uid, kind: "dnsuite_" + ch.t, title, body, link: ch.t === "removed" ? `date:${ch.date}` : `apt:${ch.id}:${ch.date}` });
           }
         }
         const cN = chg.filter(x => x.t === "cancel").length, mN = chg.filter(x => x.t === "move").length, rN = chg.filter(x => x.t === "removed").length;
