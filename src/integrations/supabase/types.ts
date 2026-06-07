@@ -536,6 +536,7 @@ export type Database = {
           name: string
           sort_order: number
           updated_at: string
+          vacation_days: number
         }
         Insert: {
           active?: boolean
@@ -546,6 +547,7 @@ export type Database = {
           name: string
           sort_order?: number
           updated_at?: string
+          vacation_days?: number
         }
         Update: {
           active?: boolean
@@ -556,6 +558,7 @@ export type Database = {
           name?: string
           sort_order?: number
           updated_at?: string
+          vacation_days?: number
         }
         Relationships: []
       }
@@ -931,6 +934,57 @@ export type Database = {
         }
         Relationships: []
       }
+      push_config: {
+        Row: {
+          function_url: string
+          id: number
+          vapid_private: string
+          vapid_public: string
+          webhook_secret: string
+        }
+        Insert: {
+          function_url: string
+          id: number
+          vapid_private: string
+          vapid_public: string
+          webhook_secret: string
+        }
+        Update: {
+          function_url?: string
+          id?: number
+          vapid_private?: string
+          vapid_public?: string
+          webhook_secret?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_permissions: {
         Row: {
           agenda_edit: boolean
@@ -994,6 +1048,39 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist: {
+        Row: {
+          client_name: string
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          note: string | null
+          phone: string | null
+          status: string
+        }
+        Insert: {
+          client_name: string
+          created_at?: string
+          created_by?: string | null
+          date: string
+          id?: string
+          note?: string | null
+          phone?: string | null
+          status?: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          note?: string | null
+          phone?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1007,6 +1094,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      send_daily_summary: { Args: never; Returns: undefined }
       set_my_color: { Args: { new_color: string }; Returns: undefined }
     }
     Enums: {
