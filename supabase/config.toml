@@ -1,3 +1,6 @@
 project_id = "urouxurlzshjmocmjptr"
 [functions.send-push]
 verify_jwt = false
+
+[functions.dnsuite-sync]
+verify_jwt = false
