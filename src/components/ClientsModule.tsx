@@ -62,11 +62,12 @@ const Section = ({ title, subtitle, action, children }: { title: ReactNode; subt
 
 type Props = {
   isAdmin: boolean;
+  canEdit?: boolean;
   selectedClientId: string | null;
   setSelectedClientId: (id: string | null) => void;
 };
 
-export default function ClientsModule({ isAdmin, selectedClientId, setSelectedClientId }: Props) {
+export default function ClientsModule({ isAdmin, canEdit = true, selectedClientId, setSelectedClientId }: Props) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [packages, setPackages] = useState<CustomerPackage[]>([]);
@@ -127,6 +128,7 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
       appointmentNotes={appointmentNotes} setAppointmentNotes={setAppointmentNotes}
       onBack={() => setSelectedClientId(null)}
       isAdmin={isAdmin}
+      canEdit={canEdit}
     />;
   }
 
@@ -187,7 +189,7 @@ export default function ClientsModule({ isAdmin, selectedClientId, setSelectedCl
 
   return (
     <Section title="Clientes" subtitle="BASE DE CLIENTES"
-      action={isAdmin && (
+      action={canEdit && (
         <div className="flex gap-2 flex-wrap">
           <button onClick={exportClients} className="px-4 py-2 text-xs tracking-[0.2em] uppercase border flex items-center gap-2" style={{ borderColor: "#2B2024", color: "#2B2024" }}><Download size={14} /> Exportar</button>
           <button onClick={() => setEditForm({ name: "", phone: "", email: "", birthday: "", address: "", notes: "", allergies: "" })} className="px-4 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: "#2B2024", color: "#FBF8F6" }}><Plus size={14} /> Nuevo</button>
@@ -320,7 +322,7 @@ function ClientEditForm({ form, setForm, onSave, onCancel }: { form: ClientForm;
   );
 }
 
-function ClientDetail({ client, setCustomers, invoices, packages, appointments, appointmentNotes, setAppointmentNotes, onBack, isAdmin }: { client: Customer; setCustomers: Dispatch<SetStateAction<Customer[]>>; invoices: Invoice[]; packages: CustomerPackage[]; appointments: ApptRow[]; appointmentNotes: NotesMap; setAppointmentNotes: Dispatch<SetStateAction<NotesMap>>; onBack: () => void; isAdmin: boolean }) {
+function ClientDetail({ client, setCustomers, invoices, packages, appointments, appointmentNotes, setAppointmentNotes, onBack, isAdmin, canEdit = true }: { client: Customer; setCustomers: Dispatch<SetStateAction<Customer[]>>; invoices: Invoice[]; packages: CustomerPackage[]; appointments: ApptRow[]; appointmentNotes: NotesMap; setAppointmentNotes: Dispatch<SetStateAction<NotesMap>>; onBack: () => void; isAdmin: boolean; canEdit?: boolean }) {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<ClientForm | null>({ ...client });
   const [tab, setTab] = useState<"history" | "invoices" | "packages">("history");
@@ -383,7 +385,7 @@ function ClientDetail({ client, setCustomers, invoices, packages, appointments, 
             </div>
             <div className="flex gap-2 flex-wrap">
               {client.phone && <button onClick={() => sendWA(`Hola ${client.name}, le saluda Charm Clínica Estética.`)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase flex items-center gap-2" style={{ backgroundColor: "#25D366", color: "white" }}><MessageCircle size={12} /> WhatsApp</button>}
-              {isAdmin && <button onClick={() => setEditing(true)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase border flex items-center gap-2" style={{ borderColor: "#2B2024", color: "#2B2024" }}><Edit2 size={12} /> Editar</button>}
+              {canEdit && <button onClick={() => setEditing(true)} className="px-3 py-2 text-xs tracking-[0.2em] uppercase border flex items-center gap-2" style={{ borderColor: "#2B2024", color: "#2B2024" }}><Edit2 size={12} /> Editar</button>}
             </div>
           </div>
 

@@ -18,6 +18,7 @@ import InventoryModule from "./InventoryModule";
 import ClientProfileModal from "./ClientProfileModal";
 import HistoryView from "./HistoryView";
 import SettingsModule from "./SettingsModule";
+import ProfileModule from "./ProfileModule";
 
 // ─── History cutoff: dates on or before this are hidden from the main agenda ─
 const HISTORY_CUTOFF = "2026-04-26";
@@ -263,18 +264,28 @@ const aptToRow = (apt: Apt, dateStr: string) => ({
   swap_locked: apt.swapLocked,
 });
 
+export type Perms = {
+  full_agenda: boolean;
+  clients_access: "none" | "read" | "edit";
+  sales: boolean;
+  inventory: boolean;
+  reports: boolean;
+  history: boolean;
+};
+const DEFAULT_PERMS: Perms = { full_agenda: true, clients_access: "read", sales: false, inventory: false, reports: false, history: false };
+
 // ─── Main component ───────────────────────────────────────────────────────
 type Props = { session: Session; profile: Profile; isAdmin: boolean; onSignOut: () => void };
 
 export default function CharmScheduler({ session, profile, isAdmin, onSignOut }: Props) {
-  const { employees, timeOff, reload: reloadRoster } = useRoster();
+  const { employees, timeOff, overrides, reload: reloadRoster } = useRoster();
   const empMap = useMemo<Record<string, Employee>>(() => Object.fromEntries(employees.map((e) => [e.name, e])), [employees]);
   const empNames = useMemo(() => employees.map((e) => e.name), [employees]);
   const myEmployee = (profile?.employee_name || "Yaira") as EmpKey;
   const [days, setDays] = useState<Record<string, Apt[]>>({});
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const [weekStart, setWeekStart] = useState<string | null>(null);
-  const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory" | "history" | "settings">(isAdmin ? "schedule" : "individual");
+  const [view, setView] = useState<"schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory" | "history" | "settings" | "profile">(isAdmin ? "schedule" : "individual");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [profileClient, setProfileClient] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<EmpKey>(isAdmin ? "Yaira" : myEmployee);
@@ -287,6 +298,24 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const [swapDialog, setSwapDialog] = useState<{ open: boolean; apt: Apt | null; date: string | null }>({ open: false, apt: null, date: null });
   const [pendingSwaps, setPendingSwaps] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [perms, setPerms] = useState<Perms>(DEFAULT_PERMS);
+  useEffect(() => {
+    if (isAdmin) return;
+    (async () => {
+      try {
+        const { data } = await supabase.from("user_permissions").select("*").eq("user_id", session.user.id).maybeSingle();
+        if (data) setPerms({
+          full_agenda: !!data.full_agenda,
+          clients_access: (data.clients_access as Perms["clients_access"]) || "read",
+          sales: !!data.sales,
+          inventory: !!data.inventory,
+          reports: !!data.reports,
+          history: !!data.history,
+        });
+      } catch { /* defaults */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, session.user.id]);
   const [globalSwapsLocked, setGlobalSwapsLocked] = useState(false);
   const pendingRef = useRef<Map<string, { apt: Apt; date: string }>>(new Map());
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -579,7 +608,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       const assignedDays: Record<string, Apt[]> = {};
       const allRows: ReturnType<typeof aptToRow>[] = [];
       Object.keys(parsed).forEach(d => {
-        assignedDays[d] = autoAssign(parsed[d], d, employees, timeOff, getEndBuffer());
+        assignedDays[d] = autoAssign(parsed[d], d, employees, timeOff, getEndBuffer(), overrides);
         assignedDays[d].forEach(apt => allRows.push(aptToRow(apt, d)));
       });
       markSaveStart();
@@ -646,8 +675,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         lastSeen[a.employee] = Math.max(lastSeen[a.employee], a.timeMins);
       }
     });
-    let cands = employees.filter(e => isWorkingOn(e, timeMins, wd) && !isOffOn(timeOff, e.name, activeDate) && (e.maxClients == null || counts[e.name] < e.maxClients));
-    if (cands.length === 0) cands = employees.filter(e => isWorkingOn(e, timeMins, wd) && !isOffOn(timeOff, e.name, activeDate));
+    let cands = employees.filter(e => isWorkingOn(e, timeMins, wd, 0, overrides[e.name]?.[activeDate]) && !isOffOn(timeOff, e.name, activeDate) && (e.maxClients == null || counts[e.name] < e.maxClients));
+    if (cands.length === 0) cands = employees.filter(e => isWorkingOn(e, timeMins, wd, 0, overrides[e.name]?.[activeDate]) && !isOffOn(timeOff, e.name, activeDate));
     if (cands.length === 0) cands = [...employees];
     cands.sort((a, b) => {
       const gapA = timeMins - lastSeen[a.name];
@@ -677,7 +706,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     if (!isAdmin || !activeDate) return;
     if (!confirm("¿Volver a asignar todo el día?")) return;
     const reset = (days[activeDate] || []).map(a => ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
-    const assigned = autoAssign(reset, activeDate, employees, timeOff, getEndBuffer());
+    const assigned = autoAssign(reset, activeDate, employees, timeOff, getEndBuffer(), overrides);
     setDays(prev => ({ ...prev, [activeDate]: assigned }));
     const rows = assigned.map(a => aptToRow(a, activeDate));
     try {
@@ -821,7 +850,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   // ─── Render: main ────────────────────────────────────────────────────
   const lastSavedLabel = formatSantoDomingoDateTime(lastSavedAt);
 
-  type ViewKey = "schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory" | "history" | "settings";
+  type ViewKey = "schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory" | "history" | "settings" | "profile";
   const navItems: { key: ViewKey; label: string; icon: React.ReactNode; badge?: number }[] = isAdmin
     ? [
         { key: "schedule", label: "Agenda", icon: <CalendarDays size={16} /> },
@@ -835,9 +864,14 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         { key: "settings", label: "Ajustes", icon: <Settings size={16} /> },
       ]
     : [
-        { key: "individual", label: "Mi agenda", icon: <CalendarDays size={16} /> },
-        { key: "reports", label: "Mis reportes", icon: <BarChart3 size={16} /> },
-        { key: "swaps", label: "Solicitudes", icon: <Repeat size={16} />, badge: pendingSwaps },
+        ...(perms.full_agenda ? [{ key: "schedule" as ViewKey, label: "Agenda", icon: <CalendarDays size={16} /> }] : []),
+        { key: "individual" as ViewKey, label: "Mi agenda", icon: <UserRound size={16} /> },
+        { key: "swaps" as ViewKey, label: "Solicitudes", icon: <Repeat size={16} />, badge: pendingSwaps },
+        ...(perms.clients_access !== "none" ? [{ key: "clients" as ViewKey, label: "Clientes", icon: <Users size={16} /> }] : []),
+        ...(perms.reports ? [{ key: "reports" as ViewKey, label: "Mis reportes", icon: <BarChart3 size={16} /> }] : []),
+        ...(perms.sales ? [{ key: "sales" as ViewKey, label: "Ventas", icon: <ShoppingBag size={16} /> }] : []),
+        ...(perms.inventory ? [{ key: "inventory" as ViewKey, label: "Inventario", icon: <Package size={16} /> }] : []),
+        ...(perms.history ? [{ key: "history" as ViewKey, label: "Historial", icon: <History size={16} /> }] : []),
       ];
   const goView = (key: ViewKey) => {
     if (key === "clients") setSelectedClientId(null);
@@ -903,28 +937,13 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             <div className="text-[11px] font-label text-muted-foreground leading-relaxed hidden sm:block">
               {saveStatus === "saving" ? "Guardando automáticamente…" : lastSavedLabel ? `Último guardado: ${lastSavedLabel} · Santo Domingo` : "Sin guardado reciente"}
             </div>
-            {pendingCount > 0 ? (
+            {pendingCount > 0 && (
               <button
                 onClick={() => void flushPending({ manual: true })}
                 className="text-xs flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground font-label"
                 title={lastSaveError || "Reintentar guardar cambios pendientes"}
               >
                 <Save size={11} /> Guardar ({pendingCount})
-              </button>
-            ) : (
-              <button
-                onClick={() => void flushPending({ manual: true })}
-                disabled={saveStatus === "saving"}
-                className="text-xs flex items-center gap-1 px-2 py-1 border border-border font-label hover:bg-accent/10 disabled:opacity-60"
-                title="Guardar manualmente (los cambios se guardan automáticamente)"
-              >
-                {saveStatus === "saving" ? (
-                  <><Save size={11} className="animate-pulse" /> guardando…</>
-                ) : saveStatus === "saved" ? (
-                  <><Check size={11} className="text-success" /> Guardado</>
-                ) : (
-                  <><Save size={11} /> Guardar</>
-                )}
               </button>
             )}
             <button
@@ -972,7 +991,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 }
               }}
             />
-            {isAdmin && (
+            {isAdmin && view === "schedule" && (
               <>
                 <button onClick={exportAgendaExcel} className="px-3 md:px-4 py-2 text-xs font-label bg-primary text-primary-foreground flex items-center gap-2">
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
@@ -987,9 +1006,12 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 </div>
               </>
             )}
-            <button onClick={onSignOut} className="px-2 md:px-3 py-2 text-xs font-label border border-destructive text-destructive flex items-center gap-1" title="Salir">
-              <LogOut size={13} />
-            </button>
+            <AccountMenu
+              name={profile?.display_name || profile?.employee_name || ""}
+              email={session.user.email || ""}
+              onProfile={() => setView("profile")}
+              onSignOut={onSignOut}
+            />
           </div>
         </div>
                 {!profile?.employee_name && !isAdmin && (
@@ -1081,7 +1103,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6">
-        {view === "schedule" && isAdmin && (
+        {view === "schedule" && (isAdmin || perms.full_agenda) && (
           <>
             <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
               <div>
@@ -1090,7 +1112,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   {dateLabelES(activeDate)}
                 </h2>
               </div>
-              <div className="flex gap-2 flex-wrap">
+              {isAdmin && <div className="flex gap-2 flex-wrap">
                 <button onClick={() => setWalkInForm({ open: true, time: "", client: "" })}
                   className="px-4 py-2 text-xs font-label border border-primary text-primary bg-card flex items-center gap-2">
                   <UserPlus size={14} /> Sin Cita
@@ -1103,7 +1125,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   className="px-4 py-2 text-xs font-label border border-destructive text-destructive bg-card flex items-center gap-2">
                   <Trash2 size={14} /> Borrar Todo
                 </button>
-              </div>
+              </div>}
             </div>
 
             {walkInForm.open && (
@@ -1181,7 +1203,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                         style={{ border: `1px solid hsl(var(--border))`, borderLeftWidth: 3, borderLeftColor: empColor }}>
                         <option value="">—</option>
                         {empNames.map(emp => {
-                          const working = empMap[emp] ? isWorkingOn(empMap[emp], a.timeMins, activeWeekday) : false;
+                          const working = empMap[emp] ? isWorkingOn(empMap[emp], a.timeMins, activeWeekday, 0, activeDate ? overrides[emp]?.[activeDate] : null) : false;
                           const lunch = empMap[emp] ? onLunchOn(empMap[emp], a.timeMins, activeWeekday) : false;
                           return <option key={emp} value={emp}>{emp}{!working ? (lunch ? " (almuerzo)" : " (fuera)") : ""}</option>;
                         })}
@@ -1202,9 +1224,9 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                             : <Unlock size={14} className="text-muted-foreground" />}
                         </button>
                       )}
-                      <button onClick={() => removeApt(a.id)} className="p-1 opacity-40 hover:opacity-100" title="Eliminar">
+                      {isAdmin && <button onClick={() => removeApt(a.id)} className="p-1 opacity-40 hover:opacity-100" title="Eliminar">
                         <Trash2 size={14} className="text-destructive" />
-                      </button>
+                      </button>}
                     </div>
                   </div>
                 );
@@ -1226,7 +1248,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         {a.walkIn && <span className="text-[10px] px-2 py-0.5 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
-                        <button onClick={() => removeApt(a.id)} className="p-1 opacity-50"><Trash2 size={14} className="text-destructive" /></button>
+                        {isAdmin && <button onClick={() => removeApt(a.id)} className="p-1 opacity-50"><Trash2 size={14} className="text-destructive" /></button>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 mb-2">
@@ -1236,7 +1258,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                         style={{ border: `1px solid hsl(var(--border))`, borderLeftWidth: 3, borderLeftColor: empColor }}>
                         <option value="">— Sin asignar —</option>
                         {empNames.map(emp => {
-                          const working = empMap[emp] ? isWorkingOn(empMap[emp], a.timeMins, activeWeekday) : false;
+                          const working = empMap[emp] ? isWorkingOn(empMap[emp], a.timeMins, activeWeekday, 0, activeDate ? overrides[emp]?.[activeDate] : null) : false;
                           const lunch = empMap[emp] ? onLunchOn(empMap[emp], a.timeMins, activeWeekday) : false;
                           return <option key={emp} value={emp}>{emp}{!working ? (lunch ? " (almuerzo)" : " (fuera)") : ""}</option>;
                         })}
@@ -1359,10 +1381,10 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         )}
 
         {view === "clients" && (
-          <ClientsModule isAdmin={isAdmin} selectedClientId={selectedClientId} setSelectedClientId={setSelectedClientId} />
+          <ClientsModule isAdmin={isAdmin} canEdit={isAdmin || perms.clients_access === "edit"} selectedClientId={selectedClientId} setSelectedClientId={setSelectedClientId} />
         )}
 
-        {view === "sales" && isAdmin && (
+        {view === "sales" && (isAdmin || perms.sales) && (
           <SalesModule profile={profile} isAdmin={isAdmin} />
         )}
 
@@ -1370,7 +1392,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           <InventoryModule isAdmin={isAdmin} />
         )}
 
-        {view === "history" && isAdmin && (
+        {view === "history" && (isAdmin || perms.history) && (
           <HistoryView
             days={days}
             cutoff={HISTORY_CUTOFF}
@@ -1380,6 +1402,10 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
         {view === "settings" && isAdmin && (
           <SettingsModule isAdmin={isAdmin} onChanged={reloadRoster} />
+        )}
+
+        {view === "profile" && (
+          <ProfileModule session={session} onRosterChanged={reloadRoster} />
         )}
       </main>
 
@@ -1428,5 +1454,39 @@ function ToggleBtn({ active, onClick, variant, children, className = "" }: {
       }}>
       {children}
     </button>
+  );
+}
+
+
+function AccountMenu({ name, email, onProfile, onSignOut }: { name: string; email: string; onProfile: () => void; onSignOut: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+  const initials = (name || email || "?").trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen((o) => !o)} aria-label="Cuenta"
+        className="w-9 h-9 rounded-full bg-primary text-primary-foreground text-xs font-label inline-flex items-center justify-center">
+        {initials || "?"}
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-56 bg-card border border-border shadow-lg z-50">
+          <div className="px-3 py-2 border-b border-border">
+            <div className="text-sm text-primary truncate">{name || "—"}</div>
+            <div className="text-[11px] text-muted-foreground truncate">{email}</div>
+          </div>
+          <button onClick={() => { setOpen(false); onProfile(); }} className="w-full text-left px-3 py-2.5 text-xs font-label text-primary hover:bg-background flex items-center gap-2">
+            <UserRound size={14} /> Mi perfil
+          </button>
+          <button onClick={() => { setOpen(false); onSignOut(); }} className="w-full text-left px-3 py-2.5 text-xs font-label text-destructive hover:bg-background flex items-center gap-2">
+            <LogOut size={14} /> Cerrar sesión
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
