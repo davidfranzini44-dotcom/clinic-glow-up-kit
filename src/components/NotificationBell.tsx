@@ -149,7 +149,7 @@ export default function NotificationBell({ userId, onLink }: Props) {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-h-[70vh] overflow-y-auto bg-card border border-border shadow-lg z-50">
+        <div className="fixed left-2 right-2 top-14 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80 max-h-[70vh] overflow-y-auto bg-card border border-border shadow-lg z-50">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border">
             <span className="text-xs font-label text-accent">NOTIFICACIONES</span>
             {unread > 0 && (
