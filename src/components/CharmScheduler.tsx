@@ -329,6 +329,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const handleNotifLinkRef = useRef<(link: string) => void>(() => {});
   const [arriveDialog, setArriveDialog] = useState<{ open: boolean; apt: Apt | null }>({ open: false, apt: null });
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [globalSwapsLocked, setGlobalSwapsLocked] = useState(false);
   const pendingRef = useRef<Map<string, { apt: Apt; date: string }>>(new Map());
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -378,6 +379,12 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     (async () => {
       try {
         const data = await fetchAll<ApptRow>("appointments", "*", { column: "time_mins", ascending: true });
+        let maxSync: string | null = null;
+        (data || []).forEach((row) => {
+          const ds = (row as { dnsuite_synced_at?: string | null }).dnsuite_synced_at;
+          if (ds && (!maxSync || ds > maxSync)) maxSync = ds;
+        });
+        if (maxSync) setLastSyncAt(maxSync);
         const grouped: Record<string, Apt[]> = {};
         (data || []).forEach((row) => {
           if (!grouped[row.date]) grouped[row.date] = [];
@@ -402,7 +409,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
     const channel = supabase
       .channel("appointments-changes")
-      .on("postgres_changes" as never, { event: "*", schema: "public", table: "appointments" } as never, (payload: ApptChangePayload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload: ApptChangePayload) => {
         if (payload.eventType === "INSERT") {
           const row = payload.new;
           setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
@@ -838,7 +845,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       const { data, error } = await supabase.functions.invoke("dnsuite-sync", { body: { trigger: "manual" }, headers: { "x-sync-secret": secret } });
       if (error) throw error;
       const r = (data as { ok?: boolean; result?: string; error?: string });
-      if (r?.ok) toast.success("Sincronizado con DNSuite — " + (r.result || ""));
+      if (r?.ok) { toast.success("Sincronizado con DNSuite — " + (r.result || "")); setLastSyncAt(new Date().toISOString()); }
       else toast.error("DNSuite: " + (r?.error || "error desconocido"));
     } catch (e) {
       toast.error("No se pudo sincronizar: " + (e instanceof Error ? e.message : String(e)));
@@ -1003,6 +1010,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
   // ─── Render: main ────────────────────────────────────────────────────
   const lastSavedLabel = formatSantoDomingoDateTime(lastSavedAt);
+  const lastSyncLabel = formatSantoDomingoDateTime(lastSyncAt);
 
   type ViewKey = "schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory" | "history" | "settings" | "profile";
   const navItems: { key: ViewKey; label: string; icon: React.ReactNode; badge?: number }[] = isAdmin
@@ -1090,7 +1098,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
               <span className="text-xs font-label text-accent hidden md:inline">{profile?.display_name || profile?.employee_name}</span>
             </div>
             <div className="text-[11px] font-label text-muted-foreground leading-relaxed hidden sm:block">
-              {saveStatus === "saving" ? "Guardando automáticamente…" : lastSavedLabel ? `Último guardado: ${lastSavedLabel} · Santo Domingo` : "Sin guardado reciente"}
+              {saveStatus === "saving" ? "Guardando…" : lastSyncLabel ? `Última sincronización: ${lastSyncLabel}` : "Sin sincronizar aún"}
             </div>
             {pendingCount > 0 && (
               <button
