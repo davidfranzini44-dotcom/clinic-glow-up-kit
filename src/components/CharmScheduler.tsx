@@ -768,7 +768,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   // ─── Render: empty state ─────────────────────────────────────────────
   if (Object.keys(days).length === 0) {
     return (
-      <div className="min-h-screen w-full bg-background">
+      <div className="min-h-screen w-full bg-background overflow-x-hidden">
         <div className="max-w-3xl mx-auto px-6 py-12 md:py-16">
           <div className="flex justify-end mb-4">
             <button onClick={onSignOut} className="text-xs font-label text-accent flex items-center gap-2 opacity-60 hover:opacity-100">
@@ -821,15 +821,15 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const lastSavedLabel = formatSantoDomingoDateTime(lastSavedAt);
 
   return (
-    <div className="min-h-screen w-full bg-background">
+    <div className="min-h-screen w-full bg-background overflow-x-hidden">
       <header className="border-b border-border sticky top-0 z-10 bg-card">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between flex-wrap gap-3">
+        <div className="max-w-7xl mx-auto px-3 md:px-6 py-3 md:py-4 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-start gap-3 flex-wrap">
             <div className="flex items-baseline gap-3 flex-wrap">
               <span className="font-display text-primary" style={{ fontSize: 34, fontWeight: 400, lineHeight: 1 }}>Charm</span>
               <span className="text-xs font-label text-accent hidden sm:inline">{profile?.display_name || profile?.employee_name}</span>
             </div>
-            <div className="text-[11px] font-label text-muted-foreground leading-relaxed">
+            <div className="text-[11px] font-label text-muted-foreground leading-relaxed hidden sm:block">
               {saveStatus === "saving" ? "Guardando automáticamente…" : lastSavedLabel ? `Último guardado: ${lastSavedLabel} · Santo Domingo` : "Sin guardado reciente"}
             </div>
             {pendingCount > 0 ? (
@@ -858,7 +858,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             )}
             <button
               onClick={() => setShowDebug(s => !s)}
-              className="text-[10px] px-2 py-1 border border-border font-label hover:bg-accent/10"
+              className="text-[10px] px-2 py-1 border border-border font-label hover:bg-accent/10 hidden sm:inline-flex"
               title="Mostrar panel de depuración de autosave"
             >
               {showDebug ? "Debug ▾" : "Debug ▸"}
@@ -903,15 +903,6 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             />
             {isAdmin && (
               <>
-                <TabBtn active={view === "schedule"} onClick={() => setView("schedule")}>Agenda</TabBtn>
-                <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Individual</TabBtn>
-                <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Reportes</TabBtn>
-                <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
-                <TabBtn active={view === "clients"} onClick={() => { setSelectedClientId(null); setView("clients"); }}>Clientes</TabBtn>
-                <TabBtn active={view === "sales"} onClick={() => setView("sales")}>Ventas</TabBtn>
-                <TabBtn active={view === "inventory"} onClick={() => setView("inventory")}>Inventario</TabBtn>
-                <TabBtn active={view === "history"} onClick={() => setView("history")}>Historial</TabBtn>
-                <TabBtn active={view === "settings"} onClick={() => setView("settings")}>Ajustes</TabBtn>
                 <button onClick={exportAgendaExcel} className="px-3 md:px-4 py-2 text-xs font-label bg-primary text-primary-foreground flex items-center gap-2">
                   <FileSpreadsheet size={14} /> <span className="hidden sm:inline">Exportar</span>
                 </button>
@@ -925,18 +916,32 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 </div>
               </>
             )}
-            {!isAdmin && (
-              <>
-                <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Mi agenda</TabBtn>
-                <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Mis reportes</TabBtn>
-                <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
-              </>
-            )}
             <button onClick={onSignOut} className="px-2 md:px-3 py-2 text-xs font-label border border-destructive text-destructive flex items-center gap-1" title="Salir">
               <LogOut size={13} />
             </button>
           </div>
         </div>
+        <nav className="max-w-7xl mx-auto px-2 md:px-6 flex items-center gap-1 overflow-x-auto no-scrollbar pb-2">
+          {isAdmin ? (
+            <>
+              <TabBtn active={view === "schedule"} onClick={() => setView("schedule")}>Agenda</TabBtn>
+              <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Individual</TabBtn>
+              <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Reportes</TabBtn>
+              <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
+              <TabBtn active={view === "clients"} onClick={() => { setSelectedClientId(null); setView("clients"); }}>Clientes</TabBtn>
+              <TabBtn active={view === "sales"} onClick={() => setView("sales")}>Ventas</TabBtn>
+              <TabBtn active={view === "inventory"} onClick={() => setView("inventory")}>Inventario</TabBtn>
+              <TabBtn active={view === "history"} onClick={() => setView("history")}>Historial</TabBtn>
+              <TabBtn active={view === "settings"} onClick={() => setView("settings")}>Ajustes</TabBtn>
+            </>
+          ) : (
+            <>
+              <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Mi agenda</TabBtn>
+              <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Mis reportes</TabBtn>
+              <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
+            </>
+          )}
+        </nav>
         {!profile?.employee_name && !isAdmin && (
           <div className="bg-destructive/10 border-t border-destructive px-4 md:px-6 py-2 text-xs text-destructive flex items-center gap-2">
             <AlertCircle size={12} /> Tu cuenta no está vinculada a una empleada. Pide al admin que te asigne para poder editar y solicitar cambios.
@@ -1358,7 +1363,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 // ─── Small UI helpers ─────────────────────────────────────────────────────
 function TabBtn({ active, onClick, children, badge }: { active: boolean; onClick: () => void; children: React.ReactNode; badge?: number }) {
   return (
-    <button onClick={onClick} className="px-3 md:px-4 py-2 text-xs font-label transition-opacity relative"
+    <button onClick={onClick} className="px-3 md:px-4 py-2 text-xs font-label transition-opacity relative whitespace-nowrap flex-shrink-0"
       style={{
         borderBottom: active ? "2px solid hsl(var(--primary))" : "2px solid transparent",
         color: "hsl(var(--primary))",
