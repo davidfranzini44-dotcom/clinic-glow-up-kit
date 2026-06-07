@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight, Menu, X, CalendarDays, UserRound, BarChart3, Users, ShoppingBag, Package, History, Settings } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
@@ -286,6 +286,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const [hasLoaded, setHasLoaded] = useState(false);
   const [swapDialog, setSwapDialog] = useState<{ open: boolean; apt: Apt | null; date: string | null }>({ open: false, apt: null, date: null });
   const [pendingSwaps, setPendingSwaps] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [globalSwapsLocked, setGlobalSwapsLocked] = useState(false);
   const pendingRef = useRef<Map<string, { apt: Apt; date: string }>>(new Map());
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -820,14 +821,84 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   // ─── Render: main ────────────────────────────────────────────────────
   const lastSavedLabel = formatSantoDomingoDateTime(lastSavedAt);
 
+  type ViewKey = "schedule" | "individual" | "reports" | "swaps" | "clients" | "sales" | "inventory" | "history" | "settings";
+  const navItems: { key: ViewKey; label: string; icon: React.ReactNode; badge?: number }[] = isAdmin
+    ? [
+        { key: "schedule", label: "Agenda", icon: <CalendarDays size={16} /> },
+        { key: "individual", label: "Individual", icon: <UserRound size={16} /> },
+        { key: "reports", label: "Reportes", icon: <BarChart3 size={16} /> },
+        { key: "swaps", label: "Solicitudes", icon: <Repeat size={16} />, badge: pendingSwaps },
+        { key: "clients", label: "Clientes", icon: <Users size={16} /> },
+        { key: "sales", label: "Ventas", icon: <ShoppingBag size={16} /> },
+        { key: "inventory", label: "Inventario", icon: <Package size={16} /> },
+        { key: "history", label: "Historial", icon: <History size={16} /> },
+        { key: "settings", label: "Ajustes", icon: <Settings size={16} /> },
+      ]
+    : [
+        { key: "individual", label: "Mi agenda", icon: <CalendarDays size={16} /> },
+        { key: "reports", label: "Mis reportes", icon: <BarChart3 size={16} /> },
+        { key: "swaps", label: "Solicitudes", icon: <Repeat size={16} />, badge: pendingSwaps },
+      ];
+  const goView = (key: ViewKey) => {
+    if (key === "clients") setSelectedClientId(null);
+    setView(key);
+    setSidebarOpen(false);
+  };
+  const sidebarNav = (
+    <nav className="flex-1 py-3 overflow-y-auto">
+      {navItems.map((it) => (
+        <button key={it.key} onClick={() => goView(it.key)}
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-label text-left transition-colors"
+          style={{
+            backgroundColor: view === it.key ? "hsl(var(--secondary))" : "transparent",
+            color: "hsl(var(--primary))",
+            borderLeft: view === it.key ? "3px solid hsl(var(--primary))" : "3px solid transparent",
+            opacity: view === it.key ? 1 : 0.75,
+          }}>
+          {it.icon}
+          <span className="flex-1">{it.label}</span>
+          {it.badge && it.badge > 0 ? (
+            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] bg-destructive text-destructive-foreground rounded-full">{it.badge}</span>
+          ) : null}
+        </button>
+      ))}
+    </nav>
+  );
+
   return (
-    <div className="min-h-screen w-full bg-background overflow-x-hidden">
+    <div className="min-h-screen w-full bg-background overflow-x-hidden md:flex">
+      <aside className="hidden md:flex md:flex-col w-56 flex-shrink-0 border-r border-border bg-card sticky top-0 h-screen">
+        <div className="px-4 pt-5 pb-3 border-b border-border">
+          <span className="font-display text-primary" style={{ fontSize: 30, fontWeight: 500, lineHeight: 1 }}>Charm</span>
+          <div className="text-[10px] font-label text-accent mt-1">CLÍNICA ESTÉTICA</div>
+        </div>
+        {sidebarNav}
+        <div className="px-4 py-3 border-t border-border text-[10px] font-label text-muted-foreground truncate">
+          {profile?.display_name || profile?.employee_name || ""}
+        </div>
+      </aside>
+
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-foreground/40" onClick={() => setSidebarOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-card border-r border-border flex flex-col">
+            <div className="px-4 pt-5 pb-3 border-b border-border flex items-center justify-between">
+              <span className="font-display text-primary" style={{ fontSize: 26, fontWeight: 500, lineHeight: 1 }}>Charm</span>
+              <button onClick={() => setSidebarOpen(false)} className="p-1.5" aria-label="Cerrar menú"><X size={18} className="text-primary" /></button>
+            </div>
+            {sidebarNav}
+          </aside>
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">
       <header className="border-b border-border sticky top-0 z-10 bg-card">
         <div className="max-w-7xl mx-auto px-3 md:px-6 py-3 md:py-4 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-start gap-3 flex-wrap">
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 border border-border text-primary" aria-label="Abrir menú"><Menu size={16} /></button>
             <div className="flex items-baseline gap-3 flex-wrap">
-              <span className="font-display text-primary" style={{ fontSize: 34, fontWeight: 400, lineHeight: 1 }}>Charm</span>
-              <span className="text-xs font-label text-accent hidden sm:inline">{profile?.display_name || profile?.employee_name}</span>
+              <span className="font-display text-primary md:hidden" style={{ fontSize: 26, fontWeight: 500, lineHeight: 1 }}>Charm</span>
+              <span className="text-xs font-label text-accent hidden md:inline">{profile?.display_name || profile?.employee_name}</span>
             </div>
             <div className="text-[11px] font-label text-muted-foreground leading-relaxed hidden sm:block">
               {saveStatus === "saving" ? "Guardando automáticamente…" : lastSavedLabel ? `Último guardado: ${lastSavedLabel} · Santo Domingo` : "Sin guardado reciente"}
@@ -921,28 +992,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             </button>
           </div>
         </div>
-        <nav className="max-w-7xl mx-auto px-2 md:px-6 flex items-center gap-1 overflow-x-auto no-scrollbar pb-2">
-          {isAdmin ? (
-            <>
-              <TabBtn active={view === "schedule"} onClick={() => setView("schedule")}>Agenda</TabBtn>
-              <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Individual</TabBtn>
-              <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Reportes</TabBtn>
-              <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
-              <TabBtn active={view === "clients"} onClick={() => { setSelectedClientId(null); setView("clients"); }}>Clientes</TabBtn>
-              <TabBtn active={view === "sales"} onClick={() => setView("sales")}>Ventas</TabBtn>
-              <TabBtn active={view === "inventory"} onClick={() => setView("inventory")}>Inventario</TabBtn>
-              <TabBtn active={view === "history"} onClick={() => setView("history")}>Historial</TabBtn>
-              <TabBtn active={view === "settings"} onClick={() => setView("settings")}>Ajustes</TabBtn>
-            </>
-          ) : (
-            <>
-              <TabBtn active={view === "individual"} onClick={() => setView("individual")}>Mi agenda</TabBtn>
-              <TabBtn active={view === "reports"} onClick={() => setView("reports")}>Mis reportes</TabBtn>
-              <TabBtn active={view === "swaps"} onClick={() => setView("swaps")} badge={pendingSwaps}>Solicitudes</TabBtn>
-            </>
-          )}
-        </nav>
-        {!profile?.employee_name && !isAdmin && (
+                {!profile?.employee_name && !isAdmin && (
           <div className="bg-destructive/10 border-t border-destructive px-4 md:px-6 py-2 text-xs text-destructive flex items-center gap-2">
             <AlertCircle size={12} /> Tu cuenta no está vinculada a una empleada. Pide al admin que te asigne para poder editar y solicitar cambios.
           </div>
@@ -1356,28 +1406,12 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       <footer className="text-center py-8 text-xs font-label text-accent">
         CHARM CLÍNICA ESTÉTICA · AGENDA DIARIA
       </footer>
+      </div>
     </div>
   );
 }
 
 // ─── Small UI helpers ─────────────────────────────────────────────────────
-function TabBtn({ active, onClick, children, badge }: { active: boolean; onClick: () => void; children: React.ReactNode; badge?: number }) {
-  return (
-    <button onClick={onClick} className="px-3 md:px-4 py-2 text-xs font-label transition-opacity relative whitespace-nowrap flex-shrink-0"
-      style={{
-        borderBottom: active ? "2px solid hsl(var(--primary))" : "2px solid transparent",
-        color: "hsl(var(--primary))",
-        opacity: active ? 1 : 0.55,
-      }}>
-      {children}
-      {badge && badge > 0 ? (
-        <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] bg-destructive text-destructive-foreground rounded-full align-middle">
-          {badge}
-        </span>
-      ) : null}
-    </button>
-  );
-}
 
 function ToggleBtn({ active, onClick, variant, children, className = "" }: {
   active: boolean; onClick: () => void; variant: "destructive" | "accent";
