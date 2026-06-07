@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight, Menu, X, CalendarDays, UserRound, BarChart3, Users, ShoppingBag, Package, History, Settings, Wallet, Printer, PhoneCall, ListPlus } from "lucide-react";
+import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight, Menu, X, CalendarDays, UserRound, BarChart3, Users, ShoppingBag, Package, History, Settings, Wallet, Printer, PhoneCall, ListPlus, RefreshCw } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
@@ -827,6 +827,25 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     setWalkInForm({ open: false, time: "", client: "" });
   };
 
+  const [syncing, setSyncing] = useState(false);
+  const syncDnsuite = async () => {
+    if (!isAdmin || syncing) return;
+    setSyncing(true);
+    try {
+      const { data: cfg } = await supabase.from("dnsuite_config").select("webhook_secret").eq("id", 1).maybeSingle();
+      const secret = (cfg as { webhook_secret?: string } | null)?.webhook_secret;
+      if (!secret) { toast.error("Configura la conexión con DNSuite primero (tabla dnsuite_config)."); setSyncing(false); return; }
+      const { data, error } = await supabase.functions.invoke("dnsuite-sync", { body: { trigger: "manual" }, headers: { "x-sync-secret": secret } });
+      if (error) throw error;
+      const r = (data as { ok?: boolean; result?: string; error?: string });
+      if (r?.ok) toast.success("Sincronizado con DNSuite — " + (r.result || ""));
+      else toast.error("DNSuite: " + (r?.error || "error desconocido"));
+    } catch (e) {
+      toast.error("No se pudo sincronizar: " + (e instanceof Error ? e.message : String(e)));
+    }
+    setSyncing(false);
+  };
+
   const confirmArrival = async (apt: Apt, cabin: number | null) => {
     if (!activeDate) return;
     const arrivedAt = new Date().toISOString();
@@ -1269,6 +1288,10 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 <button onClick={reAutoAssign}
                   className="px-4 py-2 text-xs font-label border border-primary text-primary bg-card flex items-center gap-2">
                   <RotateCcw size={14} /> Reasignar
+                </button>
+                <button onClick={() => void syncDnsuite()} disabled={syncing}
+                  className="px-4 py-2 text-xs font-label border border-accent text-accent bg-card flex items-center gap-2">
+                  <RefreshCw size={14} className={syncing ? "animate-spin" : ""} /> {syncing ? "Sincronizando…" : "Sincronizar"}
                 </button>
                 <button onClick={printDaySheet}
                   className="px-4 py-2 text-xs font-label border border-primary text-primary bg-card flex items-center gap-2">
