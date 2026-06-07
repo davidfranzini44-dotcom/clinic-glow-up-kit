@@ -130,10 +130,16 @@ export type Database = {
           cancelled: boolean
           changed: string
           client: string
+          client_phone: string | null
           date: string
+          dnsuite_id: string | null
+          dnsuite_synced_at: string | null
           employee: string | null
           id: string
           no_show: boolean
+          pending_amount: number | null
+          service_name: string | null
+          source: string
           swap_locked: boolean
           time: string
           time_mins: number
@@ -146,10 +152,16 @@ export type Database = {
           cancelled?: boolean
           changed?: string
           client: string
+          client_phone?: string | null
           date: string
+          dnsuite_id?: string | null
+          dnsuite_synced_at?: string | null
           employee?: string | null
           id: string
           no_show?: boolean
+          pending_amount?: number | null
+          service_name?: string | null
+          source?: string
           swap_locked?: boolean
           time: string
           time_mins: number
@@ -162,10 +174,16 @@ export type Database = {
           cancelled?: boolean
           changed?: string
           client?: string
+          client_phone?: string | null
           date?: string
+          dnsuite_id?: string | null
+          dnsuite_synced_at?: string | null
           employee?: string | null
           id?: string
           no_show?: boolean
+          pending_amount?: number | null
+          service_name?: string | null
+          source?: string
           swap_locked?: boolean
           time?: string
           time_mins?: number
@@ -403,6 +421,42 @@ export type Database = {
           phone?: string | null
           source?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      dnsuite_config: {
+        Row: {
+          enabled: boolean
+          horizon_days: number
+          id: number
+          last_result: string | null
+          last_run_at: string | null
+          sucursal_id: string
+          tenant_id: string
+          updated_at: string
+          webhook_secret: string
+        }
+        Insert: {
+          enabled?: boolean
+          horizon_days?: number
+          id?: number
+          last_result?: string | null
+          last_run_at?: string | null
+          sucursal_id: string
+          tenant_id: string
+          updated_at?: string
+          webhook_secret: string
+        }
+        Update: {
+          enabled?: boolean
+          horizon_days?: number
+          id?: number
+          last_result?: string | null
+          last_run_at?: string | null
+          sucursal_id?: string
+          tenant_id?: string
+          updated_at?: string
+          webhook_secret?: string
         }
         Relationships: []
       }
@@ -1094,6 +1148,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      run_dnsuite_sync: { Args: never; Returns: undefined }
       send_daily_summary: { Args: never; Returns: undefined }
       set_my_color: { Args: { new_color: string }; Returns: undefined }
     }
