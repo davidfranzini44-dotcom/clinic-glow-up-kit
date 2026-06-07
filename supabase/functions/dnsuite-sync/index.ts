@@ -36,22 +36,26 @@ async function firebaseLogin(email: string, password: string): Promise<string> {
   return j.idToken;
 }
 
-async function pullCitas(token: string, tenantId: string, sucursalId: string, fromDate: string): Promise<Cita[]> {
+async function pullDay(token: string, tenantId: string, sucursalId: string, date: string): Promise<Cita[]> {
+  // Equality-only filters: works without any composite index in Firestore.
   const body = {
     structuredQuery: {
       from: [{ collectionId: "citas" }],
       where: { compositeFilter: { op: "AND", filters: [
         { fieldFilter: { field: { fieldPath: "tenantId" }, op: "EQUAL", value: { stringValue: tenantId } } },
         { fieldFilter: { field: { fieldPath: "sucursalId" }, op: "EQUAL", value: { stringValue: sucursalId } } },
-        { fieldFilter: { field: { fieldPath: "date" }, op: "GREATER_THAN_OR_EQUAL", value: { stringValue: fromDate } } },
+        { fieldFilter: { field: { fieldPath: "date" }, op: "EQUAL", value: { stringValue: date } } },
       ] } },
+      limit: 400,
     },
   };
   const r = await fetch(`https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents:runQuery`, {
     method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify(body),
   });
   const j = await r.json();
-  if (!Array.isArray(j)) throw new Error("Firestore query failed: " + JSON.stringify(j).slice(0, 200));
+  if (!Array.isArray(j)) throw new Error("Firestore query failed: " + JSON.stringify(j).slice(0, 300));
+  const errEntry = j.find((x: { error?: { message?: string } }) => x.error);
+  if (errEntry) throw new Error("Firestore: " + (errEntry.error.message || "").slice(0, 300));
   return j.filter((x: { document?: unknown }) => x.document).map((x: { document: { name: string; fields: Record<string, Record<string, unknown>> } }) => {
     const f = x.document.fields;
     const g = (k: string) => (f[k] ? fv(f[k]) : undefined) as string | undefined;
@@ -63,6 +67,17 @@ async function pullCitas(token: string, tenantId: string, sucursalId: string, fr
       pendingAmount: g("pendingAmount"),
     } as Cita;
   });
+}
+
+async function pullCitas(token: string, tenantId: string, sucursalId: string, fromDate: string, horizonDays: number): Promise<Cita[]> {
+  const out: Cita[] = [];
+  const start = new Date(fromDate + "T12:00:00");
+  for (let i = 0; i <= horizonDays; i++) {
+    const d = new Date(start); d.setDate(d.getDate() + i);
+    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    out.push(...await pullDay(token, tenantId, sucursalId, ds));
+  }
+  return out;
 }
 
 const toMins = (t: string): number => {
@@ -127,7 +142,7 @@ Deno.serve(async (req: Request) => {
 
     const today = new Date().toISOString().slice(0, 10);
     const token = await firebaseLogin(email, password);
-    const citas = await pullCitas(token, cfg.tenant_id, cfg.sucursal_id, today);
+    const citas = await pullCitas(token, cfg.tenant_id, cfg.sucursal_id, today, Math.min(cfg.horizon_days ?? 21, 45));
 
     // roster
     const [{ data: es }, { data: sc }, { data: to }, { data: ov }] = await Promise.all([
