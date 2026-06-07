@@ -191,32 +191,46 @@ export function autoAssign<T extends AssignableAppt>(
   const sorted = [...appts].sort((a, b) => a.timeMins - b.timeMins);
   const total = sorted.filter(a => !a.cancelled).length;
 
-  // Targets: capped employees get up to their cap (≈ fair share); the rest split the remainder.
-  const fair = Math.round(total / Math.max(1, roster.length));
+  // Targets (water-filling): split the day evenly; when someone hits her cap,
+  // her surplus is redistributed evenly among everyone still below cap.
   const targets: Record<string, number> = {};
+  for (const e of roster) targets[e.name] = 0;
   let remaining = total;
-  const uncapped: Employee[] = [];
-  for (const e of roster) {
-    if (e.maxClients != null) {
-      const t = Math.min(e.maxClients, Math.max(0, fair));
-      targets[e.name] = t;
-      remaining -= t;
-    } else {
-      uncapped.push(e);
+  let active = roster.filter(e => e.maxClients == null || e.maxClients > 0);
+  while (remaining > 0 && active.length > 0) {
+    const share = Math.max(1, Math.floor(remaining / active.length));
+    let dist = 0;
+    for (const e of active) {
+      if (remaining - dist <= 0) break;
+      const cap = e.maxClients ?? Number.POSITIVE_INFINITY;
+      const add = Math.min(share, cap - targets[e.name], remaining - dist);
+      if (add > 0) { targets[e.name] += add; dist += add; }
     }
+    if (dist === 0) break;
+    remaining -= dist;
+    active = active.filter(e => (e.maxClients ?? Number.POSITIVE_INFINITY) > targets[e.name]);
   }
-  remaining = Math.max(0, remaining);
-  const per = Math.floor(remaining / Math.max(1, uncapped.length));
-  let extra = remaining - per * uncapped.length;
-  for (const e of uncapped) { targets[e.name] = per + (extra-- > 0 ? 1 : 0); }
 
   const counts: Record<string, number> = {};
   const lastSeen: Record<string, number> = {};
   for (const e of roster) { counts[e.name] = 0; lastSeen[e.name] = -999; }
   const usedAtSlot: Record<number, Set<string>> = {};
 
-  return sorted.map((apt) => {
-    if (apt.cancelled) return { ...apt };
+  // Assign the hardest-to-cover hours first (slots with the fewest available
+  // employees), so scarce evening/morning capacity is reserved before the
+  // flexible mid-day hours are distributed. Output stays in time order.
+  const availCount = (mins: number) =>
+    roster.filter(e => isWorkingOn(e, mins, wd, endBufferMin, overrides[e.name]?.[dateStr]) && !isOffOn(timeOff, e.name, dateStr)).length;
+  const order = sorted.map((_, i) => i).sort((a, b) => {
+    const ca = availCount(sorted[a].timeMins);
+    const cb = availCount(sorted[b].timeMins);
+    if (ca !== cb) return ca - cb;
+    return sorted[a].timeMins - sorted[b].timeMins;
+  });
+  const result: T[] = new Array(sorted.length);
+  for (const idx of order) {
+    const apt = sorted[idx];
+    if (apt.cancelled) { result[idx] = { ...apt }; continue; }
     const t = apt.timeMins;
     (usedAtSlot[t] ??= new Set<string>());
     const slotUsed = usedAtSlot[t];
@@ -226,6 +240,7 @@ export function autoAssign<T extends AssignableAppt>(
       (e.maxClients == null || counts[e.name] < e.maxClients)
     );
     if (available.length === 0) available = roster.filter(e => isWorkingOn(e, t, wd, endBufferMin, overrides[e.name]?.[dateStr]) && !isOffOn(timeOff, e.name, dateStr));
+    if (available.length === 0) available = roster.filter(e => isWorkingOn(e, t, wd, 0, overrides[e.name]?.[dateStr]) && !isOffOn(timeOff, e.name, dateStr));
     if (available.length === 0) available = roster.filter(e => !isOffOn(timeOff, e.name, dateStr));
     if (available.length === 0) available = [...roster];
 
@@ -250,8 +265,9 @@ export function autoAssign<T extends AssignableAppt>(
     counts[chosen.name]++;
     lastSeen[chosen.name] = t;
     slotUsed.add(chosen.name);
-    return { ...apt, employee: chosen.name, cabin: chosen.cabin };
-  });
+    result[idx] = { ...apt, employee: chosen.name, cabin: chosen.cabin };
+  }
+  return result;
 }
 
 // Representative working-day hours (for capacity/utilization metrics).
