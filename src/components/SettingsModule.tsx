@@ -22,7 +22,7 @@ const todayISO = () => {
 type EmpRow = { name: string; cabin: number | null; color: string | null; max_clients: number | null; active: boolean; sort_order: number; vacation_days: number };
 type SchedRow = { employee_name: string; weekday: number; works: boolean; start_min: number | null; end_min: number | null; lunch_start_min: number | null; lunch_minutes: number };
 type OffRow = { id: string; employee_name: string; date: string; reason: string };
-type ProfileRow = { id: string; display_name: string | null; employee_name: string | null; phone: string | null };
+type ProfileRow = { id: string; display_name: string | null; employee_name: string | null; phone: string | null  archived?: boolean | null; };
 type PermShape = { full_agenda: boolean; clients_access: string; sales: boolean; inventory: boolean; reports: boolean; history: boolean; agenda_edit: boolean; caja: boolean };
 const DEFAULT_PERM: PermShape = { full_agenda: true, clients_access: "read", sales: false, inventory: false, reports: true, history: false, agenda_edit: false, caja: false };
 const PRESET_TECH: PermShape = { ...DEFAULT_PERM };
@@ -59,6 +59,8 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
   const [bufferMin, setBufferMin] = useState(getEndBuffer() || 30);
 
   const [vacUsed, setVacUsed] = useState<Record<string, number>>({});
+  const [selfId, setSelfId] = useState<string>("");
+  useEffect(() => { supabase.auth.getUser().then(({ data }) => setSelfId(data.user?.id ?? "")); }, []);
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -67,7 +69,7 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
         supabase.from("employee_settings").select("*").order("sort_order"),
         supabase.from("employee_schedules").select("*"),
         supabase.from("employee_time_off").select("id,employee_name,date,reason").gte("date", todayISO()).order("date"),
-        supabase.from("profiles").select("id,display_name,employee_name,phone"),
+        supabase.from("profiles").select("id,display_name,employee_name,phone,archived"),
         supabase.from("user_roles").select("user_id,role"),
         supabase.from("user_permissions").select("*"),
         supabase.from("employee_requests").select("*").order("created_at", { ascending: false }).limit(60),
@@ -213,6 +215,30 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
       onChanged?.();
     } catch (err) {
       toast.error("Error: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const setArchived = async (prof: ProfileRow, archived: boolean) => {
+    if (prof.id === selfId) { toast.error("No puedes archivar tu propia cuenta."); return; }
+    const { error } = await supabase.from("profiles").update({ archived }).eq("id", prof.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(archived ? "Usuario archivado — ya no podrá entrar" : "Usuario restaurado");
+    await load();
+  };
+
+  const deleteUser = async (prof: ProfileRow) => {
+    if (prof.id === selfId) { toast.error("No puedes eliminar tu propia cuenta."); return; }
+    const name = prof.display_name || prof.employee_name || "este usuario";
+    if (!confirm(`¿Eliminar PERMANENTEMENTE la cuenta de ${name}? Se borra su acceso y todos sus datos. No se puede deshacer.`)) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users", { body: { action: "delete", user_id: prof.id } });
+      if (error) throw error;
+      const r = data as { ok?: boolean; error?: string };
+      if (!r?.ok) throw new Error(r?.error || "error desconocido");
+      toast.success("Cuenta eliminada");
+      await load();
+    } catch (e) {
+      toast.error("No se pudo eliminar: " + (e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -444,18 +470,42 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
         <h2 className="font-display text-primary mb-4" style={{ fontSize: 28, fontWeight: 500 }}>Usuarios</h2>
         <p className="text-xs text-muted-foreground mb-3">Las nuevas empleadas se registran en la pantalla de inicio de sesión; aquí les asignas su nombre en la agenda y si son administradoras.</p>
         <div className="border border-border bg-card divide-y divide-border">
-          {profiles.map((p) => (
-            <UserRow key={p.id} prof={p} isAdminUser={adminIds.has(p.id)} perms={permsMap[p.id] ?? DEFAULT_PERM} empNames={activeEmps.map((e) => e.name)} onSave={saveProfile} />
+          {profiles.filter((p) => !p.archived).map((p) => (
+            <UserRow key={p.id} prof={p} isAdminUser={adminIds.has(p.id)} perms={permsMap[p.id] ?? DEFAULT_PERM} empNames={activeEmps.map((e) => e.name)} onSave={saveProfile}
+              isSelf={p.id === selfId} onArchive={() => void setArchived(p, true)} onDelete={() => void deleteUser(p)} />
           ))}
         </div>
+        {profiles.some((p) => p.archived) && (
+          <details className="mt-3">
+            <summary className="text-xs font-label text-muted-foreground cursor-pointer">
+              ARCHIVADOS ({profiles.filter((p) => p.archived).length}) — no pueden iniciar sesión
+            </summary>
+            <div className="border border-border bg-card divide-y divide-border mt-2">
+              {profiles.filter((p) => p.archived).map((p) => (
+                <div key={p.id} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <div className="text-sm text-muted-foreground">{p.display_name || "(sin nombre)"}{p.employee_name ? ` · ${p.employee_name}` : ""}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => void setArchived(p, false)}
+                      className="px-2.5 py-1.5 text-[11px] font-label border border-success text-success">Restaurar</button>
+                    <button onClick={() => void deleteUser(p)}
+                      className="px-2.5 py-1.5 text-[11px] font-label border border-destructive text-destructive">Eliminar</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
       </div>
     </div>
   );
 }
 
-function UserRow({ prof, isAdminUser, perms, empNames, onSave }: {
+function UserRow({ prof, isAdminUser, perms, empNames, onSave, isSelf, onArchive, onDelete }: {
   prof: ProfileRow; isAdminUser: boolean; perms: PermShape; empNames: string[];
   onSave: (p: ProfileRow, makeAdmin: boolean, perms: PermShape) => void;
+  isSelf: boolean; onArchive: () => void; onDelete: () => void;
 }) {
   const [name, setName] = useState(prof.employee_name || "");
   const [admin, setAdmin] = useState(isAdminUser);
@@ -476,6 +526,14 @@ function UserRow({ prof, isAdminUser, perms, empNames, onSave }: {
           <label className="flex items-center gap-1"><input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} /> Admin</label>
           <button onClick={() => onSave({ ...prof, employee_name: name.trim() || null }, admin, pm)}
             className="px-3 py-1.5 text-xs font-label bg-primary text-primary-foreground flex items-center gap-1"><Check size={12} /> Guardar</button>
+          {!isSelf && (
+            <>
+              <button onClick={onArchive} title="Desactivar: no podrá entrar, se conserva todo"
+                className="px-2.5 py-1.5 text-[11px] font-label border border-border text-muted-foreground hover:border-accent hover:text-accent">Archivar</button>
+              <button onClick={onDelete} title="Eliminar la cuenta y sus datos para siempre"
+                className="px-2.5 py-1.5 text-[11px] font-label border border-destructive text-destructive">Eliminar</button>
+            </>
+          )}
         </div>
       </div>
       {!admin && (

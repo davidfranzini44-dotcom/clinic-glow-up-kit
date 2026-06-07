@@ -326,6 +326,14 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, session.user.id]);
   const canEditAgenda = isAdmin || perms.agenda_edit;
+  // archived accounts are signed out immediately
+  useEffect(() => {
+    if ((profile as { archived?: boolean } | null)?.archived) {
+      toast.error("Tu cuenta fue desactivada. Contacta a la administración.");
+      void supabase.auth.signOut();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(profile as { archived?: boolean } | null)?.archived]);
   const handleNotifLinkRef = useRef<(link: string) => void>(() => {});
   const [arriveDialog, setArriveDialog] = useState<{ open: boolean; apt: Apt | null }>({ open: false, apt: null });
   const [highlightId, setHighlightId] = useState<string | null>(null);
