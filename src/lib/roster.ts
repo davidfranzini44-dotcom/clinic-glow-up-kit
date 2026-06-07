@@ -21,6 +21,8 @@ export type Employee = {
 };
 
 export type TimeOffMap = Record<string, Set<string>>; // name -> set of "YYYY-MM-DD"
+export type DateOverride = { start_min: number | null; end_min: number | null };
+export type OverridesMap = Record<string, Record<string, DateOverride>>; // name -> date -> override
 
 // End-of-shift buffer: don't auto-assign within N minutes of an employee's end time. 0 = off.
 const END_BUFFER_KEY = "charm_end_buffer_min";
@@ -32,8 +34,8 @@ export const setEndBuffer = (mins: number) => {
 };
 
 // In-memory cache so multiple useRoster() callers don't each re-query.
-let rosterCache: { employees: Employee[]; timeOff: TimeOffMap } | null = null;
-let rosterInflight: Promise<{ employees: Employee[]; timeOff: TimeOffMap }> | null = null;
+let rosterCache: { employees: Employee[]; timeOff: TimeOffMap; overrides: OverridesMap } | null = null;
+let rosterInflight: Promise<{ employees: Employee[]; timeOff: TimeOffMap; overrides: OverridesMap }> | null = null;
 export const invalidateRoster = () => { rosterCache = null; rosterInflight = null; };
 
 // ─── Fallback defaults (mirror the pre-DB hardcoded roster) ───────────
@@ -89,7 +91,7 @@ export function buildEmployees(settings: SettingRow[], scheds: SchedRow[]): Empl
   return Object.values(byName).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-export async function fetchRoster(force = false): Promise<{ employees: Employee[]; timeOff: TimeOffMap }> {
+export async function fetchRoster(force = false): Promise<{ employees: Employee[]; timeOff: TimeOffMap; overrides: OverridesMap }> {
   if (!force && rosterCache) return rosterCache;
   if (!force && rosterInflight) return rosterInflight;
   const run = _fetchRosterUncached();
@@ -100,11 +102,12 @@ export async function fetchRoster(force = false): Promise<{ employees: Employee[
   return result;
 }
 
-async function _fetchRosterUncached(): Promise<{ employees: Employee[]; timeOff: TimeOffMap }> {
-  const [settingsRes, schedRes, offRes] = await Promise.all([
+async function _fetchRosterUncached(): Promise<{ employees: Employee[]; timeOff: TimeOffMap; overrides: OverridesMap }> {
+  const [settingsRes, schedRes, offRes, ovRes] = await Promise.all([
     supabase.from("employee_settings").select("*").eq("active", true).order("sort_order"),
     supabase.from("employee_schedules").select("*"),
     supabase.from("employee_time_off").select("employee_name,date"),
+    supabase.from("employee_date_overrides").select("employee_name,date,start_min,end_min"),
   ]);
   const settings = (settingsRes.data ?? []) as SettingRow[];
   const scheds = (schedRes.data ?? []) as SchedRow[];
@@ -114,18 +117,24 @@ async function _fetchRosterUncached(): Promise<{ employees: Employee[]; timeOff:
     (timeOff[o.employee_name] ??= new Set<string>()).add(o.date);
   }
   const employees = settings.length ? buildEmployees(settings, scheds) : DEFAULT_EMPLOYEES;
-  return { employees, timeOff };
+  const overrides: OverridesMap = {};
+  for (const o of (ovRes.data ?? []) as { employee_name: string; date: string; start_min: number | null; end_min: number | null }[]) {
+    (overrides[o.employee_name] ??= {})[o.date] = { start_min: o.start_min, end_min: o.end_min };
+  }
+  return { employees, timeOff, overrides };
 }
 
 export function useRoster() {
   const [employees, setEmployees] = useState<Employee[]>(DEFAULT_EMPLOYEES);
   const [timeOff, setTimeOff] = useState<TimeOffMap>({});
+  const [overrides, setOverrides] = useState<OverridesMap>({});
   const [loading, setLoading] = useState(true);
   const reload = useCallback(async (force = true) => {
     try {
       const r = await fetchRoster(force);
       if (r.employees.length) setEmployees(r.employees);
       setTimeOff(r.timeOff);
+      setOverrides(r.overrides);
     } catch (e) {
       console.error("Roster load failed; using defaults", e);
     } finally {
@@ -133,7 +142,7 @@ export function useRoster() {
     }
   }, []);
   useEffect(() => { void reload(false); }, [reload]);
-  return { employees, timeOff, loading, reload };
+  return { employees, timeOff, overrides, loading, reload };
 }
 
 // ─── Scheduling helpers ───────────────────────────────────────────────
@@ -141,10 +150,12 @@ export function weekdayOf(dateStr: string): number {
   return new Date(dateStr + "T12:00:00").getDay();
 }
 
-export function isWorkingOn(emp: Employee, mins: number, weekday: number, endBufferMin = 0): boolean {
+export function isWorkingOn(emp: Employee, mins: number, weekday: number, endBufferMin = 0, ov?: DateOverride | null): boolean {
   const d = emp.schedule[weekday];
   if (!d || !d.works) return false;
-  if (mins < d.startMin || mins >= d.endMin - endBufferMin) return false;
+  const startMin = ov?.start_min ?? d.startMin;
+  const endMin = ov?.end_min ?? d.endMin;
+  if (mins < startMin || mins >= endMin - endBufferMin) return false;
   if (d.lunchStartMin != null && mins >= d.lunchStartMin && mins < d.lunchStartMin + d.lunchMinutes) return false;
   return true;
 }
@@ -172,7 +183,8 @@ export function autoAssign<T extends AssignableAppt>(
   dateStr: string,
   employees: Employee[],
   timeOff: TimeOffMap,
-  endBufferMin = 0
+  endBufferMin = 0,
+  overrides: OverridesMap = {}
 ): T[] {
   const wd = weekdayOf(dateStr);
   const roster = employees.length ? employees : DEFAULT_EMPLOYEES;
@@ -210,10 +222,10 @@ export function autoAssign<T extends AssignableAppt>(
     const slotUsed = usedAtSlot[t];
 
     let available = roster.filter(e =>
-      isWorkingOn(e, t, wd, endBufferMin) && !isOffOn(timeOff, e.name, dateStr) &&
+      isWorkingOn(e, t, wd, endBufferMin, overrides[e.name]?.[dateStr]) && !isOffOn(timeOff, e.name, dateStr) &&
       (e.maxClients == null || counts[e.name] < e.maxClients)
     );
-    if (available.length === 0) available = roster.filter(e => isWorkingOn(e, t, wd, endBufferMin) && !isOffOn(timeOff, e.name, dateStr));
+    if (available.length === 0) available = roster.filter(e => isWorkingOn(e, t, wd, endBufferMin, overrides[e.name]?.[dateStr]) && !isOffOn(timeOff, e.name, dateStr));
     if (available.length === 0) available = roster.filter(e => !isOffOn(timeOff, e.name, dateStr));
     if (available.length === 0) available = [...roster];
 
