@@ -50,6 +50,21 @@ export default function ProfileModule({ session, onRosterChanged }: { session: S
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
   const [employeeName, setEmployeeName] = useState<string | null>(null);
+  const [vac, setVac] = useState<{ allowance: number; used: number } | null>(null);
+  useEffect(() => {
+    if (!employeeName) { setVac(null); return; }
+    (async () => {
+      try {
+        const yearStart = `${new Date().getFullYear()}-01-01`;
+        const [es, vu] = await Promise.all([
+          supabase.from("employee_settings").select("vacation_days").eq("name", employeeName).maybeSingle(),
+          supabase.from("employee_time_off").select("id", { count: "exact", head: true })
+            .eq("employee_name", employeeName).eq("reason", "vacation").gte("date", yearStart),
+        ]);
+        setVac({ allowance: (es.data as { vacation_days?: number } | null)?.vacation_days ?? 14, used: vu.count || 0 });
+      } catch { /* ignore */ }
+    })();
+  }, [employeeName]);
   const [email, setEmail] = useState(session.user.email || "");
   const [newPass, setNewPass] = useState("");
   const [newPass2, setNewPass2] = useState("");
@@ -245,6 +260,15 @@ export default function ProfileModule({ session, onRosterChanged }: { session: S
 
       {/* Solicitudes */}
       <div>
+        {vac && (
+          <div className="border border-border bg-card p-4 mb-6 flex items-center gap-4">
+            <div className="font-display text-accent" style={{ fontSize: 34, fontWeight: 500 }}>{Math.max(0, vac.allowance - vac.used)}</div>
+            <div>
+              <div className="font-label text-accent text-xs">DÍAS DE VACACIONES DISPONIBLES · {new Date().getFullYear()}</div>
+              <div className="text-sm text-muted-foreground mt-1">{vac.used} usados de {vac.allowance} al año</div>
+            </div>
+          </div>
+        )}
         <h2 className="font-display text-primary mb-4" style={{ fontSize: 24, fontWeight: 500 }}>
           <CalendarOff size={18} className="inline mr-2" />Mis solicitudes
         </h2>

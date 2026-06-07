@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { ensurePushSubscription } from "@/lib/push";
 import { Bell, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { trackSave } from "@/lib/saveSync";
@@ -50,8 +51,17 @@ export default function NotificationBell({ userId, onLink }: Props) {
 
   const requestPerm = () => {
     if (!notifSupported() || Notification.permission !== "default") return;
-    Notification.requestPermission().then((p) => setPerm(p)).catch(() => {});
+    Notification.requestPermission().then((p) => {
+      setPerm(p);
+      if (p === "granted") void ensurePushSubscription(userId);
+    }).catch(() => {});
   };
+
+  useEffect(() => {
+    if (notifSupported() && Notification.permission === "granted") {
+      void ensurePushSubscription(userId);
+    }
+  }, [userId]);
 
   const load = async () => {
     const { data } = await supabase

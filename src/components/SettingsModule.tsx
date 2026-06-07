@@ -19,7 +19,7 @@ const todayISO = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-type EmpRow = { name: string; cabin: number | null; color: string | null; max_clients: number | null; active: boolean; sort_order: number };
+type EmpRow = { name: string; cabin: number | null; color: string | null; max_clients: number | null; active: boolean; sort_order: number; vacation_days: number };
 type SchedRow = { employee_name: string; weekday: number; works: boolean; start_min: number | null; end_min: number | null; lunch_start_min: number | null; lunch_minutes: number };
 type OffRow = { id: string; employee_name: string; date: string; reason: string };
 type ProfileRow = { id: string; display_name: string | null; employee_name: string | null; phone: string | null };
@@ -58,10 +58,12 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
   const [bufferOn, setBufferOn] = useState(getEndBuffer() > 0);
   const [bufferMin, setBufferMin] = useState(getEndBuffer() || 30);
 
+  const [vacUsed, setVacUsed] = useState<Record<string, number>>({});
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [e, s, o, p, r, up, rq] = await Promise.all([
+      const yearStart = `${new Date().getFullYear()}-01-01`;
+      const [e, s, o, p, r, up, rq, vu] = await Promise.all([
         supabase.from("employee_settings").select("*").order("sort_order"),
         supabase.from("employee_schedules").select("*"),
         supabase.from("employee_time_off").select("id,employee_name,date,reason").gte("date", todayISO()).order("date"),
@@ -69,7 +71,11 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
         supabase.from("user_roles").select("user_id,role"),
         supabase.from("user_permissions").select("*"),
         supabase.from("employee_requests").select("*").order("created_at", { ascending: false }).limit(60),
+        supabase.from("employee_time_off").select("employee_name").eq("reason", "vacation").gte("date", yearStart),
       ]);
+      const vmap: Record<string, number> = {};
+      ((vu.data || []) as { employee_name: string }[]).forEach((x) => { vmap[x.employee_name] = (vmap[x.employee_name] || 0) + 1; });
+      setVacUsed(vmap);
       setEmps((e.data || []) as EmpRow[]);
       const sm: Record<string, Record<number, SchedRow>> = {};
       ((s.data || []) as SchedRow[]).forEach((row) => { (sm[row.employee_name] ??= {})[row.weekday] = row; });
@@ -113,7 +119,7 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
     if (!emp) return;
     try {
       const { error: e1 } = await supabase.from("employee_settings")
-        .update({ cabin: emp.cabin, color: emp.color, max_clients: emp.max_clients, active: emp.active, sort_order: emp.sort_order })
+        .update({ cabin: emp.cabin, color: emp.color, max_clients: emp.max_clients, active: emp.active, sort_order: emp.sort_order, vacation_days: emp.vacation_days ?? 14 })
         .eq("name", name);
       if (e1) throw e1;
       const rows = Object.values(scheds[name] || {}).map((r) => ({
@@ -136,7 +142,7 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
     if (!name) return;
     try {
       const sort = (emps.reduce((m, e) => Math.max(m, e.sort_order), 0)) + 1;
-      const { error: e1 } = await supabase.from("employee_settings").insert({ name, cabin: 1, color: "#8A5A6E", max_clients: null, active: true, sort_order: sort });
+      const { error: e1 } = await supabase.from("employee_settings").insert({ name, cabin: 1, color: "#8A5A6E", max_clients: null, active: true, sort_order: sort, vacation_days: 14 });
       if (e1) throw e1;
       const rows = blankSchedule().map((r) => ({ ...r, employee_name: name }));
       const { error: e2 } = await supabase.from("employee_schedules").upsert(rows, { onConflict: "employee_name,weekday" });
@@ -307,6 +313,12 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
                   <label className="flex items-center gap-1">Máx/día
                     <input type="number" value={emp.max_clients ?? ""} onChange={(e) => updateEmpField(emp.name, "max_clients", e.target.value ? parseInt(e.target.value) : null)}
                       className="w-14 px-2 py-1 border border-border bg-background text-foreground" placeholder="∞" /></label>
+                  <label className="flex items-center gap-1" title="Días de vacaciones por año">Vac/año
+                    <input type="number" value={emp.vacation_days ?? 14} onChange={(e) => updateEmpField(emp.name, "vacation_days", e.target.value ? parseInt(e.target.value) : 14)}
+                      className="w-14 px-2 py-1 border border-border bg-background text-foreground" /></label>
+                  <span className="text-muted-foreground" title="Vacaciones usadas este año">
+                    ({vacUsed[emp.name] || 0}/{emp.vacation_days ?? 14} usadas)
+                  </span>
                   <button onClick={() => saveEmployee(emp.name)} className="px-3 py-1.5 text-xs font-label bg-primary text-primary-foreground flex items-center gap-1"><Save size={12} /> Guardar</button>
                   <button onClick={() => deactivate(emp.name)} className="p-1.5 opacity-50 hover:opacity-100" title="Desactivar"><Trash2 size={14} className="text-destructive" /></button>
                 </div>

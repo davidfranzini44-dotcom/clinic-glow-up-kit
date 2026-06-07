@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight, Menu, X, CalendarDays, UserRound, BarChart3, Users, ShoppingBag, Package, History, Settings, Wallet } from "lucide-react";
+import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight, Menu, X, CalendarDays, UserRound, BarChart3, Users, ShoppingBag, Package, History, Settings, Wallet, Printer, PhoneCall, ListPlus } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
@@ -324,6 +324,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, session.user.id]);
   const canEditAgenda = isAdmin || perms.agenda_edit;
+  const handleNotifLinkRef = useRef<(link: string) => void>(() => {});
   const [arriveDialog, setArriveDialog] = useState<{ open: boolean; apt: Apt | null }>({ open: false, apt: null });
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [globalSwapsLocked, setGlobalSwapsLocked] = useState(false);
@@ -474,6 +475,92 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
+
+  // Deep links coming from push notification clicks
+  const nlinkConsumed = useRef(false);
+  useEffect(() => {
+    if (!hasLoaded || nlinkConsumed.current) return;
+    try {
+      const v = new URLSearchParams(window.location.search).get("nlink");
+      if (v) {
+        nlinkConsumed.current = true;
+        setTimeout(() => handleNotifLinkRef.current(v), 250);
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    } catch { /* ignore */ }
+  }, [hasLoaded]);
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const fn = (e: MessageEvent) => {
+      if (e.data && e.data.type === "nlink" && e.data.link) handleNotifLinkRef.current(e.data.link);
+    };
+    navigator.serviceWorker.addEventListener("message", fn);
+    return () => navigator.serviceWorker.removeEventListener("message", fn);
+  }, []);
+
+  // ── Lista de espera ──
+  type WaitRow = { id: string; date: string; client_name: string; phone: string | null; note: string | null; status: string };
+  const [waitlist, setWaitlist] = useState<WaitRow[]>([]);
+  const [wlOpen, setWlOpen] = useState(false);
+  const [wlForm, setWlForm] = useState({ name: "", phone: "" });
+  useEffect(() => {
+    if (!activeDate) { setWaitlist([]); return; }
+    (async () => {
+      const { data } = await supabase.from("waitlist").select("*")
+        .eq("date", activeDate).neq("status", "removed").order("created_at");
+      setWaitlist((data as WaitRow[]) || []);
+    })();
+  }, [activeDate]);
+  const wlPending = waitlist.filter(w => w.status === "pending").length;
+  const addToWaitlist = async () => {
+    if (!activeDate || !wlForm.name.trim()) return;
+    const { data, error } = await supabase.from("waitlist")
+      .insert({ date: activeDate, client_name: wlForm.name.trim(), phone: wlForm.phone.trim() || null, created_by: session.user.id })
+      .select().single();
+    if (error) { toast.error(error.message); return; }
+    setWaitlist(prev => [...prev, data as WaitRow]);
+    setWlForm({ name: "", phone: "" });
+  };
+  const setWaitStatus = async (id: string, status: string) => {
+    const { error } = await supabase.from("waitlist").update({ status }).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    setWaitlist(prev => status === "removed" ? prev.filter(w => w.id !== id) : prev.map(w => w.id === id ? { ...w, status } : w));
+  };
+
+  // ── No-show score per client (across all loaded history) ──
+  const noShowCount = useMemo(() => {
+    const m: Record<string, number> = {};
+    Object.values(days).forEach(list => list.forEach(a => {
+      if (a.noShow) { const k = a.client.trim().toLowerCase(); m[k] = (m[k] || 0) + 1; }
+    }));
+    return m;
+  }, [days]);
+  const noShowsOf = (client: string) => noShowCount[client.trim().toLowerCase()] || 0;
+
+  // ── Printable day sheet (per cabina) ──
+  const printDaySheet = () => {
+    if (!activeDate) return;
+    const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const list = (days[activeDate] || []).filter(a => !a.cancelled).sort((a, b) => a.timeMins - b.timeMins);
+    const cabs = Array.from(new Set(list.map(a => a.cabin).filter((c): c is number => c != null))).sort((a, b) => a - b);
+    const tbl = (rows: Apt[]) => `<table><thead><tr><th>Hora</th><th>Cliente</th><th>Empleada</th><th></th></tr></thead><tbody>${
+      rows.map(a => `<tr><td>${esc(a.time)}</td><td>${esc(a.client)}${a.walkIn ? " <em>(sin cita)</em>" : ""}</td><td>${esc(a.employee || "—")}</td><td>${a.noShow ? "NO ASISTIÓ" : a.arrivedAt ? "✓ llegó" : ""}</td></tr>`).join("")
+    }</tbody></table>`;
+    const sections = cabs.map(c => `<h2>Cabina ${c}</h2>${tbl(list.filter(a => a.cabin === c))}`).join("");
+    const noCab = list.filter(a => a.cabin == null);
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Agenda ${activeDate}</title><style>
+      body{font-family:Georgia,serif;margin:24px;color:#222}h1{font-size:22px;margin:0 0 2px}
+      .sub{color:#777;font-size:12px;margin-bottom:18px}h2{font-size:15px;border-bottom:2px solid #222;padding-bottom:3px;margin:18px 0 6px}
+      table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:5px 8px;border-bottom:1px solid #ddd}
+      th{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#777}em{color:#a55}
+      @media print{body{margin:8mm}}</style></head><body>
+      <h1>Charm — Agenda del día</h1><div class="sub">${dateLabelES(activeDate)} · ${list.length} citas</div>
+      ${sections}${noCab.length ? `<h2>Sin cabina asignada</h2>${tbl(noCab)}` : ""}
+      <script>window.onload=function(){window.print()}<\/script></body></html>`;
+    const w = window.open("", "_blank", "width=800,height=900");
+    if (!w) { toast.error("Permite ventanas emergentes para imprimir"); return; }
+    w.document.write(html); w.document.close();
+  };
 
   // Beforeunload guard
   useEffect(() => {
@@ -670,6 +757,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       return out;
     });
     if (updated) await saveApt(updated, activeDate);
+    if (changes.cancelled === true && wlPending > 0) {
+      toast.info(`Hay ${wlPending} cliente(s) en lista de espera para este día`, {
+        action: { label: "Ver lista", onClick: () => setWlOpen(true) },
+      });
+    }
   };
 
   const removeApt = async (id: string) => {
@@ -1021,7 +1113,9 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             />
             <NotificationBell
               userId={session.user.id}
-              onLink={(link) => {
+              onLink={(link) => handleNotifLinkRef.current(link)}
+            />
+            {(() => { handleNotifLinkRef.current = (link: string) => {
                 if (link === "swaps") setView("swaps");
                 else if (link.startsWith("date:")) {
                   const d = link.slice(5);
@@ -1039,8 +1133,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   }, 450);
                   setTimeout(() => setHighlightId(null), 6000);
                 }
-              }}
-            />
+              }; return null; })()}
             {isAdmin && view === "schedule" && (
               <>
                 <button onClick={exportAgendaExcel} className="px-3 md:px-4 py-2 text-xs font-label bg-primary text-primary-foreground flex items-center gap-2">
@@ -1171,6 +1264,15 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   className="px-4 py-2 text-xs font-label border border-primary text-primary bg-card flex items-center gap-2">
                   <RotateCcw size={14} /> Reasignar
                 </button>
+                <button onClick={printDaySheet}
+                  className="px-4 py-2 text-xs font-label border border-primary text-primary bg-card flex items-center gap-2">
+                  <Printer size={14} /> Imprimir
+                </button>
+                <button onClick={() => setWlOpen(o => !o)}
+                  className="px-4 py-2 text-xs font-label border bg-card flex items-center gap-2"
+                  style={{ borderColor: wlPending > 0 ? "hsl(var(--accent))" : "hsl(var(--primary))", color: wlPending > 0 ? "hsl(var(--accent))" : "hsl(var(--primary))" }}>
+                  <ListPlus size={14} /> Lista de espera{wlPending > 0 ? ` (${wlPending})` : ""}
+                </button>
                 {isAdmin && (
                 <button onClick={clearAllData}
                   className="px-4 py-2 text-xs font-label border border-destructive text-destructive bg-card flex items-center gap-2">
@@ -1179,6 +1281,38 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 )}
               </div>}
             </div>
+
+            {wlOpen && canEditAgenda && (
+              <div className="border border-accent bg-card p-4 mb-6">
+                <div className="text-xs font-label text-accent mb-3">LISTA DE ESPERA · {activeDate ? dateLabelES(activeDate) : ""}</div>
+                <div className="flex gap-2 flex-wrap mb-3">
+                  <input value={wlForm.name} onChange={(e) => setWlForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Nombre del cliente" className="px-3 py-2 text-sm border border-border bg-background text-foreground flex-1 min-w-[160px]" />
+                  <input value={wlForm.phone} onChange={(e) => setWlForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="Teléfono (opcional)" className="px-3 py-2 text-sm border border-border bg-background text-foreground w-40" />
+                  <button onClick={() => void addToWaitlist()} className="px-4 py-2 text-xs font-label bg-primary text-primary-foreground">Agregar</button>
+                </div>
+                {waitlist.length === 0 && <div className="text-xs italic text-muted-foreground">Nadie en espera para este día.</div>}
+                <div className="space-y-1">
+                  {waitlist.map(w => (
+                    <div key={w.id} className="flex items-center gap-2 text-sm flex-wrap border-b border-border pb-1">
+                      <span className="text-foreground">{w.client_name}</span>
+                      {w.phone && <a href={`tel:${w.phone}`} className="text-xs text-accent flex items-center gap-1"><PhoneCall size={11} />{w.phone}</a>}
+                      {w.status !== "pending" && <span className="text-[10px] font-label px-1.5 py-0.5 rounded-full bg-secondary text-secondary-foreground">{w.status === "called" ? "LLAMADA" : "AGENDADA"}</span>}
+                      <span className="flex-1" />
+                      {w.status === "pending" && (
+                        <button onClick={() => void setWaitStatus(w.id, "called")} className="px-2 py-1 text-[10px] font-label border border-border text-muted-foreground">Llamé</button>
+                      )}
+                      {w.status !== "booked" && (
+                        <button onClick={() => { setWalkInForm({ open: true, time: "", client: w.client_name }); void setWaitStatus(w.id, "booked"); }}
+                          className="px-2 py-1 text-[10px] font-label border border-success text-success">Agendar</button>
+                      )}
+                      <button onClick={() => void setWaitStatus(w.id, "removed")} className="px-2 py-1 text-[10px] font-label border border-border text-muted-foreground" title="Quitar">✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {walkInForm.open && (
               <div className="border border-accent bg-card p-4 mb-6">
@@ -1247,6 +1381,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     <div className="text-sm text-primary">{a.time}</div>
                     <div className="flex items-center gap-2 min-w-0">
                       <button onClick={() => setProfileClient(a.client)} className="text-sm truncate text-primary hover:underline text-left" style={{ textDecoration: dimmed ? "line-through" : undefined }}>{a.client}</button>
+                      {noShowsOf(a.client) >= 2 && <span className="text-[9px] font-label px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive whitespace-nowrap" title={`No asistió ${noShowsOf(a.client)} veces`}>⚠ {noShowsOf(a.client)} FALTAS</span>}
                       {a.walkIn && <span className="text-[10px] px-2 py-0.5 flex-shrink-0 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
                     </div>
                     <div>
@@ -1303,6 +1438,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                       <div className="flex items-baseline gap-2 flex-wrap min-w-0">
                         <span className="text-sm font-medium text-primary">{a.time}</span>
                         <button onClick={() => setProfileClient(a.client)} className="text-sm text-primary hover:underline text-left" style={{ textDecoration: dimmed ? "line-through" : undefined }}>{a.client}</button>
+                        {noShowsOf(a.client) >= 2 && <span className="text-[9px] font-label px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive" title={`No asistió ${noShowsOf(a.client)} veces`}>⚠ {noShowsOf(a.client)}</span>}
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         {a.employee && !a.cancelled && (a.arrivedAt ? (
