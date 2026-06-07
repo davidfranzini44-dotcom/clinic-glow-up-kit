@@ -170,6 +170,7 @@ Deno.serve(async (req: Request) => {
     const pulledIds = new Set(citas.map(c => c.id));
 
     let inserted = 0, updated = 0, removed = 0, cancelled = 0;
+    let firstErr = "";
     const affectedDates = new Set<string>();
 
     // upsert pulled citas
@@ -185,11 +186,13 @@ Deno.serve(async (req: Request) => {
         cancelled: isCancelled, source: "dnsuite", dnsuite_id: c.id, dnsuite_synced_at: new Date().toISOString(),
       };
       if (ex) {
-        await sb.from("appointments").update(base).eq("id", ex.id);
-        updated++; if (isCancelled) cancelled++;
+        const { error } = await sb.from("appointments").update(base).eq("id", ex.id);
+        if (error) { if (!firstErr) firstErr = "update: " + error.message; }
+        else { updated++; if (isCancelled) cancelled++; }
       } else {
-        await sb.from("appointments").insert({ ...base, employee: null, cabin: null, no_show: false, walk_in: false, changed: "" });
-        inserted++;
+        const { error } = await sb.from("appointments").insert({ ...base, id: "dn_" + c.id, employee: null, cabin: null, no_show: false, walk_in: false, changed: "", swap_locked: false });
+        if (error) { if (!firstErr) firstErr = "insert: " + error.message; }
+        else inserted++;
       }
     }
 
@@ -210,9 +213,9 @@ Deno.serve(async (req: Request) => {
       for (const [id, a] of Object.entries(res)) await sb.from("appointments").update({ employee: a.emp, cabin: a.cab }).eq("id", id);
     }
 
-    const result = `pulled ${citas.length} · +${inserted} ~${updated} -${removed} cancel ${cancelled}`;
+    const result = `pulled ${citas.length} · +${inserted} ~${updated} -${removed} cancel ${cancelled}` + (firstErr ? ` · ERROR ${firstErr}` : "");
     await sb.from("dnsuite_config").update({ last_run_at: new Date().toISOString(), last_result: result }).eq("id", 1);
-    return new Response(JSON.stringify({ ok: true, result }), { headers: { ...CORS, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: !firstErr, result, error: firstErr || undefined }), { headers: { ...CORS, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: (e as Error).message }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
   }
