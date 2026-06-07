@@ -94,3 +94,7 @@
     border-radius: var(--radius);
   }
 }
+
+/* Hide scrollbar on horizontal nav/date strips */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
