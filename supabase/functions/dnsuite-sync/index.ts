@@ -37,36 +37,46 @@ async function firebaseLogin(email: string, password: string): Promise<string> {
 }
 
 async function pullDay(token: string, tenantId: string, sucursalId: string, date: string): Promise<Cita[]> {
-  // Equality-only filters: works without any composite index in Firestore.
-  const body = {
-    structuredQuery: {
-      from: [{ collectionId: "citas" }],
-      where: { compositeFilter: { op: "AND", filters: [
-        { fieldFilter: { field: { fieldPath: "tenantId" }, op: "EQUAL", value: { stringValue: tenantId } } },
-        { fieldFilter: { field: { fieldPath: "sucursalId" }, op: "EQUAL", value: { stringValue: sucursalId } } },
-        { fieldFilter: { field: { fieldPath: "date" }, op: "EQUAL", value: { stringValue: date } } },
-      ] } },
-      limit: 400,
-    },
-  };
-  const r = await fetch(`https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents:runQuery`, {
-    method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify(body),
-  });
-  const j = await r.json();
-  if (!Array.isArray(j)) throw new Error("Firestore query failed: " + JSON.stringify(j).slice(0, 300));
-  const errEntry = j.find((x: { error?: { message?: string } }) => x.error);
-  if (errEntry) throw new Error("Firestore: " + (errEntry.error.message || "").slice(0, 300));
-  return j.filter((x: { document?: unknown }) => x.document).map((x: { document: { name: string; fields: Record<string, Record<string, unknown>> } }) => {
-    const f = x.document.fields;
-    const g = (k: string) => (f[k] ? fv(f[k]) : undefined) as string | undefined;
-    return {
-      id: x.document.name.split("/").pop()!,
-      date: g("date") ?? "", time: g("time") ?? "",
-      clientName: g("clientName") ?? "", clientPhone: g("clientPhone"),
-      serviceName: g("serviceName"), status: g("status"),
-      pendingAmount: g("pendingAmount"),
-    } as Cita;
-  });
+  // Equality-only filters (no composite index needed). DNSuite stores
+  // sucursalId inconsistently (sometimes text, sometimes number), so we
+  // query both representations and merge.
+  const sucValues: Record<string, unknown>[] = [{ stringValue: sucursalId }];
+  if (/^\d+$/.test(sucursalId)) sucValues.push({ integerValue: sucursalId });
+
+  const out = new Map<string, Cita>();
+  for (const sucVal of sucValues) {
+    const body = {
+      structuredQuery: {
+        from: [{ collectionId: "citas" }],
+        where: { compositeFilter: { op: "AND", filters: [
+          { fieldFilter: { field: { fieldPath: "tenantId" }, op: "EQUAL", value: { stringValue: tenantId } } },
+          { fieldFilter: { field: { fieldPath: "sucursalId" }, op: "EQUAL", value: sucVal } },
+          { fieldFilter: { field: { fieldPath: "date" }, op: "EQUAL", value: { stringValue: date } } },
+        ] } },
+        limit: 400,
+      },
+    };
+    const r = await fetch(`https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents:runQuery`, {
+      method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    if (!Array.isArray(j)) throw new Error("Firestore query failed: " + JSON.stringify(j).slice(0, 300));
+    const errEntry = j.find((x: { error?: { message?: string } }) => x.error);
+    if (errEntry) throw new Error("Firestore: " + (errEntry.error.message || "").slice(0, 300));
+    for (const x of j.filter((y: { document?: unknown }) => y.document) as { document: { name: string; fields: Record<string, Record<string, unknown>> } }[]) {
+      const f = x.document.fields;
+      const g = (k: string) => (f[k] ? fv(f[k]) : undefined) as string | undefined;
+      const id = x.document.name.split("/").pop()!;
+      out.set(id, {
+        id,
+        date: g("date") ?? "", time: g("time") ?? "",
+        clientName: g("clientName") ?? "", clientPhone: g("clientPhone"),
+        serviceName: g("serviceName"), status: g("status"),
+        pendingAmount: g("pendingAmount"),
+      } as Cita);
+    }
+  }
+  return [...out.values()];
 }
 
 async function pullCitas(token: string, tenantId: string, sucursalId: string, fromDate: string, horizonDays: number): Promise<Cita[]> {
