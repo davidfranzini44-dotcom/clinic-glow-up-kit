@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { ensurePushSubscription } from "@/lib/push";
 import { invalidateRoster } from "@/lib/roster";
 import { toast } from "sonner";
 import { Save, KeyRound, Mail, Palette, CalendarOff, Camera, Trash2, Check, Clock } from "lucide-react";
@@ -51,6 +52,18 @@ export default function ProfileModule({ session, onRosterChanged }: { session: S
   const [phone, setPhone] = useState("");
   const [employeeName, setEmployeeName] = useState<string | null>(null);
   const [vac, setVac] = useState<{ allowance: number; used: number } | null>(null);
+  const [notifPerm, setNotifPerm] = useState<string>(() =>
+    typeof Notification !== "undefined" ? Notification.permission : "unsupported"
+  );
+  const activateNotifs = async () => {
+    if (typeof Notification === "undefined") return;
+    const p = await Notification.requestPermission();
+    setNotifPerm(p);
+    if (p === "granted") {
+      await ensurePushSubscription(session.user.id);
+      toast.success("Notificaciones activadas en este dispositivo");
+    }
+  };
   useEffect(() => {
     if (!employeeName) { setVac(null); return; }
     (async () => {
@@ -260,6 +273,29 @@ export default function ProfileModule({ session, onRosterChanged }: { session: S
 
       {/* Solicitudes */}
       <div>
+        {notifPerm !== "unsupported" && (
+          <div className="border border-border bg-card p-4 mb-6 flex items-center gap-3 flex-wrap">
+            <div className="flex-1 min-w-[180px]">
+              <div className="font-label text-accent text-xs mb-1">NOTIFICACIONES EN ESTE DISPOSITIVO</div>
+              <div className="text-sm text-muted-foreground">
+                {notifPerm === "granted" ? "Activadas — recibirás avisos de llegadas y solicitudes." :
+                 notifPerm === "denied" ? "Bloqueadas — actívalas en los ajustes del navegador (Permisos → Notificaciones)." :
+                 "Aún no activadas en este dispositivo."}
+              </div>
+            </div>
+            {notifPerm === "default" && (
+              <button onClick={() => void activateNotifs()} className="px-4 py-2 text-xs font-label bg-primary text-primary-foreground">
+                Activar notificaciones
+              </button>
+            )}
+            {notifPerm === "granted" && (
+              <button onClick={() => void ensurePushSubscription(session.user.id).then((ok) => toast[ok ? "success" : "error"](ok ? "Este dispositivo está registrado" : "No se pudo registrar"))}
+                className="px-4 py-2 text-xs font-label border border-border text-muted-foreground">
+                Probar registro
+              </button>
+            )}
+          </div>
+        )}
         {vac && (
           <div className="border border-border bg-card p-4 mb-6 flex items-center gap-4">
             <div className="font-display text-accent" style={{ fontSize: 34, fontWeight: 500 }}>{Math.max(0, vac.allowance - vac.used)}</div>

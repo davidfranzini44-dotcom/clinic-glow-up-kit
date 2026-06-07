@@ -155,6 +155,8 @@ const parseExcel = async (file: File): Promise<Record<string, Apt[]>> => {
     const clientNames = clientStr.split(/\s*,\s*/).map((n) => n.trim()).filter((n) => n.length > 0);
 
     clientNames.forEach((name, nameIdx) => {
+      // skip exact duplicate rows (same date + client + time) that some exports contain
+      if (days[dateStr].some((x) => x.timeMins === timeMins && x.client.toLowerCase() === name.toLowerCase())) return;
       days[dateStr].push({
         id: `${dateStr}-${i}-${nameIdx}-${Math.random().toString(36).slice(2, 7)}`,
         client: name,
@@ -396,7 +398,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
     const channel = supabase
       .channel("appointments-changes")
-      .on("postgres_changes" as never, { event: "*", schema: "public", table: "appointments" } as never, (payload: ApptChangePayload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload: ApptChangePayload) => {
         if (payload.eventType === "INSERT") {
           const row = payload.new;
           setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
