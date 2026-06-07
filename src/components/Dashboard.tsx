@@ -279,8 +279,9 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
           <StatCard icon={<AlertCircle size={16} />} label="Canceló" value={totals.cancelled} color="#8A5A6E" />
           <StatCard icon={<TrendingUp size={16} />} label="Sin cita" value={totals.walkIns} color="#C2566E" />
         </div>
+      )}
 
-        {/* Ranking de citas atendidas */}
+      {/* Ranking de citas atendidas */}
         {isAdmin ? (
           <div className="bg-card border border-border p-4 mb-6">
             <div className="font-label text-accent text-xs mb-3">RANKING · CITAS ATENDIDAS</div>
@@ -305,7 +306,6 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
             </div>
           </div>
         ))}
-      )}
 
       <div className="space-y-4">
         {visibleEmployees.map(emp => {
