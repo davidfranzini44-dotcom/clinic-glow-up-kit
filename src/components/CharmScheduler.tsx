@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight, Menu, X, CalendarDays, UserRound, BarChart3, Users, ShoppingBag, Package, History, Settings } from "lucide-react";
+import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight, Menu, X, CalendarDays, UserRound, BarChart3, Users, ShoppingBag, Package, History, Settings, Wallet } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
@@ -44,6 +44,7 @@ export type Apt = {
   walkIn: boolean;
   changed: string;
   swapLocked: boolean;
+  arrivedAt: string | null;
 };
 
 // ─── Time helpers ─────────────────────────────────────────────────────────
@@ -165,7 +166,7 @@ const parseExcel = async (file: File): Promise<Record<string, Apt[]>> => {
         noShow: false,
         walkIn: false,
         changed: "",
-        swapLocked: false,
+        swapLocked: false, arrivedAt: null,
       });
     });
   }
@@ -247,6 +248,7 @@ const rowToApt = (row: ApptRow): Apt => ({
   walkIn: row.walk_in,
   changed: row.changed || "",
   swapLocked: !!row.swap_locked,
+  arrivedAt: row.arrived_at ?? null,
 });
 
 const aptToRow = (apt: Apt, dateStr: string) => ({
@@ -262,6 +264,7 @@ const aptToRow = (apt: Apt, dateStr: string) => ({
   walk_in: apt.walkIn,
   changed: apt.changed || "",
   swap_locked: apt.swapLocked,
+  arrived_at: apt.arrivedAt ?? null,
 });
 
 export type Perms = {
@@ -271,8 +274,10 @@ export type Perms = {
   inventory: boolean;
   reports: boolean;
   history: boolean;
+  agenda_edit: boolean;
+  caja: boolean;
 };
-const DEFAULT_PERMS: Perms = { full_agenda: true, clients_access: "read", sales: false, inventory: false, reports: false, history: false };
+const DEFAULT_PERMS: Perms = { full_agenda: true, clients_access: "read", sales: false, inventory: false, reports: true, history: false, agenda_edit: false, caja: false };
 
 // ─── Main component ───────────────────────────────────────────────────────
 type Props = { session: Session; profile: Profile; isAdmin: boolean; onSignOut: () => void };
@@ -311,11 +316,16 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           inventory: !!data.inventory,
           reports: !!data.reports,
           history: !!data.history,
+          agenda_edit: !!(data as { agenda_edit?: boolean }).agenda_edit,
+          caja: !!(data as { caja?: boolean }).caja,
         });
       } catch { /* defaults */ }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, session.user.id]);
+  const canEditAgenda = isAdmin || perms.agenda_edit;
+  const [arriveDialog, setArriveDialog] = useState<{ open: boolean; apt: Apt | null }>({ open: false, apt: null });
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [globalSwapsLocked, setGlobalSwapsLocked] = useState(false);
   const pendingRef = useRef<Map<string, { apt: Apt; date: string }>>(new Map());
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -646,7 +656,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   };
 
   const removeApt = async (id: string) => {
-    if (!isAdmin || !activeDate) return;
+    if (!canEditAgenda || !activeDate) return;
     setDays(prev => ({
       ...prev,
       [activeDate]: prev[activeDate].filter(a => a.id !== id),
@@ -660,7 +670,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   };
 
   const addWalkIn = async () => {
-    if (!isAdmin || !activeDate) return;
+    if (!canEditAgenda || !activeDate) return;
     const { time, client } = walkInForm;
     if (!time.trim() || !client.trim()) { alert("Por favor ingresa hora y nombre del cliente."); return; }
     const timeMins = parseTime(time);
@@ -692,7 +702,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       timeMins,
       employee: chosen.name,
       cabin: chosen.cabin,
-      cancelled: false, noShow: false, walkIn: true, changed: "", swapLocked: false,
+      cancelled: false, noShow: false, walkIn: true, changed: "", swapLocked: false, arrivedAt: null,
     };
     setDays(prev => ({
       ...prev,
@@ -702,8 +712,18 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     setWalkInForm({ open: false, time: "", client: "" });
   };
 
+  const confirmArrival = async (apt: Apt, cabin: number | null) => {
+    if (!activeDate) return;
+    const arrivedAt = new Date().toISOString();
+    setDays(prev => ({ ...prev, [activeDate]: (prev[activeDate] || []).map(x => x.id === apt.id ? { ...x, cabin, arrivedAt } : x) }));
+    setArriveDialog({ open: false, apt: null });
+    const { error } = await supabase.from("appointments").update({ cabin, arrived_at: arrivedAt }).eq("id", apt.id);
+    if (error) toast.error(error.message || "No se pudo confirmar la llegada");
+    else toast.success("Llegada confirmada — empleada notificada");
+  };
+
   const reAutoAssign = async () => {
-    if (!isAdmin || !activeDate) return;
+    if (!canEditAgenda || !activeDate) return;
     if (!confirm("¿Volver a asignar todo el día?")) return;
     const reset = (days[activeDate] || []).map(a => ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
     const assigned = autoAssign(reset, activeDate, employees, timeOff, getEndBuffer(), overrides);
@@ -872,6 +892,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         ...(perms.sales ? [{ key: "sales" as ViewKey, label: "Ventas", icon: <ShoppingBag size={16} /> }] : []),
         ...(perms.inventory ? [{ key: "inventory" as ViewKey, label: "Inventario", icon: <Package size={16} /> }] : []),
         ...(perms.history ? [{ key: "history" as ViewKey, label: "Historial", icon: <History size={16} /> }] : []),
+        ...(perms.caja && !perms.sales ? [{ key: "sales" as ViewKey, label: "Caja", icon: <Wallet size={16} /> }] : []),
       ];
   const goView = (key: ViewKey) => {
     if (key === "clients") setSelectedClientId(null);
@@ -988,6 +1009,18 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 else if (link.startsWith("date:")) {
                   const d = link.slice(5);
                   if (days[d]) setActiveDate(d);
+                }
+                else if (link.startsWith("apt:")) {
+                  const parts = link.split(":");
+                  const aptId = parts[1];
+                  const d = parts[2];
+                  if (d && days[d]) setActiveDate(d);
+                  setView(isAdmin || perms.full_agenda ? "schedule" : "individual");
+                  setHighlightId(aptId);
+                  setTimeout(() => {
+                    (document.getElementById("apt-" + aptId) || document.getElementById("apt-m-" + aptId))?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }, 450);
+                  setTimeout(() => setHighlightId(null), 6000);
                 }
               }}
             />
@@ -1112,7 +1145,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   {dateLabelES(activeDate)}
                 </h2>
               </div>
-              {isAdmin && <div className="flex gap-2 flex-wrap">
+              {canEditAgenda && <div className="flex gap-2 flex-wrap">
                 <button onClick={() => setWalkInForm({ open: true, time: "", client: "" })}
                   className="px-4 py-2 text-xs font-label border border-primary text-primary bg-card flex items-center gap-2">
                   <UserPlus size={14} /> Sin Cita
@@ -1121,10 +1154,12 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   className="px-4 py-2 text-xs font-label border border-primary text-primary bg-card flex items-center gap-2">
                   <RotateCcw size={14} /> Reasignar
                 </button>
+                {isAdmin && (
                 <button onClick={clearAllData}
                   className="px-4 py-2 text-xs font-label border border-destructive text-destructive bg-card flex items-center gap-2">
                   <Trash2 size={14} /> Borrar Todo
                 </button>
+                )}
               </div>}
             </div>
 
@@ -1184,12 +1219,13 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 const empColor = a.employee ? (empMap[a.employee]?.color ?? "hsl(var(--muted-foreground))") : "hsl(var(--muted-foreground))";
                 const dimmed = a.cancelled || a.noShow;
                 return (
-                  <div key={a.id} className="grid gap-3 px-4 py-3 border-b items-center"
+                  <div key={a.id} id={`apt-${a.id}`} className="grid gap-3 px-4 py-3 border-b items-center"
                     style={{
                       borderColor: "hsl(var(--border))",
-                      backgroundColor: idx % 2 === 0 ? "transparent" : "hsl(var(--background))",
+                      backgroundColor: highlightId === a.id ? "hsl(var(--secondary))" : idx % 2 === 0 ? "transparent" : "hsl(var(--background))",
                       gridTemplateColumns: "90px 1fr 130px 50px 240px",
                       opacity: dimmed ? 0.5 : 1,
+                      outline: highlightId === a.id ? "2px solid hsl(var(--accent))" : undefined,
                     }}>
                     <div className="text-sm text-primary">{a.time}</div>
                     <div className="flex items-center gap-2 min-w-0">
@@ -1211,6 +1247,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     </div>
                     <div className="text-sm text-muted-foreground">{a.cabin || "—"}</div>
                     <div className="flex items-center justify-end gap-1">
+                      {a.employee && !a.cancelled && (a.arrivedAt ? (
+                        <span className="text-[9px] font-label px-1.5 py-0.5 rounded-full bg-success/15 text-success whitespace-nowrap" title={`Llegó ${new Date(a.arrivedAt).toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })}`}>✓ LLEGÓ</span>
+                      ) : (canEditAgenda ? (
+                        <button onClick={() => setArriveDialog({ open: true, apt: a })} className="px-2 py-1 text-[10px] font-label border border-success text-success whitespace-nowrap">LLEGÓ</button>
+                      ) : null))}
                       <ToggleBtn active={a.noShow} onClick={() => updateApt(a.id, { noShow: !a.noShow, cancelled: false })} variant="destructive">NO ASISTIÓ</ToggleBtn>
                       <ToggleBtn active={a.cancelled} onClick={() => updateApt(a.id, { cancelled: !a.cancelled, noShow: false })} variant="accent">CANCELÓ</ToggleBtn>
                       {isAdmin && (
@@ -1224,7 +1265,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                             : <Unlock size={14} className="text-muted-foreground" />}
                         </button>
                       )}
-                      {isAdmin && <button onClick={() => removeApt(a.id)} className="p-1 opacity-40 hover:opacity-100" title="Eliminar">
+                      {canEditAgenda && <button onClick={() => removeApt(a.id)} className="p-1 opacity-40 hover:opacity-100" title="Eliminar">
                         <Trash2 size={14} className="text-destructive" />
                       </button>}
                     </div>
@@ -1240,15 +1281,20 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 const empColor = a.employee ? (empMap[a.employee]?.color ?? "hsl(var(--muted-foreground))") : "hsl(var(--muted-foreground))";
                 const dimmed = a.cancelled || a.noShow;
                 return (
-                  <div key={a.id} className="border border-border bg-card p-3" style={{ borderLeft: `4px solid ${empColor}`, opacity: dimmed ? 0.55 : 1 }}>
+                  <div key={a.id} id={`apt-m-${a.id}`} className="border border-border bg-card p-3" style={{ borderLeft: `4px solid ${empColor}`, opacity: dimmed ? 0.55 : 1, outline: highlightId === a.id ? "2px solid hsl(var(--accent))" : undefined }}>
                     <div className="flex items-baseline justify-between gap-2 mb-2">
                       <div className="flex items-baseline gap-2 flex-wrap min-w-0">
                         <span className="text-sm font-medium text-primary">{a.time}</span>
                         <button onClick={() => setProfileClient(a.client)} className="text-sm text-primary hover:underline text-left" style={{ textDecoration: dimmed ? "line-through" : undefined }}>{a.client}</button>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
+                        {a.employee && !a.cancelled && (a.arrivedAt ? (
+                          <span className="text-[9px] font-label px-1.5 py-0.5 rounded-full bg-success/15 text-success">✓</span>
+                        ) : (canEditAgenda ? (
+                          <button onClick={() => setArriveDialog({ open: true, apt: a })} className="px-2 py-0.5 text-[10px] font-label border border-success text-success">LLEGÓ</button>
+                        ) : null))}
                         {a.walkIn && <span className="text-[10px] px-2 py-0.5 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
-                        {isAdmin && <button onClick={() => removeApt(a.id)} className="p-1 opacity-50"><Trash2 size={14} className="text-destructive" /></button>}
+                        {canEditAgenda && <button onClick={() => removeApt(a.id)} className="p-1 opacity-50"><Trash2 size={14} className="text-destructive" /></button>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 mb-2">
@@ -1384,8 +1430,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           <ClientsModule isAdmin={isAdmin} canEdit={isAdmin || perms.clients_access === "edit"} selectedClientId={selectedClientId} setSelectedClientId={setSelectedClientId} />
         )}
 
-        {view === "sales" && (isAdmin || perms.sales) && (
-          <SalesModule profile={profile} isAdmin={isAdmin} />
+        {view === "sales" && (isAdmin || perms.sales || perms.caja) && (
+          <SalesModule profile={profile} isAdmin={isAdmin} cajaOnly={!isAdmin && !perms.sales && perms.caja} />
         )}
 
         {view === "inventory" && (
@@ -1428,6 +1474,27 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         clientName={profileClient}
         onClose={() => setProfileClient(null)}
       />
+
+      {arriveDialog.open && arriveDialog.apt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/40" onClick={() => setArriveDialog({ open: false, apt: null })} />
+          <div className="relative bg-card border border-border p-5 w-full max-w-xs space-y-3">
+            <div className="font-display text-primary" style={{ fontSize: 22, fontWeight: 500 }}>Confirmar llegada</div>
+            <div className="text-sm text-primary">{arriveDialog.apt.client}</div>
+            <div className="text-xs text-muted-foreground">{arriveDialog.apt.time} · {arriveDialog.apt.employee || "Sin asignar"}</div>
+            <label className="block text-xs">
+              <span className="font-label text-accent">Confirmar cabina</span>
+              <select id="arrive-cabin" defaultValue={String(arriveDialog.apt.cabin ?? 1)} className="mt-1 w-full px-3 py-2 text-sm border border-border bg-background text-foreground">
+                {[1, 2, 3, 4].map((c) => <option key={c} value={c}>Cabina {c}</option>)}
+              </select>
+            </label>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setArriveDialog({ open: false, apt: null })} className="px-3 py-2 text-xs font-label border border-border text-muted-foreground">Cancelar</button>
+              <button onClick={() => { const sel = document.getElementById("arrive-cabin") as HTMLSelectElement | null; void confirmArrival(arriveDialog.apt as Apt, sel ? parseInt(sel.value) || null : null); }} className="px-3 py-2 text-xs font-label bg-success text-success-foreground">Confirmar llegada</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="text-center py-8 text-xs font-label text-accent">
         CHARM CLÍNICA ESTÉTICA · AGENDA DIARIA

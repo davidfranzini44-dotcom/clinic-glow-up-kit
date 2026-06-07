@@ -141,6 +141,12 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
 
   const visibleEmployees = isAdmin ? empList : [myEmployee].filter(e => empList.includes(e));
 
+  const ranking = useMemo(
+    () => empList.map(emp => ({ emp, attended: stats[emp]?.attended || 0 })).sort((a, b) => b.attended - a.attended),
+    [empList, stats]
+  );
+  const myRank = ranking.findIndex(r => r.emp === myEmployee) + 1;
+
   const applyPreset = (preset: string) => {
     setActivePreset(preset);
     if (preset === "today") { setDateFrom(todayISO()); setDateTo(todayISO()); }
@@ -273,6 +279,32 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
           <StatCard icon={<AlertCircle size={16} />} label="Canceló" value={totals.cancelled} color="#8A5A6E" />
           <StatCard icon={<TrendingUp size={16} />} label="Sin cita" value={totals.walkIns} color="#C2566E" />
         </div>
+
+        {/* Ranking de citas atendidas */}
+        {isAdmin ? (
+          <div className="bg-card border border-border p-4 mb-6">
+            <div className="font-label text-accent text-xs mb-3">RANKING · CITAS ATENDIDAS</div>
+            <div className="space-y-2">
+              {ranking.map((r, i) => (
+                <div key={r.emp} className="flex items-center gap-3 text-sm">
+                  <span className="font-display w-9" style={{ fontSize: 20, color: i === 0 ? "hsl(var(--accent))" : "hsl(var(--primary))" }}>#{i + 1}</span>
+                  <span className="flex-1 text-foreground">{r.emp}</span>
+                  <span className="font-label text-muted-foreground text-xs">{r.attended} atendidas</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (myRank > 0 && (
+          <div className="bg-card border border-border p-4 mb-6 flex items-center gap-4">
+            <div className="font-display text-accent" style={{ fontSize: 40, fontWeight: 500 }}>#{myRank}</div>
+            <div>
+              <div className="font-label text-accent text-xs">TU POSICIÓN EN EL EQUIPO</div>
+              <div className="text-sm text-muted-foreground mt-1">
+                de {ranking.length} empleadas · {stats[myEmployee]?.attended || 0} citas atendidas en este rango
+              </div>
+            </div>
+          </div>
+        ))}
       )}
 
       <div className="space-y-4">

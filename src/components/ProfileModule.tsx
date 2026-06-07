@@ -5,6 +5,12 @@ import { invalidateRoster } from "@/lib/roster";
 import { toast } from "sonner";
 import { Save, KeyRound, Mail, Palette, CalendarOff, Camera, Trash2, Check, Clock } from "lucide-react";
 
+const errMsg = (e: unknown): string => {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object" && "message" in e) return String((e as { message: unknown }).message);
+  return String(e ?? "");
+};
+
 export const COLOR_OPTIONS = [
   "#C2566E", "#8A5A6E", "#C58A3A", "#8A4A2E", "#3E8E8E", "#7E5AA6",
   "#2F6B4F", "#B5485D", "#4A6FA5", "#9C6B30", "#5B8C5A", "#A35A9E",
@@ -135,7 +141,7 @@ export default function ProfileModule({ session, onRosterChanged }: { session: S
       setReqInfo(""); setReqFile(null); setReqEndDate("");
       await load();
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : "") || "No se pudo enviar");
+      toast.error((errMsg(e)) || "No se pudo enviar");
     } finally {
       setBusy(false);
     }
@@ -204,27 +210,35 @@ export default function ProfileModule({ session, onRosterChanged }: { session: S
             <Palette size={18} className="inline mr-2" />Mi color en la agenda
           </h2>
           <div className="border border-border bg-card p-4">
-            <div className="flex gap-2 flex-wrap">
+            <div className="grid grid-cols-6 gap-3 max-w-sm">
               {COLOR_OPTIONS.map((c) => {
                 const taken = takenColors.has(c.toUpperCase());
                 const mine = (myColor || "").toUpperCase() === c.toUpperCase();
                 return (
                   <button key={c} onClick={() => !taken && !mine && pickColor(c)} disabled={taken}
-                    title={taken ? "En uso por otra empleada" : c}
-                    className="w-9 h-9 rounded-full border-2 inline-flex items-center justify-center transition-transform"
+                    title={taken ? "En uso por otra empleada" : "Elegir este color"}
+                    className="aspect-square w-full rounded-full border-2 inline-flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
                     style={{
                       backgroundColor: c,
                       borderColor: mine ? "hsl(var(--primary))" : "transparent",
-                      opacity: taken ? 0.25 : 1,
-                      transform: mine ? "scale(1.15)" : undefined,
+                      boxShadow: mine ? "0 0 0 3px hsl(var(--background)), 0 0 0 5px " + c : undefined,
+                      opacity: taken ? 0.2 : 1,
+                      transform: mine ? "scale(1.12)" : undefined,
                       cursor: taken ? "not-allowed" : "pointer",
                     }}>
-                    {mine && <Check size={14} color="white" />}
+                    {mine && <Check size={16} color="white" />}
                   </button>
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">Los colores apagados ya están en uso por otra empleada.</p>
+            {myColor && (
+              <div className="mt-4 border border-border bg-background p-3 flex items-center gap-3" style={{ borderLeft: `4px solid ${myColor}` }}>
+                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: myColor }} />
+                <span className="text-sm text-foreground">{employeeName}</span>
+                <span className="text-xs text-muted-foreground">· así te verás en la agenda</span>
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground mt-3">Toca un color para elegirlo. Los apagados ya están en uso por otra empleada.</p>
           </div>
         </div>
       )}

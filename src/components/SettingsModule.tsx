@@ -22,8 +22,10 @@ type EmpRow = { name: string; cabin: number | null; color: string | null; max_cl
 type SchedRow = { employee_name: string; weekday: number; works: boolean; start_min: number | null; end_min: number | null; lunch_start_min: number | null; lunch_minutes: number };
 type OffRow = { id: string; employee_name: string; date: string; reason: string };
 type ProfileRow = { id: string; display_name: string | null; employee_name: string | null; phone: string | null };
-type PermShape = { full_agenda: boolean; clients_access: string; sales: boolean; inventory: boolean; reports: boolean; history: boolean };
-const DEFAULT_PERM: PermShape = { full_agenda: true, clients_access: "read", sales: false, inventory: false, reports: false, history: false };
+type PermShape = { full_agenda: boolean; clients_access: string; sales: boolean; inventory: boolean; reports: boolean; history: boolean; agenda_edit: boolean; caja: boolean };
+const DEFAULT_PERM: PermShape = { full_agenda: true, clients_access: "read", sales: false, inventory: false, reports: true, history: false, agenda_edit: false, caja: false };
+const PRESET_TECH: PermShape = { ...DEFAULT_PERM };
+const PRESET_SECRETARY: PermShape = { full_agenda: true, clients_access: "edit", sales: false, inventory: false, reports: true, history: true, agenda_edit: true, caja: true };
 type ReqRow = {
   id: string; user_id: string; employee_name: string | null; kind: string; date: string;
   end_date: string | null; new_start_min: number | null; info: string | null;
@@ -78,7 +80,7 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
       setAdminIds(admins);
       const pm: Record<string, PermShape> = {};
       ((up.data || []) as ({ user_id: string } & PermShape)[]).forEach((x) => {
-        pm[x.user_id] = { full_agenda: !!x.full_agenda, clients_access: x.clients_access || "read", sales: !!x.sales, inventory: !!x.inventory, reports: !!x.reports, history: !!x.history };
+        pm[x.user_id] = { full_agenda: !!x.full_agenda, clients_access: x.clients_access || "read", sales: !!x.sales, inventory: !!x.inventory, reports: !!x.reports, history: !!x.history, agenda_edit: !!x.agenda_edit, caja: !!x.caja };
       });
       setPermsMap(pm);
       setStaffReqs((rq.data || []) as ReqRow[]);
@@ -448,7 +450,11 @@ function UserRow({ prof, isAdminUser, perms, empNames, onSave }: {
       {!admin && (
         <div className="flex items-center gap-3 flex-wrap text-[11px] text-muted-foreground border-t border-border pt-2">
           <span className="font-label text-accent">Permisos:</span>
+          <button type="button" onClick={() => setPm(PRESET_TECH)} className="px-2 py-0.5 border border-border text-muted-foreground hover:border-accent hover:text-accent">Preset: Técnica</button>
+          <button type="button" onClick={() => setPm(PRESET_SECRETARY)} className="px-2 py-0.5 border border-border text-muted-foreground hover:border-accent hover:text-accent">Preset: Secretaria</button>
           <label className="flex items-center gap-1"><input type="checkbox" checked={pm.full_agenda} onChange={(e) => set("full_agenda", e.target.checked)} /> Agenda completa</label>
+          <label className="flex items-center gap-1"><input type="checkbox" checked={pm.agenda_edit} onChange={(e) => set("agenda_edit", e.target.checked)} /> Edita agenda</label>
+          <label className="flex items-center gap-1"><input type="checkbox" checked={pm.caja} onChange={(e) => set("caja", e.target.checked)} /> Caja (gastos/cierre)</label>
           <label className="flex items-center gap-1">Clientes
             <select value={pm.clients_access} onChange={(e) => set("clients_access", e.target.value)} className="px-1 py-0.5 border border-border bg-background text-foreground">
               <option value="none">Sin acceso</option>

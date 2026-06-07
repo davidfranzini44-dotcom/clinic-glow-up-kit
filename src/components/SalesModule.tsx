@@ -86,8 +86,8 @@ const Stat = ({ label, value, icon, color }: { label: ReactNode; value: ReactNod
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN SALES MODULE
 // ═══════════════════════════════════════════════════════════════════════════
-export default function SalesModule({ profile, isAdmin }: { profile: SalesProfile; isAdmin: boolean }) {
-  const [view, setView] = useState('overview');
+export default function SalesModule({ profile, isAdmin, cajaOnly = false }: { profile: SalesProfile; isAdmin: boolean; cajaOnly?: boolean }) {
+  const [view, setView] = useState(cajaOnly ? 'expenses' : 'overview');
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -125,20 +125,20 @@ export default function SalesModule({ profile, isAdmin }: { profile: SalesProfil
   return (
     <>
       <div className="flex gap-2 mb-6 flex-wrap">
-        <SubNavBtn active={view === 'overview'} onClick={() => setView('overview')}>Resumen</SubNavBtn>
-        {isAdmin && <SubNavBtn active={view === 'new-sale'} onClick={() => setView('new-sale')}>Nueva Venta</SubNavBtn>}
-        <SubNavBtn active={view === 'invoices'} onClick={() => setView('invoices')}>Facturas</SubNavBtn>
-        {isAdmin && <SubNavBtn active={view === 'catalog'} onClick={() => setView('catalog')}>Catálogo</SubNavBtn>}
-        {isAdmin && <SubNavBtn active={view === 'expenses'} onClick={() => setView('expenses')}>Gastos</SubNavBtn>}
-        {isAdmin && <SubNavBtn active={view === 'closure'} onClick={() => setView('closure')}>Cierre Caja</SubNavBtn>}
+        {!cajaOnly && <SubNavBtn active={view === 'overview'} onClick={() => setView('overview')}>Resumen</SubNavBtn>}
+        {isAdmin && !cajaOnly && <SubNavBtn active={view === 'new-sale'} onClick={() => setView('new-sale')}>Nueva Venta</SubNavBtn>}
+        {!cajaOnly && <SubNavBtn active={view === 'invoices'} onClick={() => setView('invoices')}>Facturas</SubNavBtn>}
+        {isAdmin && !cajaOnly && <SubNavBtn active={view === 'catalog'} onClick={() => setView('catalog')}>Catálogo</SubNavBtn>}
+        {(isAdmin || cajaOnly) && <SubNavBtn active={view === 'expenses'} onClick={() => setView('expenses')}>Gastos</SubNavBtn>}
+        {(isAdmin || cajaOnly) && <SubNavBtn active={view === 'closure'} onClick={() => setView('closure')}>Cierre Caja</SubNavBtn>}
       </div>
 
       {view === 'overview' && <Overview invoices={invoices} expenses={expenses} packages={packages} setView={setView} />}
       {view === 'new-sale' && isAdmin && <NewSale catalog={catalog} customers={customers} setCustomers={setCustomers} setInvoices={setInvoices} setPackages={setPackages} setView={setView} profile={profile} />}
       {view === 'invoices' && <InvoicesList invoices={invoices} packages={packages} profile={profile} />}
       {view === 'catalog' && isAdmin && <CatalogManager catalog={catalog} setCatalog={setCatalog} />}
-      {view === 'expenses' && isAdmin && <ExpensesManager expenses={expenses} setExpenses={setExpenses} />}
-      {view === 'closure' && isAdmin && <CashClosure invoices={invoices} expenses={expenses} closures={closures} setClosures={setClosures} profile={profile} />}
+      {view === 'expenses' && (isAdmin || cajaOnly) && <ExpensesManager expenses={expenses} setExpenses={setExpenses} />}
+      {view === 'closure' && (isAdmin || cajaOnly) && <CashClosure invoices={invoices} expenses={expenses} closures={closures} setClosures={setClosures} profile={profile} />}
     </>
   );
 }
