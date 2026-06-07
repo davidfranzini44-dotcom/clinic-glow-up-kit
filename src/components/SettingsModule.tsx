@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getEndBuffer, setEndBuffer } from "@/lib/roster";
 import { toast } from "sonner";
 import { Plus, Trash2, Save, CalendarOff, Check } from "lucide-react";
+import { COLOR_OPTIONS } from "./ProfileModule";
 
 const WD = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const toHHMM = (m: number | null | undefined) =>
@@ -282,9 +283,27 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
                   <label className="flex items-center gap-1">Cabina
                     <input type="number" value={emp.cabin ?? ""} onChange={(e) => updateEmpField(emp.name, "cabin", e.target.value ? parseInt(e.target.value) : null)}
                       className="w-14 px-2 py-1 border border-border bg-background text-foreground" /></label>
-                  <label className="flex items-center gap-1">Color
-                    <input type="text" value={emp.color ?? ""} onChange={(e) => updateEmpField(emp.name, "color", e.target.value)}
-                      className="w-28 px-2 py-1 border border-border bg-background text-foreground" /></label>
+                  <span className="flex items-center gap-1.5 flex-wrap">Color
+                    {COLOR_OPTIONS.map((c) => {
+                      const mine = (emp.color || "").toUpperCase() === c.toUpperCase();
+                      const taken = !mine && activeEmps.some((o) => o.name !== emp.name && (o.color || "").toUpperCase() === c.toUpperCase());
+                      return (
+                        <button key={c} type="button" disabled={taken}
+                          onClick={() => updateEmpField(emp.name, "color", c)}
+                          title={taken ? "En uso por otra empleada" : c}
+                          className="w-6 h-6 rounded-full border-2 inline-flex items-center justify-center transition-all duration-150 hover:scale-110"
+                          style={{
+                            backgroundColor: c,
+                            borderColor: mine ? "hsl(var(--primary))" : "transparent",
+                            opacity: taken ? 0.2 : 1,
+                            transform: mine ? "scale(1.1)" : undefined,
+                            cursor: taken ? "not-allowed" : "pointer",
+                          }}>
+                          {mine && <Check size={11} color="white" />}
+                        </button>
+                      );
+                    })}
+                  </span>
                   <label className="flex items-center gap-1">Máx/día
                     <input type="number" value={emp.max_clients ?? ""} onChange={(e) => updateEmpField(emp.name, "max_clients", e.target.value ? parseInt(e.target.value) : null)}
                       className="w-14 px-2 py-1 border border-border bg-background text-foreground" placeholder="∞" /></label>
