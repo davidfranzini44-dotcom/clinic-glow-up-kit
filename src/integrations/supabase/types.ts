@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      dnsuite_config: {
+        Row: { id: number; tenant_id: string; sucursal_id: string; webhook_secret: string; enabled: boolean; horizon_days: number; last_run_at: string | null; last_result: string | null; updated_at: string }
+        Insert: { id?: number; tenant_id: string; sucursal_id: string; webhook_secret: string; enabled?: boolean; horizon_days?: number; last_run_at?: string | null; last_result?: string | null; updated_at?: string }
+        Update: { id?: number; tenant_id?: string; sucursal_id?: string; webhook_secret?: string; enabled?: boolean; horizon_days?: number; last_run_at?: string | null; last_result?: string | null; updated_at?: string }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      waitlist: {
+        Row: {
+          id: string
+          date: string
+          client_name: string
+          phone: string | null
+          note: string | null
+          status: string
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          date: string
+          client_name: string
+          phone?: string | null
+          note?: string | null
+          status?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          date?: string
+          client_name?: string
+          phone?: string | null
+          note?: string | null
+          status?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           id: number
@@ -125,6 +191,12 @@ export type Database = {
       }
       appointments: {
         Row: {
+          source: string
+          dnsuite_id: string | null
+          service_name: string | null
+          client_phone: string | null
+          pending_amount: number | null
+          dnsuite_synced_at: string | null
           arrived_at: string | null
           cabin: number | null
           cancelled: boolean
@@ -141,6 +213,12 @@ export type Database = {
           walk_in: boolean
         }
         Insert: {
+          source?: string
+          dnsuite_id?: string | null
+          service_name?: string | null
+          client_phone?: string | null
+          pending_amount?: number | null
+          dnsuite_synced_at?: string | null
           arrived_at?: string | null
           cabin?: number | null
           cancelled?: boolean
@@ -157,6 +235,12 @@ export type Database = {
           walk_in?: boolean
         }
         Update: {
+          source?: string
+          dnsuite_id?: string | null
+          service_name?: string | null
+          client_phone?: string | null
+          pending_amount?: number | null
+          dnsuite_synced_at?: string | null
           arrived_at?: string | null
           cabin?: number | null
           cancelled?: boolean
@@ -528,6 +612,7 @@ export type Database = {
       }
       employee_settings: {
         Row: {
+          vacation_days: number
           active: boolean
           cabin: number | null
           color: string | null
@@ -536,9 +621,9 @@ export type Database = {
           name: string
           sort_order: number
           updated_at: string
-          vacation_days: number
         }
         Insert: {
+          vacation_days?: number
           active?: boolean
           cabin?: number | null
           color?: string | null
@@ -547,9 +632,9 @@ export type Database = {
           name: string
           sort_order?: number
           updated_at?: string
-          vacation_days?: number
         }
         Update: {
+          vacation_days?: number
           active?: boolean
           cabin?: number | null
           color?: string | null
@@ -558,7 +643,6 @@ export type Database = {
           name?: string
           sort_order?: number
           updated_at?: string
-          vacation_days?: number
         }
         Relationships: []
       }
@@ -934,57 +1018,6 @@ export type Database = {
         }
         Relationships: []
       }
-      push_config: {
-        Row: {
-          function_url: string
-          id: number
-          vapid_private: string
-          vapid_public: string
-          webhook_secret: string
-        }
-        Insert: {
-          function_url: string
-          id: number
-          vapid_private: string
-          vapid_public: string
-          webhook_secret: string
-        }
-        Update: {
-          function_url?: string
-          id?: number
-          vapid_private?: string
-          vapid_public?: string
-          webhook_secret?: string
-        }
-        Relationships: []
-      }
-      push_subscriptions: {
-        Row: {
-          auth: string
-          created_at: string
-          endpoint: string
-          id: string
-          p256dh: string
-          user_id: string
-        }
-        Insert: {
-          auth: string
-          created_at?: string
-          endpoint: string
-          id?: string
-          p256dh: string
-          user_id: string
-        }
-        Update: {
-          auth?: string
-          created_at?: string
-          endpoint?: string
-          id?: string
-          p256dh?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_permissions: {
         Row: {
           agenda_edit: boolean
@@ -1048,39 +1081,6 @@ export type Database = {
         }
         Relationships: []
       }
-      waitlist: {
-        Row: {
-          client_name: string
-          created_at: string
-          created_by: string | null
-          date: string
-          id: string
-          note: string | null
-          phone: string | null
-          status: string
-        }
-        Insert: {
-          client_name: string
-          created_at?: string
-          created_by?: string | null
-          date: string
-          id?: string
-          note?: string | null
-          phone?: string | null
-          status?: string
-        }
-        Update: {
-          client_name?: string
-          created_at?: string
-          created_by?: string | null
-          date?: string
-          id?: string
-          note?: string | null
-          phone?: string | null
-          status?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -1094,7 +1094,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      send_daily_summary: { Args: never; Returns: undefined }
       set_my_color: { Args: { new_color: string }; Returns: undefined }
     }
     Enums: {
