@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      waitlist: {
+        Row: {
+          id: string
+          date: string
+          client_name: string
+          phone: string | null
+          note: string | null
+          status: string
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          date: string
+          client_name: string
+          phone?: string | null
+          note?: string | null
+          status?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          date?: string
+          client_name?: string
+          phone?: string | null
+          note?: string | null
+          status?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           id: number
@@ -528,6 +588,7 @@ export type Database = {
       }
       employee_settings: {
         Row: {
+          vacation_days: number
           active: boolean
           cabin: number | null
           color: string | null
@@ -538,6 +599,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          vacation_days?: number
           active?: boolean
           cabin?: number | null
           color?: string | null
@@ -548,6 +610,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          vacation_days?: number
           active?: boolean
           cabin?: number | null
           color?: string | null
