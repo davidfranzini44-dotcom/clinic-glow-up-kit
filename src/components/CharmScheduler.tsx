@@ -395,7 +395,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
     const channel = supabase
       .channel("appointments-changes")
-      .on("postgres_changes" as never, { event: "*", schema: "public", table: "appointments" }, (payload: ApptChangePayload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload: ApptChangePayload) => {
         if (payload.eventType === "INSERT") {
           const row = payload.new;
           setLastSavedAt(prev => latestTimestamp(prev, row.updated_at));
@@ -414,8 +414,14 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
           syncLastSavedAt(row.updated_at);
           setDays(prev => {
             const updated = { ...prev };
+            Object.keys(updated).forEach(date => {
+              if (date !== row.date) updated[date] = updated[date].filter(a => a.id !== row.id);
+            });
             if (updated[row.date]) {
-              updated[row.date] = updated[row.date].map(a => a.id === row.id ? rowToApt(row) : a);
+              const exists = updated[row.date].some(a => a.id === row.id);
+              updated[row.date] = exists
+                ? updated[row.date].map(a => a.id === row.id ? rowToApt(row) : a)
+                : [...updated[row.date], rowToApt(row)].sort((a, b) => a.timeMins - b.timeMins);
             }
             return updated;
           });
@@ -621,7 +627,18 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         assignedDays[d] = autoAssign(parsed[d], d, employees, timeOff, getEndBuffer(), overrides);
         assignedDays[d].forEach(apt => allRows.push(aptToRow(apt, d)));
       });
+      const parsedDates = Object.keys(parsed);
+      const datesWithData = parsedDates.filter(d => (days[d] || []).length > 0);
+      if (datesWithData.length > 0) {
+        const ok = window.confirm(
+          `Ya hay citas guardadas para ${datesWithData.length} fecha(s) de este archivo (${datesWithData.slice(0, 4).join(", ")}${datesWithData.length > 4 ? "…" : ""}). Se reemplazarán por las del archivo nuevo.`
+        );
+        if (!ok) { setLoading(false); e.target.value = ""; return; }
+      }
       markSaveStart();
+      // Replace, don't accumulate: remove the old rows of these dates first
+      const { error: delErr } = await supabase.from("appointments").delete().in("date", parsedDates);
+      if (delErr) throw delErr;
       const { error, data } = await supabase.from("appointments").upsert(allRows).select("updated_at");
       if (error) throw error;
       setDays(prev => ({ ...prev, ...assignedDays }));
