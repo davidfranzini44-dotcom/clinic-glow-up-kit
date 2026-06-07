@@ -14,222 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      user_permissions: {
-        Row: {
-          user_id: string
-          full_agenda: boolean
-          clients_access: string
-          sales: boolean
-          inventory: boolean
-          reports: boolean
-          history: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          user_id: string
-          full_agenda?: boolean
-          clients_access?: string
-          sales?: boolean
-          inventory?: boolean
-          reports?: boolean
-          history?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          user_id?: string
-          full_agenda?: boolean
-          clients_access?: string
-          sales?: boolean
-          inventory?: boolean
-          reports?: boolean
-          history?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      employee_requests: {
-        Row: {
-          id: string
-          user_id: string
-          employee_name: string | null
-          kind: string
-          date: string
-          end_date: string | null
-          new_start_min: number | null
-          info: string | null
-          attachment_path: string | null
-          status: string
-          reviewed_by: string | null
-          reviewed_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          employee_name?: string | null
-          kind: string
-          date: string
-          end_date?: string | null
-          new_start_min?: number | null
-          info?: string | null
-          attachment_path?: string | null
-          status?: string
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          employee_name?: string | null
-          kind?: string
-          date?: string
-          end_date?: string | null
-          new_start_min?: number | null
-          info?: string | null
-          attachment_path?: string | null
-          status?: string
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      employee_date_overrides: {
-        Row: {
-          id: string
-          employee_name: string
-          date: string
-          start_min: number | null
-          end_min: number | null
-          reason: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          employee_name: string
-          date: string
-          start_min?: number | null
-          end_min?: number | null
-          reason?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          employee_name?: string
-          date?: string
-          start_min?: number | null
-          end_min?: number | null
-          reason?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      employee_settings: {
-        Row: {
-          name: string
-          cabin: number | null
-          color: string | null
-          max_clients: number | null
-          active: boolean
-          sort_order: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          name: string
-          cabin?: number | null
-          color?: string | null
-          max_clients?: number | null
-          active?: boolean
-          sort_order?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          name?: string
-          cabin?: number | null
-          color?: string | null
-          max_clients?: number | null
-          active?: boolean
-          sort_order?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      employee_schedules: {
-        Row: {
-          id: string
-          employee_name: string
-          weekday: number
-          works: boolean
-          start_min: number | null
-          end_min: number | null
-          lunch_start_min: number | null
-          lunch_minutes: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          employee_name: string
-          weekday: number
-          works?: boolean
-          start_min?: number | null
-          end_min?: number | null
-          lunch_start_min?: number | null
-          lunch_minutes?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          employee_name?: string
-          weekday?: number
-          works?: boolean
-          start_min?: number | null
-          end_min?: number | null
-          lunch_start_min?: number | null
-          lunch_minutes?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      employee_time_off: {
-        Row: {
-          id: string
-          employee_name: string
-          date: string
-          reason: string
-          created_at: string
-          created_by: string | null
-        }
-        Insert: {
-          id?: string
-          employee_name: string
-          date: string
-          reason?: string
-          created_at?: string
-          created_by?: string | null
-        }
-        Update: {
-          id?: string
-          employee_name?: string
-          date?: string
-          reason?: string
-          created_at?: string
-          created_by?: string | null
-        }
-        Relationships: []
-      }
       app_settings: {
         Row: {
           id: number
@@ -619,6 +403,186 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_date_overrides: {
+        Row: {
+          created_at: string
+          date: string
+          employee_name: string
+          end_min: number | null
+          id: string
+          reason: string | null
+          start_min: number | null
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          employee_name: string
+          end_min?: number | null
+          id?: string
+          reason?: string | null
+          start_min?: number | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          employee_name?: string
+          end_min?: number | null
+          id?: string
+          reason?: string | null
+          start_min?: number | null
+        }
+        Relationships: []
+      }
+      employee_requests: {
+        Row: {
+          attachment_path: string | null
+          created_at: string
+          date: string
+          employee_name: string | null
+          end_date: string | null
+          id: string
+          info: string | null
+          kind: string
+          new_start_min: number | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachment_path?: string | null
+          created_at?: string
+          date: string
+          employee_name?: string | null
+          end_date?: string | null
+          id?: string
+          info?: string | null
+          kind: string
+          new_start_min?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachment_path?: string | null
+          created_at?: string
+          date?: string
+          employee_name?: string | null
+          end_date?: string | null
+          id?: string
+          info?: string | null
+          kind?: string
+          new_start_min?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      employee_schedules: {
+        Row: {
+          created_at: string
+          employee_name: string
+          end_min: number | null
+          id: string
+          lunch_minutes: number
+          lunch_start_min: number | null
+          start_min: number | null
+          updated_at: string
+          weekday: number
+          works: boolean
+        }
+        Insert: {
+          created_at?: string
+          employee_name: string
+          end_min?: number | null
+          id?: string
+          lunch_minutes?: number
+          lunch_start_min?: number | null
+          start_min?: number | null
+          updated_at?: string
+          weekday: number
+          works?: boolean
+        }
+        Update: {
+          created_at?: string
+          employee_name?: string
+          end_min?: number | null
+          id?: string
+          lunch_minutes?: number
+          lunch_start_min?: number | null
+          start_min?: number | null
+          updated_at?: string
+          weekday?: number
+          works?: boolean
+        }
+        Relationships: []
+      }
+      employee_settings: {
+        Row: {
+          active: boolean
+          cabin: number | null
+          color: string | null
+          created_at: string
+          max_clients: number | null
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          cabin?: number | null
+          color?: string | null
+          created_at?: string
+          max_clients?: number | null
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          cabin?: number | null
+          color?: string | null
+          created_at?: string
+          max_clients?: number | null
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      employee_time_off: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          employee_name: string
+          id: string
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date: string
+          employee_name: string
+          id?: string
+          reason?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          employee_name?: string
+          id?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -964,6 +928,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permissions: {
+        Row: {
+          clients_access: string
+          created_at: string
+          full_agenda: boolean
+          history: boolean
+          inventory: boolean
+          reports: boolean
+          sales: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clients_access?: string
+          created_at?: string
+          full_agenda?: boolean
+          history?: boolean
+          inventory?: boolean
+          reports?: boolean
+          sales?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clients_access?: string
+          created_at?: string
+          full_agenda?: boolean
+          history?: boolean
+          inventory?: boolean
+          reports?: boolean
+          sales?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -997,12 +997,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      set_my_color: {
-        Args: {
-          new_color: string
-        }
-        Returns: undefined
-      }
+      set_my_color: { Args: { new_color: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "employee"
