@@ -403,6 +403,87 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_date_overrides: {
+        Row: {
+          created_at: string
+          date: string
+          employee_name: string
+          end_min: number | null
+          id: string
+          reason: string | null
+          start_min: number | null
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          employee_name: string
+          end_min?: number | null
+          id?: string
+          reason?: string | null
+          start_min?: number | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          employee_name?: string
+          end_min?: number | null
+          id?: string
+          reason?: string | null
+          start_min?: number | null
+        }
+        Relationships: []
+      }
+      employee_requests: {
+        Row: {
+          attachment_path: string | null
+          created_at: string
+          date: string
+          employee_name: string | null
+          end_date: string | null
+          id: string
+          info: string | null
+          kind: string
+          new_start_min: number | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachment_path?: string | null
+          created_at?: string
+          date: string
+          employee_name?: string | null
+          end_date?: string | null
+          id?: string
+          info?: string | null
+          kind: string
+          new_start_min?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachment_path?: string | null
+          created_at?: string
+          date?: string
+          employee_name?: string | null
+          end_date?: string | null
+          id?: string
+          info?: string | null
+          kind?: string
+          new_start_min?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       employee_schedules: {
         Row: {
           created_at: string
@@ -826,6 +907,7 @@ export type Database = {
           display_name: string | null
           employee_name: string | null
           id: string
+          phone: string | null
           updated_at: string
         }
         Insert: {
@@ -833,6 +915,7 @@ export type Database = {
           display_name?: string | null
           employee_name?: string | null
           id: string
+          phone?: string | null
           updated_at?: string
         }
         Update: {
@@ -840,7 +923,44 @@ export type Database = {
           display_name?: string | null
           employee_name?: string | null
           id?: string
+          phone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_permissions: {
+        Row: {
+          clients_access: string
+          created_at: string
+          full_agenda: boolean
+          history: boolean
+          inventory: boolean
+          reports: boolean
+          sales: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clients_access?: string
+          created_at?: string
+          full_agenda?: boolean
+          history?: boolean
+          inventory?: boolean
+          reports?: boolean
+          sales?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clients_access?: string
+          created_at?: string
+          full_agenda?: boolean
+          history?: boolean
+          inventory?: boolean
+          reports?: boolean
+          sales?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -877,6 +997,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_my_color: { Args: { new_color: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "employee"
