@@ -125,6 +125,7 @@ export type Database = {
       }
       appointments: {
         Row: {
+          arrived_at: string | null
           cabin: number | null
           cancelled: boolean
           changed: string
@@ -140,6 +141,7 @@ export type Database = {
           walk_in: boolean
         }
         Insert: {
+          arrived_at?: string | null
           cabin?: number | null
           cancelled?: boolean
           changed?: string
@@ -155,6 +157,7 @@ export type Database = {
           walk_in?: boolean
         }
         Update: {
+          arrived_at?: string | null
           cabin?: number | null
           cancelled?: boolean
           changed?: string
@@ -930,6 +933,8 @@ export type Database = {
       }
       user_permissions: {
         Row: {
+          agenda_edit: boolean
+          caja: boolean
           clients_access: string
           created_at: string
           full_agenda: boolean
@@ -941,6 +946,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          agenda_edit?: boolean
+          caja?: boolean
           clients_access?: string
           created_at?: string
           full_agenda?: boolean
@@ -952,6 +959,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          agenda_edit?: boolean
+          caja?: boolean
           clients_access?: string
           created_at?: string
           full_agenda?: boolean
@@ -993,6 +1002,13 @@ export type Database = {
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_perm: {
+        Args: {
+          _perm: string
           _user_id: string
         }
         Returns: boolean
