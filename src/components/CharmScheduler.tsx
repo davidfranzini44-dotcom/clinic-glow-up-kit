@@ -1158,6 +1158,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             />
             {(() => { handleNotifLinkRef.current = (link: string) => {
                 if (link === "swaps") setView("swaps");
+                else if (link === "profile") setView("profile");
                 else if (link.startsWith("date:")) {
                   const d = link.slice(5);
                   if (days[d]) setActiveDate(d);
