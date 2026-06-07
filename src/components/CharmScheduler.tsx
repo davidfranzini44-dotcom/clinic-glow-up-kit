@@ -387,7 +387,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         const allDates = Object.keys(grouped).sort().filter(d => d > HISTORY_CUTOFF);
         if (allDates.length > 0) {
           const today = new Date().toISOString().slice(0, 10);
-          setActiveDate(allDates.includes(today) ? today : allDates[0]);
+          // Always land on today; if today has no citas, the nearest upcoming day; else the latest past day
+          const pick = allDates.includes(today)
+            ? today
+            : (allDates.find((d) => d > today) ?? allDates[allDates.length - 1]);
+          setActiveDate(pick);
         }
       } catch (e) {
         console.error("Load error:", e);
