@@ -175,12 +175,15 @@ Deno.serve(async (req: Request) => {
     for (const r of (ov ?? []) as Record<string, unknown>[]) ((ovByDate[r.date as string] ??= {}))[r.employee_name as string] = { s: (r.start_min as number) ?? undefined, e: (r.end_min as number) ?? undefined };
 
     // existing synced rows from today onward
-    const { data: existing } = await sb.from("appointments").select("id,dnsuite_id,date,employee,cabin").gte("date", today).eq("source", "dnsuite");
+    const { data: existing } = await sb.from("appointments").select("id,dnsuite_id,date,employee,cabin,client,time_mins,cancelled").gte("date", today).eq("source", "dnsuite");
     const exByDn = new Map((existing ?? []).map((r: Record<string, unknown>) => [r.dnsuite_id as string, r]));
     const pulledIds = new Set(citas.map(c => c.id));
 
     let inserted = 0, updated = 0, removed = 0, cancelled = 0;
     let firstErr = "";
+    type Chg = { t: "cancel" | "move" | "removed"; emp: string | null; client: string; date: string; time: string; id: string };
+    const chg: Chg[] = [];
+    const insertedIds: string[] = [];
     const affectedDates = new Set<string>();
 
     // upsert pulled citas
@@ -196,19 +199,33 @@ Deno.serve(async (req: Request) => {
         cancelled: isCancelled, source: "dnsuite", dnsuite_id: c.id, dnsuite_synced_at: new Date().toISOString(),
       };
       if (ex) {
-        const { error } = await sb.from("appointments").update(base).eq("id", ex.id);
+        const exr = ex as { id: string; employee: string | null; date: string; time_mins: number; cancelled: boolean };
+        const { error } = await sb.from("appointments").update(base).eq("id", exr.id);
         if (error) { if (!firstErr) firstErr = "update: " + error.message; }
-        else { updated++; if (isCancelled) cancelled++; }
+        else {
+          updated++;
+          if (isCancelled) {
+            cancelled++;
+            if (!exr.cancelled && exr.employee) chg.push({ t: "cancel", emp: exr.employee, client: c.clientName, date: c.date, time: fmt(toMins(c.time)), id: exr.id });
+          } else if (exr.date !== c.date || exr.time_mins !== toMins(c.time)) {
+            if (exr.employee) chg.push({ t: "move", emp: exr.employee, client: c.clientName, date: c.date, time: fmt(toMins(c.time)), id: exr.id });
+          }
+        }
       } else {
         const { error } = await sb.from("appointments").insert({ ...base, id: "dn_" + c.id, employee: null, cabin: null, no_show: false, walk_in: false, changed: "", swap_locked: false });
         if (error) { if (!firstErr) firstErr = "insert: " + error.message; }
-        else inserted++;
+        else { inserted++; if (!isCancelled) insertedIds.push("dn_" + c.id); }
       }
     }
 
     // auto-apply deletions: synced rows no longer in DNSuite → remove
     for (const [dn, row] of exByDn) {
-      if (!pulledIds.has(dn)) { await sb.from("appointments").delete().eq("id", (row as Record<string, unknown>).id); removed++; affectedDates.add((row as Record<string, string>).date); }
+      if (!pulledIds.has(dn)) {
+        const rr = row as { id: string; employee: string | null; client: string; date: string; cancelled: boolean };
+        await sb.from("appointments").delete().eq("id", rr.id);
+        removed++; affectedDates.add(rr.date);
+        if (rr.employee && !rr.cancelled) chg.push({ t: "removed", emp: rr.employee, client: rr.client, date: rr.date, time: "", id: rr.id });
+      }
     }
 
     // assign any unassigned dnsuite citas, per affected day
@@ -222,6 +239,42 @@ Deno.serve(async (req: Request) => {
       const res = assign(rows, wd, emps, offByDate[date] ?? new Set(), ovByDate[date] ?? {}, buf);
       for (const [id, a] of Object.entries(res)) await sb.from("appointments").update({ employee: a.emp, cabin: a.cab }).eq("id", id);
     }
+
+    // ── Notify about changes (push rides on the notifications trigger) ──
+    try {
+      const totalChanges = insertedIds.length + chg.length;
+      if (totalChanges > 0) {
+        const fdm = (d: string) => d.slice(8, 10) + "/" + d.slice(5, 7);
+        const notifs: { user_id: string; kind: string; title: string; body: string; link: string }[] = [];
+        const { data: profs } = await sb.from("profiles").select("id,employee_name");
+        const userByEmp = new Map<string, string>();
+        for (const pr of (profs ?? []) as { id: string; employee_name: string | null }[]) {
+          if (pr.employee_name) userByEmp.set(pr.employee_name, pr.id);
+        }
+        if (totalChanges <= 25) {
+          if (insertedIds.length) {
+            const { data: ins } = await sb.from("appointments").select("id,employee,client,date,time").in("id", insertedIds);
+            for (const r of (ins ?? []) as { id: string; employee: string | null; client: string; date: string; time: string }[]) {
+              const uid = r.employee ? userByEmp.get(r.employee) : undefined;
+              if (uid) notifs.push({ user_id: uid, kind: "dnsuite_new", title: "Nueva cita asignada", body: `${r.client} · ${r.time} · ${fdm(r.date)}`, link: `apt:${r.id}:${r.date}` });
+            }
+          }
+          for (const ch of chg) {
+            const uid = ch.emp ? userByEmp.get(ch.emp) : undefined;
+            if (!uid) continue;
+            const title = ch.t === "cancel" ? "Cita cancelada" : ch.t === "move" ? "Cita cambiada de hora" : "Cita eliminada";
+            notifs.push({ user_id: uid, kind: "dnsuite_" + ch.t, title, body: `${ch.client}${ch.time ? " · " + ch.time : ""} · ${fdm(ch.date)}`, link: ch.t === "removed" ? `date:${ch.date}` : `apt:${ch.id}:${ch.date}` });
+          }
+        }
+        const cN = chg.filter(x => x.t === "cancel").length, mN = chg.filter(x => x.t === "move").length, rN = chg.filter(x => x.t === "removed").length;
+        const digest = `+${insertedIds.length} nuevas · ${cN} canceladas · ${mN} movidas · ${rN} eliminadas`;
+        const { data: adminsR } = await sb.from("user_roles").select("user_id").eq("role", "admin");
+        for (const a of (adminsR ?? []) as { user_id: string }[]) {
+          notifs.push({ user_id: a.user_id, kind: "dnsuite_sync", title: "Cambios desde DNSuite", body: digest, link: "" });
+        }
+        if (notifs.length) await sb.from("notifications").insert(notifs);
+      }
+    } catch (e) { console.error("notify error:", e); }
 
     const result = `pulled ${citas.length} · +${inserted} ~${updated} -${removed} cancel ${cancelled}` + (firstErr ? ` · ERROR ${firstErr}` : "");
     await sb.from("dnsuite_config").update({ last_run_at: new Date().toISOString(), last_result: result }).eq("id", 1);
