@@ -22,7 +22,7 @@ const todayISO = () => {
 type EmpRow = { name: string; cabin: number | null; color: string | null; max_clients: number | null; active: boolean; sort_order: number; vacation_days: number };
 type SchedRow = { employee_name: string; weekday: number; works: boolean; start_min: number | null; end_min: number | null; lunch_start_min: number | null; lunch_minutes: number };
 type OffRow = { id: string; employee_name: string; date: string; reason: string };
-type ProfileRow = { id: string; display_name: string | null; employee_name: string | null; phone: string | null  archived?: boolean | null; };
+type ProfileRow = { id: string; display_name: string | null; employee_name: string | null; phone: string | null; archived?: boolean | null };
 type PermShape = { full_agenda: boolean; clients_access: string; sales: boolean; inventory: boolean; reports: boolean; history: boolean; agenda_edit: boolean; caja: boolean };
 const DEFAULT_PERM: PermShape = { full_agenda: true, clients_access: "read", sales: false, inventory: false, reports: true, history: false, agenda_edit: false, caja: false };
 const PRESET_TECH: PermShape = { ...DEFAULT_PERM };
