@@ -4,6 +4,12 @@
 // auto-assigning new ones with the balanced roster algorithm. Read-only on DNSuite.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-sync-secret",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 const FB_API_KEY = Deno.env.get("DNSUITE_API_KEY") ?? "AIzaSyCvo_YZz0jl-o9FRSANYHXrN2Wdx3P5CU0";
 const FB_PROJECT = Deno.env.get("DNSUITE_PROJECT") ?? "dnsuite-66175";
 
@@ -108,15 +114,16 @@ function assign(rows: { id: string; t: number }[], wd: number, emps: Emp[], off:
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: cfg } = await sb.from("dnsuite_config").select("*").eq("id", 1).maybeSingle();
-    if (!cfg || !cfg.enabled) return new Response("sync disabled", { status: 200 });
+    if (!cfg || !cfg.enabled) return new Response("sync disabled", { status: 200, headers: CORS });
     const secret = req.headers.get("x-sync-secret");
-    if (secret !== cfg.webhook_secret) return new Response("forbidden", { status: 403 });
+    if (secret !== cfg.webhook_secret) return new Response("forbidden", { status: 403, headers: CORS });
 
     const email = Deno.env.get("DNSUITE_EMAIL"), password = Deno.env.get("DNSUITE_PASSWORD");
-    if (!email || !password) return new Response("missing DNSUITE_EMAIL / DNSUITE_PASSWORD secrets", { status: 500 });
+    if (!email || !password) return new Response("missing DNSUITE_EMAIL / DNSUITE_PASSWORD secrets", { status: 500, headers: CORS });
 
     const today = new Date().toISOString().slice(0, 10);
     const token = await firebaseLogin(email, password);
@@ -190,8 +197,8 @@ Deno.serve(async (req: Request) => {
 
     const result = `pulled ${citas.length} · +${inserted} ~${updated} -${removed} cancel ${cancelled}`;
     await sb.from("dnsuite_config").update({ last_run_at: new Date().toISOString(), last_result: result }).eq("id", 1);
-    return new Response(JSON.stringify({ ok: true, result }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, result }), { headers: { ...CORS, "Content-Type": "application/json" } });
   } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: (e as Error).message }), { status: 500, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: false, error: (e as Error).message }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
   }
 });
