@@ -28,6 +28,7 @@ type PermShape = { full_agenda: boolean; clients_access: string; sales: boolean;
 const DEFAULT_PERM: PermShape = { full_agenda: true, clients_access: "read", sales: false, inventory: false, reports: true, history: false, agenda_edit: false, caja: false };
 const PRESET_TECH: PermShape = { ...DEFAULT_PERM };
 const PRESET_SECRETARY: PermShape = { full_agenda: true, clients_access: "edit", sales: false, inventory: false, reports: true, history: true, agenda_edit: true, caja: true };
+const PRESET_ACCOUNTANT: PermShape = { full_agenda: true, clients_access: "read", sales: false, inventory: false, reports: true, history: true, agenda_edit: false, caja: true };
 type ReqRow = {
   id: string; user_id: string; employee_name: string | null; kind: string; date: string;
   end_date: string | null; new_start_min: number | null; info: string | null;
@@ -656,6 +657,7 @@ function UserRow({ prof, isAdminUser, perms, empNames, onSave, isSelf, onArchive
           <span className="font-label text-accent">Permisos:</span>
           <button type="button" onClick={() => setPm(PRESET_TECH)} className="px-2 py-0.5 border border-border text-muted-foreground hover:border-accent hover:text-accent">Preset: Técnica</button>
           <button type="button" onClick={() => setPm(PRESET_SECRETARY)} className="px-2 py-0.5 border border-border text-muted-foreground hover:border-accent hover:text-accent">Preset: Secretaria</button>
+          <button type="button" onClick={() => setPm(PRESET_ACCOUNTANT)} className="px-2 py-0.5 border border-border text-muted-foreground hover:border-accent hover:text-accent">Preset: Contadora</button>
           <label className="flex items-center gap-1"><input type="checkbox" checked={pm.full_agenda} onChange={(e) => set("full_agenda", e.target.checked)} /> Agenda completa</label>
           <label className="flex items-center gap-1"><input type="checkbox" checked={pm.agenda_edit} onChange={(e) => set("agenda_edit", e.target.checked)} /> Edita agenda</label>
           <label className="flex items-center gap-1"><input type="checkbox" checked={pm.caja} onChange={(e) => set("caja", e.target.checked)} /> Caja (gastos/cierre)</label>
