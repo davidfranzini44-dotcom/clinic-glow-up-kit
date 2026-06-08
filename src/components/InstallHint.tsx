@@ -42,7 +42,9 @@ export default function InstallHint() {
     window.addEventListener("beforeinstallprompt", onBIP);
 
     const notifPossible = "Notification" in window && "serviceWorker" in navigator;
-    const wantNotif = notifPossible && Notification.permission === "default" && !snoozed(NOTIF_KEY, NOTIF_SNOOZE_MS);
+    let sessionDismissed = false;
+    try { sessionDismissed = !!sessionStorage.getItem("charm_notif_session_dismiss"); } catch { /* ignore */ }
+    const wantNotif = notifPossible && Notification.permission === "default" && !sessionDismissed;
     const wantInstall = !standalone && mobile && !snoozed(INSTALL_KEY, INSTALL_SNOOZE_MS);
 
     let next: "none" | "notif" | "install" = "none";
@@ -54,7 +56,11 @@ export default function InstallHint() {
     return () => { window.removeEventListener("beforeinstallprompt", onBIP); clearTimeout(t); };
   }, []);
 
-  const dismiss = () => { snooze(bar === "notif" ? NOTIF_KEY : INSTALL_KEY); setBar("none"); };
+  const dismiss = () => {
+    if (bar === "notif") { try { sessionStorage.setItem("charm_notif_session_dismiss", "1"); } catch { /* ignore */ } }
+    else snooze(INSTALL_KEY);
+    setBar("none");
+  };
 
   const enableNotifications = async () => {
     if (!("Notification" in window)) return;
@@ -82,20 +88,40 @@ export default function InstallHint() {
 
   if (bar === "none") return null;
 
+  if (bar === "notif") {
+    return (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-foreground/40" onClick={dismiss} />
+        <div className="relative bg-card border border-accent shadow-lg w-full max-w-sm p-6 text-center">
+          <div className="mx-auto mb-3 w-12 h-12 rounded-full bg-secondary inline-flex items-center justify-center">
+            <Bell size={22} className="text-accent" />
+          </div>
+          <div className="font-display text-primary mb-1" style={{ fontSize: 24, fontWeight: 500 }}>
+            Activa las notificaciones
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Recibe un aviso cuando llegue tu cliente, cuando te asignen o cancelen citas y cuando respondan tus solicitudes — incluso con la app cerrada.
+          </p>
+          <div className="flex gap-2 justify-center">
+            <button onClick={() => void enableNotifications()} disabled={busy}
+              className="px-5 py-2.5 text-xs font-label bg-primary text-primary-foreground">
+              {busy ? "Activando…" : "Activar notificaciones"}
+            </button>
+            <button onClick={dismiss} className="px-5 py-2.5 text-xs font-label border border-border text-muted-foreground">
+              Ahora no
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 60 }}
       className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3 justify-center text-sm flex-wrap"
     >
-      {bar === "notif" ? (
-        <>
-          <Bell size={16} aria-hidden="true" />
-          <span>Activa las notificaciones para enterarte cuando llegue tu cliente</span>
-          <button onClick={() => void enableNotifications()} disabled={busy} className="px-3 py-1 bg-card text-primary font-label text-xs">
-            {busy ? "Activando…" : "Activar"}
-          </button>
-        </>
-      ) : (
+      {(
         <>
           <Download size={16} aria-hidden="true" />
           {deferred ? (

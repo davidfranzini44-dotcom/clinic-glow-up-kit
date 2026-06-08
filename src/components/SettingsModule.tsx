@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getEndBuffer, setEndBuffer } from "@/lib/roster";
 import { toast } from "sonner";
-import { Plus, Trash2, Save, CalendarOff, Check } from "lucide-react";
+import { Plus, Trash2, Save, CalendarOff, Check, Bell } from "lucide-react";
+import { ensurePushSubscription } from "@/lib/push";
 import { COLOR_OPTIONS } from "./ProfileModule";
 
 const WD = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -60,6 +61,18 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
 
   const [vacUsed, setVacUsed] = useState<Record<string, number>>({});
   const [selfId, setSelfId] = useState<string>("");
+  const [, setNotifTick] = useState(0);
+  const activateNotifsHere = async () => {
+    if (typeof Notification === "undefined") return;
+    const perm = await Notification.requestPermission();
+    if (perm === "granted") {
+      const ok = await ensurePushSubscription(selfId);
+      toast[ok ? "success" : "error"](ok ? "Notificaciones activadas en este dispositivo" : "Permiso dado, pero no se pudo registrar el dispositivo");
+    } else if (perm === "denied") {
+      toast("Quedaron bloqueadas — actívalas en los ajustes del navegador.");
+    }
+    setNotifTick((t) => t + 1);
+  };
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setSelfId(data.user?.id ?? "")); }, []);
   type AuthInfo = { email: string | null; last_sign_in_at: string | null };
   const [authInfo, setAuthInfo] = useState<Record<string, AuthInfo>>({});
@@ -503,6 +516,32 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* ── Notificaciones ── */}
+      <div>
+        <h2 className="font-display text-primary mb-4" style={{ fontSize: 28, fontWeight: 500 }}>
+          <Bell size={20} className="inline mr-2" />Notificaciones
+        </h2>
+        <div className="border border-border bg-card p-4 flex items-center gap-3 flex-wrap">
+          <div className="flex-1 min-w-[220px] text-sm text-muted-foreground">
+            {typeof Notification === "undefined"
+              ? "Este navegador no soporta notificaciones (en iPhone, instala la app primero)."
+              : Notification.permission === "granted"
+              ? "Activadas en este dispositivo — recibirás llegadas, cambios y el resumen del día."
+              : Notification.permission === "denied"
+              ? "Bloqueadas en este navegador — actívalas en Ajustes del navegador → Permisos → Notificaciones."
+              : "Aún no activadas en este dispositivo."}
+          </div>
+          {typeof Notification !== "undefined" && Notification.permission === "default" && (
+            <button onClick={() => void activateNotifsHere()}
+              className="px-4 py-2 text-xs font-label bg-primary text-primary-foreground">Activar notificaciones</button>
+          )}
+          {typeof Notification !== "undefined" && Notification.permission === "granted" && (
+            <button onClick={() => void ensurePushSubscription(selfId).then((ok) => toast[ok ? "success" : "error"](ok ? "Este dispositivo está registrado para push" : "No se pudo registrar"))}
+              className="px-4 py-2 text-xs font-label border border-border text-muted-foreground">Probar registro</button>
+          )}
         </div>
       </div>
 
