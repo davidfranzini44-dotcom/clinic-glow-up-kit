@@ -213,7 +213,10 @@ export function autoAssign<T extends AssignableAppt>(
 
   const counts: Record<string, number> = {};
   const lastSeen: Record<string, number> = {};
-  for (const e of roster) { counts[e.name] = 0; lastSeen[e.name] = -999; }
+  const firstAssigned: Record<string, number> = {};
+  for (const e of roster) { counts[e.name] = 0; lastSeen[e.name] = -999; firstAssigned[e.name] = Number.POSITIVE_INFINITY; }
+  const shiftStart = (e: Employee): number =>
+    overrides[e.name]?.[dateStr]?.start_min ?? e.schedule[wd]?.startMin ?? 0;
   const usedAtSlot: Record<number, Set<string>> = {};
 
   // Assign the hardest-to-cover hours first (slots with the fewest available
@@ -255,6 +258,11 @@ export function autoAssign<T extends AssignableAppt>(
     }
 
     pool.sort((a, b) => {
+      // Whoever just started her shift and has nothing yet works first
+      const stA = shiftStart(a), stB = shiftStart(b);
+      const startA = t >= stA && t - stA <= 60 && firstAssigned[a.name] > t ? 1 : 0;
+      const startB = t >= stB && t - stB <= 60 && firstAssigned[b.name] > t ? 1 : 0;
+      if (startA !== startB) return startB - startA;
       const dA = (targets[a.name] ?? 0) - counts[a.name];
       const dB = (targets[b.name] ?? 0) - counts[b.name];
       if (dA !== dB) return dB - dA;
@@ -264,6 +272,7 @@ export function autoAssign<T extends AssignableAppt>(
     const chosen = pool[0];
     counts[chosen.name]++;
     lastSeen[chosen.name] = t;
+    if (t < firstAssigned[chosen.name]) firstAssigned[chosen.name] = t;
     slotUsed.add(chosen.name);
     result[idx] = { ...apt, employee: chosen.name, cabin: chosen.cabin };
   }
