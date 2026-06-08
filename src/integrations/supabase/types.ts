@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          summary: string
+          table_name: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          summary: string
+          table_name: string
+          user_id: string
+          user_name?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          summary?: string
+          table_name?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           id: number
