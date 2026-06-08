@@ -61,6 +61,39 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
   const [vacUsed, setVacUsed] = useState<Record<string, number>>({});
   const [selfId, setSelfId] = useState<string>("");
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setSelfId(data.user?.id ?? "")); }, []);
+  type AuthInfo = { email: string | null; last_sign_in_at: string | null };
+  const [authInfo, setAuthInfo] = useState<Record<string, AuthInfo>>({});
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("admin-users", { body: { action: "list" } });
+        const r = data as { ok?: boolean; users?: ({ id: string } & AuthInfo)[] };
+        if (r?.ok && r.users) setAuthInfo(Object.fromEntries(r.users.map((u) => [u.id, { email: u.email, last_sign_in_at: u.last_sign_in_at }])));
+      } catch { /* fn not deployed yet */ }
+    })();
+  }, []);
+  type ActRow = { id: string; user_id: string; user_name: string; summary: string; created_at: string };
+  const [activity, setActivity] = useState<ActRow[]>([]);
+  const [actUser, setActUser] = useState("");
+  const loadActivity = useCallback(async () => {
+    const { data } = await supabase.from("activity_log").select("id,user_id,user_name,summary,created_at")
+      .order("created_at", { ascending: false }).limit(150);
+    setActivity((data as ActRow[]) || []);
+  }, []);
+  useEffect(() => { void loadActivity(); }, [loadActivity]);
+  const fmtTs = (ts: string) => new Date(ts).toLocaleString("es-DO", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const resetPassword = async (prof: ProfileRow) => {
+    const pw = prompt(`Nueva contraseña temporal para ${prof.display_name || "este usuario"} (mínimo 6 caracteres):`);
+    if (!pw) return;
+    if (pw.length < 6) { toast.error("Mínimo 6 caracteres."); return; }
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users", { body: { action: "set_password", user_id: prof.id, password: pw } });
+      if (error) throw error;
+      const r = data as { ok?: boolean; error?: string };
+      if (!r?.ok) throw new Error(r?.error || "error desconocido");
+      toast.success("Contraseña actualizada — compártela con la empleada");
+    } catch (e) { toast.error("No se pudo: " + (e instanceof Error ? e.message : String(e))); }
+  };
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -472,7 +505,8 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
         <div className="border border-border bg-card divide-y divide-border">
           {profiles.filter((p) => !p.archived).map((p) => (
             <UserRow key={p.id} prof={p} isAdminUser={adminIds.has(p.id)} perms={permsMap[p.id] ?? DEFAULT_PERM} empNames={activeEmps.map((e) => e.name)} onSave={saveProfile}
-              isSelf={p.id === selfId} onArchive={() => void setArchived(p, true)} onDelete={() => void deleteUser(p)} />
+              isSelf={p.id === selfId} onArchive={() => void setArchived(p, true)} onDelete={() => void deleteUser(p)}
+              email={authInfo[p.id]?.email ?? null} lastLogin={authInfo[p.id]?.last_sign_in_at ?? null} onResetPw={() => void resetPassword(p)} />
           ))}
         </div>
         {profiles.some((p) => p.archived) && (
@@ -498,14 +532,40 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
           </details>
         )}
       </div>
+
+      {/* ── Actividad ── */}
+      <div>
+        <h2 className="font-display text-primary mb-4" style={{ fontSize: 28, fontWeight: 500 }}>Actividad</h2>
+        <div className="flex items-center gap-2 mb-3 flex-wrap text-xs">
+          <select value={actUser} onChange={(e) => setActUser(e.target.value)}
+            className="px-2 py-1.5 border border-border bg-background text-foreground">
+            <option value="">Todas las personas</option>
+            {[...new Set(activity.map((a) => a.user_name))].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <button onClick={() => void loadActivity()} className="px-3 py-1.5 font-label border border-border text-muted-foreground">Actualizar</button>
+        </div>
+        <div className="border border-border bg-card divide-y divide-border max-h-[420px] overflow-y-auto">
+          {activity.filter((a) => !actUser || a.user_name === actUser).length === 0 && (
+            <div className="p-4 text-xs italic text-muted-foreground">Sin actividad registrada todavía.</div>
+          )}
+          {activity.filter((a) => !actUser || a.user_name === actUser).map((a) => (
+            <div key={a.id} className="px-3 py-2 flex items-baseline gap-3 text-xs">
+              <span className="font-label text-muted-foreground whitespace-nowrap">{fmtTs(a.created_at)}</span>
+              <span className="text-accent font-label whitespace-nowrap">{a.user_name}</span>
+              <span className="text-foreground">{a.summary}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-function UserRow({ prof, isAdminUser, perms, empNames, onSave, isSelf, onArchive, onDelete }: {
+function UserRow({ prof, isAdminUser, perms, empNames, onSave, isSelf, onArchive, onDelete, email, lastLogin, onResetPw }: {
   prof: ProfileRow; isAdminUser: boolean; perms: PermShape; empNames: string[];
   onSave: (p: ProfileRow, makeAdmin: boolean, perms: PermShape) => void;
   isSelf: boolean; onArchive: () => void; onDelete: () => void;
+  email: string | null; lastLogin: string | null; onResetPw: () => void;
 }) {
   const [name, setName] = useState(prof.employee_name || "");
   const [admin, setAdmin] = useState(isAdminUser);
@@ -516,7 +576,13 @@ function UserRow({ prof, isAdminUser, perms, empNames, onSave, isSelf, onArchive
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-[140px]">
           <div className="text-sm text-primary">{prof.display_name || "(sin nombre)"}</div>
-          {prof.phone && <div className="text-[11px] text-muted-foreground">{prof.phone}</div>}
+          <div className="text-[11px] text-muted-foreground">
+            {email && <span>{email}</span>}
+            {prof.phone && <span>{email ? " · " : ""}{prof.phone}</span>}
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            Último acceso: {lastLogin ? new Date(lastLogin).toLocaleString("es-DO", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "nunca"}
+          </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap text-xs">
           <label className="flex items-center gap-1">Empleada
@@ -526,6 +592,8 @@ function UserRow({ prof, isAdminUser, perms, empNames, onSave, isSelf, onArchive
           <label className="flex items-center gap-1"><input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} /> Admin</label>
           <button onClick={() => onSave({ ...prof, employee_name: name.trim() || null }, admin, pm)}
             className="px-3 py-1.5 text-xs font-label bg-primary text-primary-foreground flex items-center gap-1"><Check size={12} /> Guardar</button>
+          <button onClick={onResetPw} title="Asignar una contraseña temporal nueva"
+            className="px-2.5 py-1.5 text-[11px] font-label border border-border text-muted-foreground hover:border-primary hover:text-primary">Contraseña</button>
           {!isSelf && (
             <>
               <button onClick={onArchive} title="Desactivar: no podrá entrar, se conserva todo"
