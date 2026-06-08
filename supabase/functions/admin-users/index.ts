@@ -36,8 +36,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "set_password") {
-      if (!user_id || typeof password !== "string" || password.length < 6) {
-        return json({ error: "Contraseña inválida (mínimo 6 caracteres)." }, 400);
+      if (!user_id || typeof password !== "string" || password.length < 4) {
+        return json({ error: "Contraseña inválida (mínimo 4 caracteres)." }, 400);
       }
       if (user_id !== caller.user.id) {
         const { data: tgtAdmin } = await sb.from("user_roles").select("user_id")
