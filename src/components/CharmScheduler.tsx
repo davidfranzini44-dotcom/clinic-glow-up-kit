@@ -329,6 +329,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, session.user.id]);
   const canEditAgenda = isAdmin || perms.agenda_edit;
+  const staffViewer = isAdmin || perms.caja; // admin, secretary, accountant — can view ALL individual agendas
   // archived accounts are signed out immediately
   useEffect(() => {
     if ((profile as { archived?: boolean } | null)?.archived) {
@@ -370,11 +371,19 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   
 
   useEffect(() => {
-    if (!isAdmin) {
-      setView("individual");
+    if (!isAdmin && !perms.caja) {
+      setView(perms.full_agenda ? "schedule" : "individual");
       setSelectedEmployee(myEmployee);
     }
-  }, [isAdmin, myEmployee]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, myEmployee, perms.caja, perms.full_agenda]);
+  // back-office viewers (secretary/accountant) land on a real employee, not their empty name
+  useEffect(() => {
+    if (staffViewer && !isAdmin && (!selectedEmployee || !empNames.includes(selectedEmployee)) && empNames.length) {
+      setSelectedEmployee(empNames[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staffViewer, isAdmin, empNames]);
 
   useEffect(() => {
     setSaveStatus(globalSave.status === "idle" ? "" : globalSave.status);
@@ -1039,7 +1048,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       ]
     : [
         ...(perms.full_agenda ? [{ key: "schedule" as ViewKey, label: "Agenda", icon: <CalendarDays size={16} /> }] : []),
-        { key: "individual" as ViewKey, label: "Mi agenda", icon: <UserRound size={16} /> },
+        { key: "individual" as ViewKey, label: staffViewer ? "Individual" : "Mi agenda", icon: <UserRound size={16} /> },
         { key: "swaps" as ViewKey, label: "Solicitudes", icon: <Repeat size={16} />, badge: pendingSwaps },
         ...(perms.clients_access !== "none" ? [{ key: "clients" as ViewKey, label: "Clientes", icon: <Users size={16} /> }] : []),
         ...(perms.reports ? [{ key: "reports" as ViewKey, label: "Mis reportes", icon: <BarChart3 size={16} /> }] : []),
@@ -1203,7 +1212,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             />
           </div>
         </div>
-                {!profile?.employee_name && !isAdmin && (
+                {!profile?.employee_name && !isAdmin && !staffViewer && (
           <div className="bg-destructive/10 border-t border-destructive px-4 md:px-6 py-2 text-xs text-destructive flex items-center gap-2">
             <AlertCircle size={12} /> Tu cuenta no está vinculada a una empleada. Pide al admin que te asigne para poder editar y solicitar cambios.
           </div>
@@ -1528,13 +1537,13 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         {view === "individual" && (
           <>
             <div className="mb-6">
-              <div className="text-xs font-label text-accent">{isAdmin ? "AGENDAS INDIVIDUALES" : "MI AGENDA"}</div>
+              <div className="text-xs font-label text-accent">{staffViewer ? "AGENDAS INDIVIDUALES" : "MI AGENDA"}</div>
               <h2 className="font-display text-primary" style={{ fontSize: "clamp(28px,5vw,44px)", fontWeight: 400, lineHeight: 1.1 }}>
                 {dateLabelES(activeDate)}
               </h2>
             </div>
 
-            {isAdmin && (
+            {staffViewer && (
               <div className="flex gap-2 mb-6 flex-wrap">
                 {empNames.map(emp => (
                   <button key={emp} onClick={() => setSelectedEmployee(emp)}
