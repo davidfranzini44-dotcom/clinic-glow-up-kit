@@ -111,17 +111,24 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
   const myEmployee = profile?.employee_name || "";
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
+    let alive = true;
+    const reload = async (showSpinner = false) => {
+      if (showSpinner) setLoading(true);
       try {
         const { data, error } = await supabase.from("appointments").select("*").order("date", { ascending: true });
         if (error) throw error;
-        setAllAppointments((data as Apt[]) || []);
+        if (alive) setAllAppointments((data as Apt[]) || []);
       } catch (e) {
         console.error("Dashboard load error:", e);
       }
-      setLoading(false);
-    })();
+      if (alive && showSpinner) setLoading(false);
+    };
+    void reload(true);
+    // keep fresh all day: refresh when the tab is refocused, and every 2 minutes
+    const onVis = () => { if (document.visibilityState === "visible") void reload(false); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    const poll = setInterval(() => void reload(false), 120000);
     const ch = supabase
       .channel("dashboard-appts")
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload) => {
@@ -135,7 +142,13 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
         });
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      alive = false;
+      supabase.removeChannel(ch);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
+      clearInterval(poll);
+    };
   }, []);
 
   const empList = useMemo(
