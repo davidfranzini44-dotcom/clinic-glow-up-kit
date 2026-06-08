@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Download, TrendingUp, Clock, Users, AlertCircle, Activity, Filter, Award } from "lucide-react";
+import { Calendar, Download, TrendingUp, Clock, Users, AlertCircle, Activity, Filter, Award, Check } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import type { Profile } from "./CharmScheduler";
@@ -35,11 +35,11 @@ const startOfYearISO = () => `${new Date().getFullYear()}-01-01`;
 type Apt = {
   id: string; date: string; client: string; time: string; time_mins: number;
   employee: string | null; cabin: number | null;
-  cancelled: boolean; no_show: boolean; walk_in: boolean;
+  cancelled: boolean; no_show: boolean; walk_in: boolean; arrived_at?: string | null;
 };
 
 type EmpStats = {
-  total: number; attended: number; noShow: number; cancelled: number; walkIns: number;
+  total: number; attended: number; noShow: number; cancelled: number; walkIns: number; llegaron: number;
   timeWorkedMin: number; timeIdleMin: number; daysWorked: number; utilizationPct: number;
 };
 
@@ -54,7 +54,7 @@ const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string, e
 
   const stats: Record<string, EmpStats> = {};
   empList.forEach(emp => {
-    stats[emp] = { total: 0, attended: 0, noShow: 0, cancelled: 0, walkIns: 0, timeWorkedMin: 0, timeIdleMin: 0, daysWorked: 0, utilizationPct: 0 };
+    stats[emp] = { total: 0, attended: 0, noShow: 0, cancelled: 0, walkIns: 0, llegaron: 0, timeWorkedMin: 0, timeIdleMin: 0, daysWorked: 0, utilizationPct: 0 };
   });
 
   filtered.forEach(a => {
@@ -63,7 +63,7 @@ const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string, e
     s.total++;
     if (a.no_show) s.noShow++;
     else if (a.cancelled) s.cancelled++;
-    else { s.attended++; if (a.walk_in) s.walkIns++; }
+    else { s.attended++; if (a.walk_in) s.walkIns++; if (a.arrived_at) s.llegaron++; }
   });
 
   empList.forEach(emp => {
@@ -76,20 +76,21 @@ const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string, e
     s.utilizationPct = totalAvailable > 0 ? Math.round((s.timeWorkedMin / totalAvailable) * 100) : 0;
   });
 
-  const dailyBreakdown: Record<string, Record<string, { attended: number; noShow: number; cancelled: number; walkIns: number }>> = {};
+  const dailyBreakdown: Record<string, Record<string, { attended: number; noShow: number; cancelled: number; walkIns: number; llegaron: number }>> = {};
   filtered.forEach(a => {
     if (!a.employee) return;
     if (!dailyBreakdown[a.date]) dailyBreakdown[a.date] = {};
-    if (!dailyBreakdown[a.date][a.employee]) dailyBreakdown[a.date][a.employee] = { attended: 0, noShow: 0, cancelled: 0, walkIns: 0 };
+    if (!dailyBreakdown[a.date][a.employee]) dailyBreakdown[a.date][a.employee] = { attended: 0, noShow: 0, cancelled: 0, walkIns: 0, llegaron: 0 };
     const d = dailyBreakdown[a.date][a.employee];
     if (a.no_show) d.noShow++;
     else if (a.cancelled) d.cancelled++;
-    else { d.attended++; if (a.walk_in) d.walkIns++; }
+    else { d.attended++; if (a.walk_in) d.walkIns++; if (a.arrived_at) d.llegaron++; }
   });
 
   const totals = {
     appointments: filtered.length,
     attended: Object.values(stats).reduce((s, x) => s + x.attended, 0),
+    llegaron: Object.values(stats).reduce((s, x) => s + x.llegaron, 0),
     noShow: Object.values(stats).reduce((s, x) => s + x.noShow, 0),
     cancelled: Object.values(stats).reduce((s, x) => s + x.cancelled, 0),
     walkIns: Object.values(stats).reduce((s, x) => s + x.walkIns, 0),
@@ -121,6 +122,20 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
       }
       setLoading(false);
     })();
+    const ch = supabase
+      .channel("dashboard-appts")
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload) => {
+        setAllAppointments((prev) => {
+          const ev = payload.eventType;
+          if (ev === "DELETE") return prev.filter((a) => a.id !== (payload.old as { id: string }).id);
+          const row = payload.new as Apt;
+          const i = prev.findIndex((a) => a.id === row.id);
+          if (i === -1) return [...prev, row];
+          const copy = [...prev]; copy[i] = row; return copy;
+        });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, []);
 
   const empList = useMemo(
@@ -274,8 +289,9 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
       </div>
 
       {seeAll && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           <StatCard icon={<Users size={16} />} label="Atendidos" value={totals.attended} color="#3A8769" />
+          <StatCard icon={<Check size={16} />} label="Llegaron" value={totals.llegaron} color="#2E8B57" />
           <StatCard icon={<AlertCircle size={16} />} label="No asistió" value={totals.noShow} color="#C53A2D" />
           <StatCard icon={<AlertCircle size={16} />} label="Canceló" value={totals.cancelled} color="#8A5A6E" />
           <StatCard icon={<TrendingUp size={16} />} label="Sin cita" value={totals.walkIns} color="#C2566E" />
@@ -333,8 +349,9 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   <MiniStat label="Atendidos" value={s.attended} sub={`${showRate}% asistencia`} />
+                  <MiniStat label="Llegaron" value={s.llegaron} sub="confirmados" color="#2E8B57" />
                   <MiniStat label="No asistió" value={s.noShow} color="#C53A2D" />
                   <MiniStat label="Canceló" value={s.cancelled} color="#8A5A6E" />
                   <MiniStat label="Sin cita" value={s.walkIns} color="#C2566E" />
