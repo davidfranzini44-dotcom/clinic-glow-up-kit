@@ -1622,7 +1622,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         )}
 
         {view === "reports" && (
-          <Dashboard profile={profile} isAdmin={isAdmin} />
+          <Dashboard profile={profile} isAdmin={isAdmin} viewAll={isAdmin || perms.caja} />
         )}
 
         {view === "swaps" && (

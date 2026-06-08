@@ -99,7 +99,7 @@ const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string, e
   return { stats, totals, dailyBreakdown, filtered };
 };
 
-export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAdmin: boolean }) {
+export default function Dashboard({ profile, isAdmin, viewAll = false }: { profile: Profile; isAdmin: boolean; viewAll?: boolean }) {
   const { employees } = useRoster();
   const [allAppointments, setAllAppointments] = useState<Apt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,7 +139,8 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
     [allAppointments, dateFrom, dateTo, empList, empInfo]
   );
 
-  const visibleEmployees = isAdmin ? empList : [myEmployee].filter(e => empList.includes(e));
+  const seeAll = isAdmin || viewAll;
+  const visibleEmployees = seeAll ? empList : [myEmployee].filter(e => empList.includes(e));
 
   const ranking = useMemo(
     () => empList.map(emp => ({ emp, attended: stats[emp]?.attended || 0 })).sort((a, b) => b.attended - a.attended),
@@ -193,7 +194,7 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
 
       const aptRows: (string | number)[][] = [["Fecha","Hora","Cliente","Empleada","Cabina","Sin cita","No asistió","Canceló"]];
       filtered.forEach(a => {
-        if (!isAdmin && a.employee !== myEmployee) return;
+        if (!seeAll && a.employee !== myEmployee) return;
         aptRows.push([a.date, a.time, a.client, a.employee || "", a.cabin || "", a.walk_in?"Sí":"", a.no_show?"Sí":"", a.cancelled?"Sí":""]);
       });
       const ws3 = XLSX.utils.aoa_to_sheet(aptRows);
@@ -272,7 +273,7 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
         </div>
       </div>
 
-      {isAdmin && (
+      {seeAll && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <StatCard icon={<Users size={16} />} label="Atendidos" value={totals.attended} color="#3A8769" />
           <StatCard icon={<AlertCircle size={16} />} label="No asistió" value={totals.noShow} color="#C53A2D" />
@@ -282,7 +283,7 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
       )}
 
       {/* Ranking de citas atendidas */}
-        {isAdmin ? (
+        {seeAll ? (
           <div className="bg-card border border-border p-4 mb-6">
             <div className="font-label text-accent text-xs mb-3">RANKING · CITAS ATENDIDAS</div>
             <div className="space-y-2">
@@ -349,7 +350,7 @@ export default function Dashboard({ profile, isAdmin }: { profile: Profile; isAd
         })}
       </div>
 
-      {isAdmin && dailyChartData.length > 0 && (
+      {seeAll && dailyChartData.length > 0 && (
         <div className="mt-6 border border-border bg-card p-5">
           <div className="text-xs font-label mb-4 flex items-center gap-2 text-accent">
             <Calendar size={12} /> CLIENTES ATENDIDOS POR DÍA
