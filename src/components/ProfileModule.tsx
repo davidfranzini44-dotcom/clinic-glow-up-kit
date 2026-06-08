@@ -125,7 +125,7 @@ export default function ProfileModule({ session, onRosterChanged }: { session: S
   };
 
   const updatePassword = async () => {
-    if (newPass.length < 6) { toast("La contraseña debe tener al menos 6 caracteres."); return; }
+    if (newPass.length < 4) { toast("La contraseña debe tener al menos 4 caracteres."); return; }
     if (newPass !== newPass2) { toast.error("Las contraseñas no coinciden."); return; }
     const { error } = await supabase.auth.updateUser({ password: newPass });
     if (error) toast.error(error.message);
