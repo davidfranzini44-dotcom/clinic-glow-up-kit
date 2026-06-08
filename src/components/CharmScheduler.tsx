@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight, Menu, X, CalendarDays, UserRound, BarChart3, Users, ShoppingBag, Package, History, Settings, Wallet, Printer, PhoneCall, ListPlus, RefreshCw } from "lucide-react";
+import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight, Menu, X, CalendarDays, UserRound, BarChart3, Users, ShoppingBag, Package, History, Settings, Wallet, Printer, PhoneCall, ListPlus, RefreshCw, StickyNote } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
@@ -45,6 +45,7 @@ export type Apt = {
   changed: string;
   swapLocked: boolean;
   arrivedAt: string | null;
+  notes: string | null;
 };
 
 // ─── Time helpers ─────────────────────────────────────────────────────────
@@ -168,7 +169,7 @@ const parseExcel = async (file: File): Promise<Record<string, Apt[]>> => {
         noShow: false,
         walkIn: false,
         changed: "",
-        swapLocked: false, arrivedAt: null,
+        swapLocked: false, arrivedAt: null, notes: null,
       });
     });
   }
@@ -251,6 +252,7 @@ const rowToApt = (row: ApptRow): Apt => ({
   changed: row.changed || "",
   swapLocked: !!row.swap_locked,
   arrivedAt: row.arrived_at ?? null,
+  notes: (row as { notes?: string | null }).notes ?? null,
 });
 
 const aptToRow = (apt: Apt, dateStr: string) => ({
@@ -267,6 +269,7 @@ const aptToRow = (apt: Apt, dateStr: string) => ({
   changed: apt.changed || "",
   swap_locked: apt.swapLocked,
   arrived_at: apt.arrivedAt ?? null,
+  notes: apt.notes ?? null,
 });
 
 export type Perms = {
@@ -336,6 +339,15 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   }, [(profile as { archived?: boolean } | null)?.archived]);
   const handleNotifLinkRef = useRef<(link: string) => void>(() => {});
   const [arriveDialog, setArriveDialog] = useState<{ open: boolean; apt: Apt | null }>({ open: false, apt: null });
+  const [noteDialog, setNoteDialog] = useState<{ open: boolean; apt: Apt | null }>({ open: false, apt: null });
+  const [noteText, setNoteText] = useState("");
+  const openNote = (a: Apt) => { setNoteText(a.notes ?? ""); setNoteDialog({ open: true, apt: a }); };
+  const saveNote = async () => {
+    if (!noteDialog.apt) return;
+    await updateApt(noteDialog.apt.id, { notes: noteText.trim() || null });
+    setNoteDialog({ open: false, apt: null });
+    toast.success("Nota guardada");
+  };
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [globalSwapsLocked, setGlobalSwapsLocked] = useState(false);
@@ -832,7 +844,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       timeMins,
       employee: chosen.name,
       cabin: chosen.cabin,
-      cancelled: false, noShow: false, walkIn: true, changed: "", swapLocked: false, arrivedAt: null,
+      cancelled: false, noShow: false, walkIn: true, changed: "", swapLocked: false, arrivedAt: null, notes: null,
     };
     setDays(prev => ({
       ...prev,
@@ -1445,6 +1457,12 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     </div>
                     <div className="text-sm text-muted-foreground">{a.cabin || "—"}</div>
                     <div className="flex items-center justify-end gap-1">
+                      {(isAdmin || perms.agenda_edit || a.employee === myEmployee) && (
+                        <button onClick={() => openNote(a)} className="p-1 opacity-70 hover:opacity-100"
+                          title={a.notes ? a.notes : "Agregar nota"}>
+                          <StickyNote size={14} className={a.notes ? "text-accent" : "text-muted-foreground"} />
+                        </button>
+                      )}
                       {a.employee && !a.cancelled && (a.arrivedAt ? (
                         <span className="text-[9px] font-label px-1.5 py-0.5 rounded-full bg-success/15 text-success whitespace-nowrap" title={`Llegó ${new Date(a.arrivedAt).toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })}`}>✓ LLEGÓ</span>
                       ) : (canEditAgenda ? (
@@ -1487,6 +1505,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                         {noShowsOf(a.client) >= 2 && <span className="text-[9px] font-label px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive" title={`No asistió ${noShowsOf(a.client)} veces`}>⚠ {noShowsOf(a.client)}</span>}
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
+                        {(isAdmin || perms.agenda_edit || a.employee === myEmployee) && (
+                          <button onClick={() => openNote(a)} className="p-1" title={a.notes || "Agregar nota"}>
+                            <StickyNote size={14} className={a.notes ? "text-accent" : "text-muted-foreground"} />
+                          </button>
+                        )}
                         {a.employee && !a.cancelled && (a.arrivedAt ? (
                           <span className="text-[9px] font-label px-1.5 py-0.5 rounded-full bg-success/15 text-success">✓</span>
                         ) : (canEditAgenda ? (
@@ -1577,6 +1600,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     <div className="text-sm font-medium w-24 text-primary">{a.time}</div>
                     <button onClick={() => setProfileClient(a.client)} className="flex-1 min-w-0 text-sm text-primary hover:underline text-left" style={{ textDecoration: a.noShow ? "line-through" : undefined }}>{a.client}</button>
                     {a.walkIn && <span className="text-[10px] px-2 py-0.5 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
+                    {(isAdmin || perms.agenda_edit || a.employee === myEmployee) && (
+                      <button onClick={() => openNote(a)} className="p-1" title={a.notes || "Agregar nota"}>
+                        <StickyNote size={14} className={a.notes ? "text-accent" : "text-muted-foreground"} />
+                      </button>
+                    )}
                     {selectedEmployee === myEmployee && a.employee === myEmployee && !a.noShow && (
                       <button
                         onClick={() => setSwapDialog({ open: true, apt: a, date: activeDate })}
@@ -1673,6 +1701,25 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         clientName={profileClient}
         onClose={() => setProfileClient(null)}
       />
+
+      {noteDialog.open && noteDialog.apt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/40" onClick={() => setNoteDialog({ open: false, apt: null })} />
+          <div className="relative bg-card border border-border p-5 w-full max-w-sm space-y-3">
+            <div className="font-display text-primary" style={{ fontSize: 22, fontWeight: 500 }}>
+              <StickyNote size={16} className="inline mr-2 text-accent" />Nota de la cita
+            </div>
+            <div className="text-xs text-muted-foreground">{noteDialog.apt.client} · {noteDialog.apt.time}</div>
+            <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={4} autoFocus
+              placeholder="Ej.: pendiente RD$2000, zona sensible, trae referido…"
+              className="w-full px-3 py-2 text-sm border border-border bg-background text-foreground resize-y" />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setNoteDialog({ open: false, apt: null })} className="px-3 py-2 text-xs font-label border border-border text-muted-foreground">Cancelar</button>
+              <button onClick={() => void saveNote()} className="px-3 py-2 text-xs font-label bg-primary text-primary-foreground">Guardar nota</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {arriveDialog.open && arriveDialog.apt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
