@@ -24,7 +24,31 @@ Deno.serve(async (req: Request) => {
       .eq("user_id", caller.user.id).eq("role", "admin").maybeSingle();
     if (!adminRow) return json({ error: "solo administradores" }, 403);
 
-    const { action, user_id } = await req.json();
+    const { action, user_id, password } = await req.json();
+
+    if (action === "list") {
+      const { data: list, error } = await sb.auth.admin.listUsers({ page: 1, perPage: 500 });
+      if (error) return json({ error: error.message }, 500);
+      return json({
+        ok: true,
+        users: list.users.map((u) => ({ id: u.id, email: u.email ?? null, last_sign_in_at: u.last_sign_in_at ?? null, created_at: u.created_at })),
+      });
+    }
+
+    if (action === "set_password") {
+      if (!user_id || typeof password !== "string" || password.length < 6) {
+        return json({ error: "Contraseña inválida (mínimo 6 caracteres)." }, 400);
+      }
+      if (user_id !== caller.user.id) {
+        const { data: tgtAdmin } = await sb.from("user_roles").select("user_id")
+          .eq("user_id", user_id).eq("role", "admin").maybeSingle();
+        if (tgtAdmin) return json({ error: "No puedes cambiar la contraseña de otra administradora." }, 400);
+      }
+      const { error } = await sb.auth.admin.updateUserById(user_id, { password });
+      if (error) return json({ error: error.message }, 500);
+      return json({ ok: true });
+    }
+
     if (action !== "delete" || !user_id) return json({ error: "petición inválida" }, 400);
     if (user_id === caller.user.id) return json({ error: "No puedes eliminar tu propia cuenta." }, 400);
 
