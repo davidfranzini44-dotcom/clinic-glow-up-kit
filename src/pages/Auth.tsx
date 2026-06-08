@@ -4,7 +4,7 @@ import { LogIn, AlertCircle, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 
-const EMPLOYEE_NAMES = ["Yaira", "Belkis", "Cielo", "Lisa"] as const;
+const FALLBACK_NAMES = ["Yaira", "Belkis", "Lisa", "Altagracia", "Angelica"];
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -16,6 +16,16 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const [empNames, setEmpNames] = useState<string[]>(FALLBACK_NAMES);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.from("employee_settings").select("name").eq("active", true).order("sort_order");
+        const names = (data || []).map((r: { name: string }) => r.name);
+        if (names.length) setEmpNames(names);
+      } catch { /* keep fallback */ }
+    })();
+  }, []);
 
   useEffect(() => {
     // CRITICAL: subscribe FIRST, then check existing session (avoids missed auth events)
@@ -94,7 +104,7 @@ export default function Auth() {
                 <select value={employeeName} onChange={(e) => setEmployeeName(e.target.value)}
                   className="w-full px-3 py-3 border border-border bg-background text-sm text-foreground">
                   <option value="">— Soy administradora —</option>
-                  {EMPLOYEE_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
+                  {empNames.map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </Field>
               <p className="text-[11px] italic text-muted-foreground mb-4 -mt-2">
