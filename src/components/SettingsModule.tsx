@@ -92,7 +92,7 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
       const r = data as { ok?: boolean; error?: string };
       if (!r?.ok) throw new Error(r?.error || "error desconocido");
       toast.success("Contraseña actualizada — compártela con la empleada");
-    } catch (e) { toast.error("No se pudo: " + (e instanceof Error ? e.message : String(e))); }
+    } catch (e) { toast.error("No se pudo: " + (await fnError(e))); }
   };
   const load = useCallback(async () => {
     setLoading(true);
@@ -251,6 +251,14 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
     }
   };
 
+  const fnError = async (e: unknown): Promise<string> => {
+    const ctx = (e as { context?: Response })?.context;
+    if (ctx && typeof ctx.json === "function") {
+      try { const j = await ctx.json(); if (j?.error) return String(j.error); } catch { /* ignore */ }
+    }
+    return e instanceof Error ? e.message : String(e);
+  };
+
   const setArchived = async (prof: ProfileRow, archived: boolean) => {
     if (prof.id === selfId) { toast.error("No puedes archivar tu propia cuenta."); return; }
     const { error } = await supabase.from("profiles").update({ archived }).eq("id", prof.id);
@@ -271,7 +279,7 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
       toast.success("Cuenta eliminada");
       await load();
     } catch (e) {
-      toast.error("No se pudo eliminar: " + (e instanceof Error ? e.message : String(e)));
+      toast.error("No se pudo eliminar: " + (await fnError(e)));
     }
   };
 
