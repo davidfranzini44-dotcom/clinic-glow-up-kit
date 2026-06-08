@@ -29,9 +29,14 @@ type AppointmentRow = {
 interface Props {
   clientName: string | null;
   onClose: () => void;
+  noteApt?: { id: string; client: string; time: string; notes: string | null } | null;
+  canEditNote?: boolean;
+  onSaveNote?: (text: string) => void;
 }
 
-export default function ClientProfileModal({ clientName, onClose }: Props) {
+export default function ClientProfileModal({ clientName, onClose, noteApt, canEditNote, onSaveNote }: Props) {
+  const [noteText, setNoteText] = useState("");
+  useEffect(() => { setNoteText(noteApt?.notes ?? ""); }, [noteApt?.id, noteApt?.notes]);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [matches, setMatches] = useState<Customer[]>([]);
   const [history, setHistory] = useState<AppointmentRow[]>([]);
@@ -140,6 +145,24 @@ export default function ClientProfileModal({ clientName, onClose }: Props) {
         </div>
 
         <div className="p-4 space-y-4">
+          {noteApt && (
+            <div className="border border-accent/40 bg-card p-3">
+              <div className="text-[11px] font-label text-accent mb-2">NOTA DE ESTA CITA · {noteApt.time}</div>
+              {canEditNote ? (
+                <>
+                  <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={3}
+                    placeholder="Ej.: pendiente RD$2000, zona sensible, trae referido…"
+                    className="w-full px-3 py-2 text-sm border border-border bg-background text-foreground resize-y" />
+                  <div className="flex justify-end mt-2">
+                    <button onClick={() => onSaveNote?.(noteText)}
+                      className="px-3 py-1.5 text-xs font-label bg-primary text-primary-foreground">Guardar nota</button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-foreground whitespace-pre-wrap">{noteApt.notes || <span className="italic text-muted-foreground">Sin nota.</span>}</div>
+              )}
+            </div>
+          )}
           {loading && <div className="text-sm text-muted-foreground">Cargando…</div>}
 
           {!loading && matches.length > 1 && (
