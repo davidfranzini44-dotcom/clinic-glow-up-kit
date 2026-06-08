@@ -120,7 +120,9 @@ function assign(rows: { id: string; t: number }[], wd: number, emps: Emp[], off:
   }
   const availCount = (t: number) => emps.filter(e => isWorking(e, t, wd, buf, ovs[e.name]) && !off.has(e.name)).length;
   const order = rows.map((_, i) => i).sort((a, b) => { const ca = availCount(rows[a].t), cb = availCount(rows[b].t); if (ca !== cb) return ca - cb; return rows[a].t - rows[b].t; });
-  const counts: Record<string, number> = {}; const last: Record<string, number> = {}; for (const e of emps) { counts[e.name] = 0; last[e.name] = -9999; }
+  const counts: Record<string, number> = {}; const last: Record<string, number> = {}; const firstA: Record<string, number> = {};
+  for (const e of emps) { counts[e.name] = 0; last[e.name] = -9999; firstA[e.name] = Number.POSITIVE_INFINITY; }
+  const shiftStart = (e: Emp) => ovs[e.name]?.s ?? e.sched[wd]?.s ?? 0;
   const slot: Record<number, Set<string>> = {}; const out: Record<string, { emp: string; cab: number | null }> = {};
   for (const idx of order) {
     const { id, t } = rows[idx]; (slot[t] ??= new Set());
@@ -132,8 +134,16 @@ function assign(rows: { id: string; t: number }[], wd: number, emps: Emp[], off:
     const notYet = avail.filter(e => !slot[t].has(e.name));
     let pool = notYet.length ? (notYet.filter(e => counts[e.name] < targets[e.name]).length ? notYet.filter(e => counts[e.name] < targets[e.name]) : notYet)
                              : (avail.filter(e => counts[e.name] < targets[e.name]).length ? avail.filter(e => counts[e.name] < targets[e.name]) : avail);
-    pool = [...pool].sort((a, b) => { const dA = targets[a.name] - counts[a.name], dB = targets[b.name] - counts[b.name]; if (dA !== dB) return dB - dA; return (t - last[b.name]) - (t - last[a.name]); });
-    const ch = pool[0]; counts[ch.name]++; last[ch.name] = t; slot[t].add(ch.name); out[id] = { emp: ch.name, cab: ch.cabin };
+    pool = [...pool].sort((a, b) => {
+      const stA = shiftStart(a), stB = shiftStart(b);
+      const sA = t >= stA && t - stA <= 60 && firstA[a.name] > t ? 1 : 0;
+      const sB = t >= stB && t - stB <= 60 && firstA[b.name] > t ? 1 : 0;
+      if (sA !== sB) return sB - sA;
+      const dA = targets[a.name] - counts[a.name], dB = targets[b.name] - counts[b.name];
+      if (dA !== dB) return dB - dA;
+      return (t - last[b.name]) - (t - last[a.name]);
+    });
+    const ch = pool[0]; counts[ch.name]++; last[ch.name] = t; if (t < firstA[ch.name]) firstA[ch.name] = t; slot[t].add(ch.name); out[id] = { emp: ch.name, cab: ch.cabin };
   }
   return out;
 }
