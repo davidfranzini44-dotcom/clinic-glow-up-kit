@@ -97,9 +97,9 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
   useEffect(() => { void loadActivity(); }, [loadActivity]);
   const fmtTs = (ts: string) => new Date(ts).toLocaleString("es-DO", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const resetPassword = async (prof: ProfileRow) => {
-    const pw = prompt(`Nueva contraseña para ${prof.display_name || "este usuario"} (mínimo 4 caracteres):`);
+    const pw = prompt(`Nueva contraseña para ${prof.display_name || "este usuario"} (mínimo 6 caracteres):`);
     if (!pw) return;
-    if (pw.length < 4) { toast.error("Mínimo 4 caracteres."); return; }
+    if (pw.length < 6) { toast.error("Mínimo 6 caracteres."); return; }
     try {
       const { data, error } = await supabase.functions.invoke("admin-users", { body: { action: "set_password", user_id: prof.id, password: pw } });
       if (error) throw error;
