@@ -1176,6 +1176,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_signup_role: { Args: { role_key: string }; Returns: undefined }
       has_perm: { Args: { _perm: string; _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
