@@ -15,7 +15,7 @@ const FB_PROJECT = Deno.env.get("DNSUITE_PROJECT") ?? "dnsuite-66175";
 
 type Cita = {
   id: string; date: string; time: string; clientName: string; clientPhone?: string;
-  serviceName?: string; status?: string; pendingAmount?: string;
+  serviceName?: string; status?: string; pendingAmount?: string; notes?: string;
 };
 
 const fv = (v: Record<string, unknown>): unknown => {
@@ -72,7 +72,7 @@ async function pullDay(token: string, tenantId: string, sucursalId: string, date
         date: g("date") ?? "", time: g("time") ?? "",
         clientName: g("clientName") ?? "", clientPhone: g("clientPhone"),
         serviceName: g("serviceName"), status: g("status"),
-        pendingAmount: g("pendingAmount"),
+        pendingAmount: g("pendingAmount"), notes: g("notes"),
       } as Cita);
     }
   }
@@ -212,7 +212,7 @@ Deno.serve(async (req: Request) => {
           }
         }
       } else {
-        const { error } = await sb.from("appointments").insert({ ...base, id: "dn_" + c.id, employee: null, cabin: null, no_show: false, walk_in: false, changed: "", swap_locked: false });
+        const { error } = await sb.from("appointments").insert({ ...base, id: "dn_" + c.id, notes: c.notes || null, employee: null, cabin: null, no_show: false, walk_in: false, changed: "", swap_locked: false });
         if (error) { if (!firstErr) firstErr = "insert: " + error.message; }
         else { inserted++; if (!isCancelled) insertedIds.push("dn_" + c.id); }
       }
