@@ -13,6 +13,7 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [employeeName, setEmployeeName] = useState<string>("");
+  const [role, setRole] = useState<"employee" | "secretary">("employee");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -51,12 +52,15 @@ export default function Auth() {
           options: {
             emailRedirectTo: `${window.location.origin}/`,
             data: {
-              display_name: displayName || employeeName || email.split("@")[0],
-              employee_name: employeeName || null,
+              display_name: displayName || (role === "secretary" ? "Secretaria" : employeeName) || email.split("@")[0],
+              employee_name: role === "secretary" ? null : (employeeName || null),
             },
           },
         });
         if (error) throw error;
+        if (role === "secretary") {
+          try { await supabase.rpc("apply_signup_role", { role_key: "secretary" }); } catch { /* admin can set later */ }
+        }
         setInfo("Cuenta creada. Iniciando sesión…");
       }
     } catch (err) {
@@ -100,15 +104,26 @@ export default function Auth() {
                 <input value={displayName} onChange={(e) => setDisplayName(e.target.value)}
                   className="w-full px-3 py-3 border border-border bg-background text-sm text-foreground" />
               </Field>
-              <Field label="¿Eres empleada? Selecciona tu nombre">
-                <select value={employeeName} onChange={(e) => setEmployeeName(e.target.value)}
+              <Field label="¿Cuál es tu rol?">
+                <select value={role} onChange={(e) => setRole(e.target.value as "employee" | "secretary")}
                   className="w-full px-3 py-3 border border-border bg-background text-sm text-foreground">
-                  <option value="">— Soy administradora —</option>
-                  {empNames.map(n => <option key={n} value={n}>{n}</option>)}
+                  <option value="employee">Empleada (técnica)</option>
+                  <option value="secretary">Secretaria / Recepción</option>
                 </select>
               </Field>
+              {role === "employee" && (
+                <Field label="Selecciona tu nombre en la agenda">
+                  <select value={employeeName} onChange={(e) => setEmployeeName(e.target.value)}
+                    className="w-full px-3 py-3 border border-border bg-background text-sm text-foreground">
+                    <option value="">— Elige tu nombre —</option>
+                    {empNames.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </Field>
+              )}
               <p className="text-[11px] italic text-muted-foreground mb-4 -mt-2">
-                La primera cuenta creada será la administradora automáticamente.
+                {role === "secretary"
+                  ? "La secretaria recibe acceso a agenda, individual, reportes, solicitudes, clientes, historial y caja."
+                  : "La primera cuenta creada será la administradora automáticamente."}
               </p>
             </>
           )}
