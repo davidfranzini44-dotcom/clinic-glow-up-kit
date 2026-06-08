@@ -167,6 +167,7 @@ export type Database = {
           employee: string | null
           id: string
           no_show: boolean
+          notes: string | null
           pending_amount: number | null
           service_name: string | null
           source: string
@@ -189,6 +190,7 @@ export type Database = {
           employee?: string | null
           id: string
           no_show?: boolean
+          notes?: string | null
           pending_amount?: number | null
           service_name?: string | null
           source?: string
@@ -211,6 +213,7 @@ export type Database = {
           employee?: string | null
           id?: string
           no_show?: boolean
+          notes?: string | null
           pending_amount?: number | null
           service_name?: string | null
           source?: string
