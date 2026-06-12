@@ -45,6 +45,7 @@ type EmpStats = {
 
 const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string, empList: string[], empInfo: Record<string, { startM: number; endM: number; color: string }>) => {
   const filtered = appointments.filter(a => a.date >= dateFrom && a.date <= dateTo);
+  const todayStr = todayISO();
 
   const empDates: Record<string, Set<string>> = {};
   empList.forEach(emp => empDates[emp] = new Set());
@@ -63,7 +64,7 @@ const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string, e
     s.total++;
     if (a.no_show) s.noShow++;
     else if (a.cancelled) s.cancelled++;
-    else { s.attended++; if (a.walk_in) s.walkIns++; if (a.arrived_at) s.llegaron++; }
+    else { const counts = !!a.arrived_at || a.date < todayStr; if (counts) { s.attended++; if (a.walk_in) s.walkIns++; } if (a.arrived_at) s.llegaron++; }
   });
 
   empList.forEach(emp => {
@@ -84,7 +85,7 @@ const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string, e
     const d = dailyBreakdown[a.date][a.employee];
     if (a.no_show) d.noShow++;
     else if (a.cancelled) d.cancelled++;
-    else { d.attended++; if (a.walk_in) d.walkIns++; if (a.arrived_at) d.llegaron++; }
+    else { const counts = !!a.arrived_at || a.date < todayStr; if (counts) { d.attended++; if (a.walk_in) d.walkIns++; } if (a.arrived_at) d.llegaron++; }
   });
 
   const totals = {
@@ -302,9 +303,8 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
       </div>
 
       {seeAll && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <StatCard icon={<Users size={16} />} label="Atendidos" value={totals.attended} color="#3A8769" />
-          <StatCard icon={<Check size={16} />} label="Llegaron" value={totals.llegaron} color="#2E8B57" />
           <StatCard icon={<AlertCircle size={16} />} label="No asistió" value={totals.noShow} color="#C53A2D" />
           <StatCard icon={<AlertCircle size={16} />} label="Canceló" value={totals.cancelled} color="#8A5A6E" />
           <StatCard icon={<TrendingUp size={16} />} label="Sin cita" value={totals.walkIns} color="#C2566E" />
@@ -362,9 +362,8 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <MiniStat label="Atendidos" value={s.attended} sub={`${showRate}% asistencia`} />
-                  <MiniStat label="Llegaron" value={s.llegaron} sub="confirmados" color="#2E8B57" />
                   <MiniStat label="No asistió" value={s.noShow} color="#C53A2D" />
                   <MiniStat label="Canceló" value={s.cancelled} color="#8A5A6E" />
                   <MiniStat label="Sin cita" value={s.walkIns} color="#C2566E" />
