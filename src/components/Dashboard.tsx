@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, Download, TrendingUp, Clock, Users, AlertCircle, Activity, Filter, Award, Check } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
@@ -111,46 +111,70 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
 
   const myEmployee = profile?.employee_name || "";
 
-  useEffect(() => {
-    let alive = true;
-    const reload = async (showSpinner = false) => {
-      if (showSpinner) setLoading(true);
-      try {
-        const { data, error } = await supabase.from("appointments").select("*").order("date", { ascending: true });
+  // Keep the latest selected range in a ref so the (stable) reload fn always
+  // fetches the current window without being re-created on every keystroke.
+  const rangeRef = useRef({ from: dateFrom, to: dateTo });
+  rangeRef.current = { from: dateFrom, to: dateTo };
+  const mountedRef = useRef(true);
+
+  // Fetch every appointment in the selected date range. PostgREST caps a single
+  // response at 1000 rows, so we page through with .range() until exhausted —
+  // otherwise busy ranges (a month is >1000 citas here) silently truncate and
+  // recent days show 0. Filtering by date server-side keeps payloads small.
+  const reload = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true);
+    try {
+      const { from, to } = rangeRef.current;
+      const PAGE = 1000;
+      let pageFrom = 0;
+      let all: Apt[] = [];
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("appointments")
+          .select("*")
+          .gte("date", from)
+          .lte("date", to)
+          .order("date", { ascending: true })
+          .range(pageFrom, pageFrom + PAGE - 1);
         if (error) throw error;
-        if (alive) setAllAppointments((data as Apt[]) || []);
-      } catch (e) {
-        console.error("Dashboard load error:", e);
+        const batch = (data as Apt[]) || [];
+        all = all.concat(batch);
+        if (batch.length < PAGE) break;
+        pageFrom += PAGE;
       }
-      if (alive && showSpinner) setLoading(false);
-    };
-    void reload(true);
-    // keep fresh all day: refresh when the tab is refocused, and every 2 minutes
+      if (mountedRef.current) setAllAppointments(all);
+    } catch (e) {
+      console.error("Dashboard load error:", e);
+    }
+    if (mountedRef.current && showSpinner) setLoading(false);
+  }, []);
+
+  // Refetch whenever the selected range changes.
+  useEffect(() => { void reload(true); }, [dateFrom, dateTo, reload]);
+
+  // Keep fresh all day: realtime changes, tab refocus, and a 2-minute poll all
+  // re-pull the current range so counts (e.g. Atendidos on Llegó) move live.
+  useEffect(() => {
+    mountedRef.current = true;
     const onVis = () => { if (document.visibilityState === "visible") void reload(false); };
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("focus", onVis);
     const poll = setInterval(() => void reload(false), 120000);
     const ch = supabase
       .channel("dashboard-appts")
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload) => {
-        setAllAppointments((prev) => {
-          const ev = payload.eventType;
-          if (ev === "DELETE") return prev.filter((a) => a.id !== (payload.old as { id: string }).id);
-          const row = payload.new as Apt;
-          const i = prev.findIndex((a) => a.id === row.id);
-          if (i === -1) return [...prev, row];
-          const copy = [...prev]; copy[i] = row; return copy;
-        });
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
+        void reload(false);
       })
       .subscribe();
     return () => {
-      alive = false;
+      mountedRef.current = false;
       supabase.removeChannel(ch);
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("focus", onVis);
       clearInterval(poll);
     };
-  }, []);
+  }, [reload]);
 
   const empList = useMemo(
     () => Array.from(new Set([...employees.map((e) => e.name), ...(allAppointments.map((a) => a.employee).filter(Boolean) as string[])])),
