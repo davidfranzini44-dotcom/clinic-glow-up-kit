@@ -1048,7 +1048,6 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         { key: "reports", label: "Reportes", icon: <BarChart3 size={16} /> },
         { key: "swaps", label: "Solicitudes", icon: <Repeat size={16} />, badge: pendingSwaps },
         { key: "clients", label: "Clientes", icon: <Users size={16} /> },
-        { key: "sales", label: "Ventas", icon: <ShoppingBag size={16} /> },
         { key: "inventory", label: "Inventario", icon: <Package size={16} /> },
         { key: "history", label: "Historial", icon: <History size={16} /> },
         { key: "settings", label: "Ajustes", icon: <Settings size={16} /> },
@@ -1059,10 +1058,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         { key: "swaps" as ViewKey, label: "Solicitudes", icon: <Repeat size={16} />, badge: pendingSwaps },
         ...(perms.clients_access !== "none" ? [{ key: "clients" as ViewKey, label: "Clientes", icon: <Users size={16} /> }] : []),
         ...(perms.reports ? [{ key: "reports" as ViewKey, label: "Mis reportes", icon: <BarChart3 size={16} /> }] : []),
-        ...(perms.sales ? [{ key: "sales" as ViewKey, label: "Ventas", icon: <ShoppingBag size={16} /> }] : []),
         ...(perms.inventory ? [{ key: "inventory" as ViewKey, label: "Inventario", icon: <Package size={16} /> }] : []),
         ...(perms.history ? [{ key: "history" as ViewKey, label: "Historial", icon: <History size={16} /> }] : []),
-        ...(perms.caja && !perms.sales ? [{ key: "sales" as ViewKey, label: "Caja", icon: <Wallet size={16} /> }] : []),
       ];
   const goView = (key: ViewKey) => {
     if (key === "clients") setSelectedClientId(null);
