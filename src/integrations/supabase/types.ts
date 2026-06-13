@@ -375,6 +375,69 @@ export type Database = {
         }
         Relationships: []
       }
+      chore_overrides: {
+        Row: {
+          chore_key: string
+          date: string
+          to_employee: string
+          updated_at: string
+        }
+        Insert: {
+          chore_key: string
+          date: string
+          to_employee: string
+          updated_at?: string
+        }
+        Update: {
+          chore_key?: string
+          date?: string
+          to_employee?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chore_transfer_requests: {
+        Row: {
+          chore_date: string
+          chore_key: string
+          chore_label: string | null
+          created_at: string
+          from_employee: string
+          id: string
+          requested_by: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          to_employee: string
+        }
+        Insert: {
+          chore_date: string
+          chore_key: string
+          chore_label?: string | null
+          created_at?: string
+          from_employee: string
+          id?: string
+          requested_by: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          to_employee: string
+        }
+        Update: {
+          chore_date?: string
+          chore_key?: string
+          chore_label?: string | null
+          created_at?: string
+          from_employee?: string
+          id?: string
+          requested_by?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          to_employee?: string
+        }
+        Relationships: []
+      }
       customer_packages: {
         Row: {
           active: boolean
