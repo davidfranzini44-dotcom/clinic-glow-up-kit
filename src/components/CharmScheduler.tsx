@@ -9,6 +9,7 @@ import type { Session } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import Dashboard from "./Dashboard";
+import { useDailyChores, ChoreChips, ChoreStrip } from "./DailyChores";
 import SwapRequests, { SwapRequestDialog } from "./SwapRequests";
 import NotificationBell from "./NotificationBell";
 import GlobalSearch from "./GlobalSearch";
@@ -777,6 +778,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const sortedDates = useMemo(() => Object.keys(days).filter(d => d > HISTORY_CUTOFF).sort(), [days]);
   const currentAppts = useMemo(() => (activeDate ? (days[activeDate] || []) : []), [activeDate, days]);
   const activeWeekday = activeDate ? weekdayOf(activeDate) : 1;
+  const chores = useDailyChores(activeDate || "", employees, timeOff, profile?.display_name || profile?.employee_name || "Equipo");
   useEffect(() => { if (activeDate) setWeekStart(mondayOf(activeDate)); }, [activeDate]);
 
   const updateApt = async (id: string, changes: Partial<Apt>) => {
@@ -1390,6 +1392,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
               </div>
             )}
 
+            <ChoreStrip strip={chores.strip} isDone={chores.isDone} toggle={chores.toggle} />
             {/* Stats grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {empNames.map(emp => {
@@ -1413,6 +1416,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                       {s.cancelled > 0 && <span>{s.cancelled} canceló</span>}
                       {s.noShow === 0 && s.cancelled === 0 && <span>&nbsp;</span>}
                     </div>
+                    <ChoreChips items={chores.columns[emp] || []} isDone={chores.isDone} toggle={chores.toggle} color={e.color} />
                   </div>
                 );
               })}
