@@ -351,6 +351,30 @@ export type Database = {
         }
         Relationships: []
       }
+      chore_completions: {
+        Row: {
+          chore_key: string
+          date: string
+          done: boolean
+          done_at: string
+          done_by: string | null
+        }
+        Insert: {
+          chore_key: string
+          date: string
+          done?: boolean
+          done_at?: string
+          done_by?: string | null
+        }
+        Update: {
+          chore_key?: string
+          date?: string
+          done?: boolean
+          done_at?: string
+          done_by?: string | null
+        }
+        Relationships: []
+      }
       customer_packages: {
         Row: {
           active: boolean
