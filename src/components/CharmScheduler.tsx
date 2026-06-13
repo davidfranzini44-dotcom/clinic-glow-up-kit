@@ -9,8 +9,6 @@ import type { Session } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import Dashboard from "./Dashboard";
-import { useDailyChores, ChoreChips, ChoreStrip, PersonChores } from "./DailyChores";
-import ChoreTransfers from "./ChoreTransfers";
 import SwapRequests, { SwapRequestDialog } from "./SwapRequests";
 import NotificationBell from "./NotificationBell";
 import GlobalSearch from "./GlobalSearch";
@@ -779,11 +777,6 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const sortedDates = useMemo(() => Object.keys(days).filter(d => d > HISTORY_CUTOFF).sort(), [days]);
   const currentAppts = useMemo(() => (activeDate ? (days[activeDate] || []) : []), [activeDate, days]);
   const activeWeekday = activeDate ? weekdayOf(activeDate) : 1;
-  const chores = useDailyChores(activeDate || "", employees, timeOff, profile?.display_name || profile?.employee_name || "Equipo");
-  const choreTargets = useMemo(
-    () => empNames.filter(n => n !== selectedEmployee && !!empMap[n]?.schedule[activeWeekday]?.works && !isOffOn(timeOff, n, activeDate)),
-    [empNames, empMap, selectedEmployee, activeWeekday, timeOff, activeDate],
-  );
   useEffect(() => { if (activeDate) setWeekStart(mondayOf(activeDate)); }, [activeDate]);
 
   const updateApt = async (id: string, changes: Partial<Apt>) => {
@@ -1397,7 +1390,6 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
               </div>
             )}
 
-            <ChoreStrip strip={chores.strip} isDone={chores.isDone} toggle={chores.toggle} />
             {/* Stats grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {empNames.map(emp => {
@@ -1421,7 +1413,6 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                       {s.cancelled > 0 && <span>{s.cancelled} canceló</span>}
                       {s.noShow === 0 && s.cancelled === 0 && <span>&nbsp;</span>}
                     </div>
-                    <ChoreChips items={chores.columns[emp] || []} isDone={chores.isDone} toggle={chores.toggle} color={e.color} />
                   </div>
                 );
               })}
@@ -1590,16 +1581,6 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                 )}
               </div>
 
-              <PersonChores
-                items={chores.forPerson(selectedEmployee)}
-                isDone={chores.isDone}
-                toggle={chores.toggle}
-                canRequest={selectedEmployee === myEmployee || isAdmin}
-                date={activeDate}
-                requesterUid={session.user.id}
-                targets={choreTargets}
-              />
-
               <div className="space-y-1">
                 {currentAppts.filter(a => a.employee === selectedEmployee && !a.cancelled).length === 0 && (
                   <div className="text-sm italic text-muted-foreground">No hay citas asignadas.</div>
@@ -1654,12 +1635,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         )}
 
         {view === "swaps" && (
-          <>
-            <SwapRequests session={session} isAdmin={isAdmin} myEmployee={myEmployee} />
-            <div className="mt-6">
-              <ChoreTransfers session={session} isAdmin={isAdmin} myEmployee={myEmployee} />
-            </div>
-          </>
+          <SwapRequests session={session} isAdmin={isAdmin} myEmployee={myEmployee} />
         )}
 
         {view === "clients" && (

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Calendar, Download, TrendingUp, Clock, Users, AlertCircle, Activity, Filter, Award, Check } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +45,6 @@ type EmpStats = {
 
 const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string, empList: string[], empInfo: Record<string, { startM: number; endM: number; color: string }>) => {
   const filtered = appointments.filter(a => a.date >= dateFrom && a.date <= dateTo);
-  const todayStr = todayISO();
 
   const empDates: Record<string, Set<string>> = {};
   empList.forEach(emp => empDates[emp] = new Set());
@@ -64,7 +63,7 @@ const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string, e
     s.total++;
     if (a.no_show) s.noShow++;
     else if (a.cancelled) s.cancelled++;
-    else { const counts = !!a.arrived_at || a.date < todayStr; if (counts) { s.attended++; if (a.walk_in) s.walkIns++; } if (a.arrived_at) s.llegaron++; }
+    else { s.attended++; if (a.walk_in) s.walkIns++; if (a.arrived_at) s.llegaron++; }
   });
 
   empList.forEach(emp => {
@@ -85,7 +84,7 @@ const calculateStats = (appointments: Apt[], dateFrom: string, dateTo: string, e
     const d = dailyBreakdown[a.date][a.employee];
     if (a.no_show) d.noShow++;
     else if (a.cancelled) d.cancelled++;
-    else { const counts = !!a.arrived_at || a.date < todayStr; if (counts) { d.attended++; if (a.walk_in) d.walkIns++; } if (a.arrived_at) d.llegaron++; }
+    else { d.attended++; if (a.walk_in) d.walkIns++; if (a.arrived_at) d.llegaron++; }
   });
 
   const totals = {
@@ -111,70 +110,46 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
 
   const myEmployee = profile?.employee_name || "";
 
-  // Keep the latest selected range in a ref so the (stable) reload fn always
-  // fetches the current window without being re-created on every keystroke.
-  const rangeRef = useRef({ from: dateFrom, to: dateTo });
-  rangeRef.current = { from: dateFrom, to: dateTo };
-  const mountedRef = useRef(true);
-
-  // Fetch every appointment in the selected date range. PostgREST caps a single
-  // response at 1000 rows, so we page through with .range() until exhausted —
-  // otherwise busy ranges (a month is >1000 citas here) silently truncate and
-  // recent days show 0. Filtering by date server-side keeps payloads small.
-  const reload = useCallback(async (showSpinner = false) => {
-    if (showSpinner) setLoading(true);
-    try {
-      const { from, to } = rangeRef.current;
-      const PAGE = 1000;
-      let pageFrom = 0;
-      let all: Apt[] = [];
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await supabase
-          .from("appointments")
-          .select("*")
-          .gte("date", from)
-          .lte("date", to)
-          .order("date", { ascending: true })
-          .range(pageFrom, pageFrom + PAGE - 1);
-        if (error) throw error;
-        const batch = (data as Apt[]) || [];
-        all = all.concat(batch);
-        if (batch.length < PAGE) break;
-        pageFrom += PAGE;
-      }
-      if (mountedRef.current) setAllAppointments(all);
-    } catch (e) {
-      console.error("Dashboard load error:", e);
-    }
-    if (mountedRef.current && showSpinner) setLoading(false);
-  }, []);
-
-  // Refetch whenever the selected range changes.
-  useEffect(() => { void reload(true); }, [dateFrom, dateTo, reload]);
-
-  // Keep fresh all day: realtime changes, tab refocus, and a 2-minute poll all
-  // re-pull the current range so counts (e.g. Atendidos on Llegó) move live.
   useEffect(() => {
-    mountedRef.current = true;
+    let alive = true;
+    const reload = async (showSpinner = false) => {
+      if (showSpinner) setLoading(true);
+      try {
+        const { data, error } = await supabase.from("appointments").select("*").order("date", { ascending: true });
+        if (error) throw error;
+        if (alive) setAllAppointments((data as Apt[]) || []);
+      } catch (e) {
+        console.error("Dashboard load error:", e);
+      }
+      if (alive && showSpinner) setLoading(false);
+    };
+    void reload(true);
+    // keep fresh all day: refresh when the tab is refocused, and every 2 minutes
     const onVis = () => { if (document.visibilityState === "visible") void reload(false); };
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("focus", onVis);
     const poll = setInterval(() => void reload(false), 120000);
     const ch = supabase
       .channel("dashboard-appts")
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
-        void reload(false);
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload) => {
+        setAllAppointments((prev) => {
+          const ev = payload.eventType;
+          if (ev === "DELETE") return prev.filter((a) => a.id !== (payload.old as { id: string }).id);
+          const row = payload.new as Apt;
+          const i = prev.findIndex((a) => a.id === row.id);
+          if (i === -1) return [...prev, row];
+          const copy = [...prev]; copy[i] = row; return copy;
+        });
       })
       .subscribe();
     return () => {
-      mountedRef.current = false;
+      alive = false;
       supabase.removeChannel(ch);
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("focus", onVis);
       clearInterval(poll);
     };
-  }, [reload]);
+  }, []);
 
   const empList = useMemo(
     () => Array.from(new Set([...employees.map((e) => e.name), ...(allAppointments.map((a) => a.employee).filter(Boolean) as string[])])),
@@ -327,8 +302,9 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
       </div>
 
       {seeAll && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           <StatCard icon={<Users size={16} />} label="Atendidos" value={totals.attended} color="#3A8769" />
+          <StatCard icon={<Check size={16} />} label="Llegaron" value={totals.llegaron} color="#2E8B57" />
           <StatCard icon={<AlertCircle size={16} />} label="No asistió" value={totals.noShow} color="#C53A2D" />
           <StatCard icon={<AlertCircle size={16} />} label="Canceló" value={totals.cancelled} color="#8A5A6E" />
           <StatCard icon={<TrendingUp size={16} />} label="Sin cita" value={totals.walkIns} color="#C2566E" />
@@ -386,8 +362,9 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   <MiniStat label="Atendidos" value={s.attended} sub={`${showRate}% asistencia`} />
+                  <MiniStat label="Llegaron" value={s.llegaron} sub="confirmados" color="#2E8B57" />
                   <MiniStat label="No asistió" value={s.noShow} color="#C53A2D" />
                   <MiniStat label="Canceló" value={s.cancelled} color="#8A5A6E" />
                   <MiniStat label="Sin cita" value={s.walkIns} color="#C2566E" />
