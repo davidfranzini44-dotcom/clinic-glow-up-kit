@@ -276,6 +276,61 @@ export function autoAssign<T extends AssignableAppt>(
     slotUsed.add(chosen.name);
     result[idx] = { ...apt, employee: chosen.name, cabin: chosen.cabin };
   }
+
+  // ── Spread the afternoon (>= 2pm): rotate so the same person does not work
+  //    back-to-back. These swaps only relabel afternoon citas between two
+  //    employees, so every person's daily total (and caps) stay exactly the
+  //    same; only WHO works consecutive slots changes.
+  {
+    const AFTER = 14 * 60;
+    const byName: Record<string, Employee> = {};
+    for (const e of roster) byName[e.name] = e;
+    const canWork = (name: string, t: number): boolean => {
+      const e = byName[name];
+      return !!e && isWorkingOn(e, t, wd, endBufferMin, overrides[name]?.[dateStr]) && !isOffOn(timeOff, name, dateStr);
+    };
+    const aIdx = result
+      .map((_, i) => i)
+      .filter(i => result[i] && !result[i].cancelled && !!result[i].employee && result[i].timeMins >= AFTER);
+    if (aIdx.length >= 3) {
+      const times = Array.from(new Set(aIdx.map(i => result[i].timeMins))).sort((a, b) => a - b);
+      const setAt = (tt: number): Set<string> => {
+        const set = new Set<string>();
+        for (const i of aIdx) { const emp = result[i].employee; if (emp && result[i].timeMins === tt) set.add(emp); }
+        return set;
+      };
+      const cost = (): number => {
+        let c = 0;
+        for (let k = 0; k < times.length - 1; k++) {
+          const a = setAt(times[k]); const b = setAt(times[k + 1]);
+          for (const n of a) if (b.has(n)) c++;
+        }
+        return c;
+      };
+      let guard = 0; let improved = true;
+      while (improved && guard++ < 300) {
+        improved = false;
+        const base = cost();
+        if (base === 0) break;
+        for (let p = 0; p < aIdx.length && !improved; p++) {
+          for (let q = p + 1; q < aIdx.length; q++) {
+            const A = result[aIdx[p]]; const B = result[aIdx[q]];
+            if (A.timeMins === B.timeMins) continue;
+            const eA = A.employee; const eB = B.employee;
+            if (!eA || !eB || eA === eB) continue;
+            if (!canWork(eB, A.timeMins) || !canWork(eA, B.timeMins)) continue;
+            if (setAt(A.timeMins).has(eB) || setAt(B.timeMins).has(eA)) continue;
+            A.employee = eB; A.cabin = byName[eB].cabin;
+            B.employee = eA; B.cabin = byName[eA].cabin;
+            if (cost() < base) { improved = true; break; }
+            A.employee = eA; A.cabin = byName[eA].cabin;
+            B.employee = eB; B.cabin = byName[eB].cabin;
+          }
+        }
+      }
+    }
+  }
+
   return result;
 }
 
