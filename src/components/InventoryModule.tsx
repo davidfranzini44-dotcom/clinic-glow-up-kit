@@ -101,10 +101,14 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
     (async () => {
       setLoading(true);
       try {
+        const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+        const fcFrom = ymd(new Date());
+        const fcToD = new Date(); fcToD.setDate(fcToD.getDate() + 6);
+        const fcTo = ymd(fcToD);
         const [{ data: inv }, { data: mov }, { data: apt }] = await Promise.all([
           supabase.from("inventory_items").select("*").order("sku"),
           supabase.from("inventory_movements").select("*").order("created_at", { ascending: false }),
-          supabase.from("appointments").select("*"),
+          supabase.from("appointments").select("*").gte("date", fcFrom).lte("date", fcTo),
         ]);
         setInventory(inv || []);
         setMovements(mov || []);
@@ -272,7 +276,6 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
       <div className="flex gap-2 mb-6 flex-wrap">
         <SubNavBtn active={view === "list"} onClick={() => setView("list")}>Stock ({inventory.length})</SubNavBtn>
         <SubNavBtn active={view === "forecast"} onClick={() => setView("forecast")}>📊 Pronóstico</SubNavBtn>
-        <SubNavBtn active={view === "movements"} onClick={() => setView("movements")}>📋 Movimientos ({movements.length})</SubNavBtn>
       </div>
 
       {inventory.length === 0 && view === "list" && (
@@ -359,7 +362,6 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
       )}
 
       {view === "forecast" && inventory.length > 0 && <ForecastView forecast={forecast} totalValue={totalValue} />}
-      {view === "movements" && <MovementsHistory movements={movements} />}
     </Section>
   );
 }
