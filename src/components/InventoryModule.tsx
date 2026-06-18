@@ -19,7 +19,7 @@ type InvForm = {
   min_stock?: string | number | null; per_client_rate?: string | number | null;
 };
 type MoveForm = { itemId?: string; type?: string; qty?: string | number; notes?: string };
-type ForecastItem = InvItem & { totalNeeded: number; dailyNeeds: number[]; deficit: number; costNeeded: number };
+type ForecastItem = InvItem & { totalNeeded: number; dailyNeeds: number[]; deficit: number; shortfall: number; costNeeded: number };
 type Forecast = {
   next7Days: { date: string; dayName: string; dayNum: number; clients: number }[];
   totalClients: number;
@@ -92,6 +92,7 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [appointments, setAppointments] = useState<ApptRow[]>([]);
   const [view, setView] = useState<"list" | "forecast" | "movements">("list");
+  const [horizon, setHorizon] = useState<7 | 14 | 30>(7);
   const [search, setSearch] = useState("");
   const [editForm, setEditForm] = useState<InvForm | null>(null);
   const [movementForm, setMovementForm] = useState<MoveForm | null>(null);
@@ -103,16 +104,28 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
       try {
         const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
         const fcFrom = ymd(new Date());
-        const fcToD = new Date(); fcToD.setDate(fcToD.getDate() + 6);
+        const fcToD = new Date(); fcToD.setDate(fcToD.getDate() + 29);
         const fcTo = ymd(fcToD);
-        const [{ data: inv }, { data: mov }, { data: apt }] = await Promise.all([
+        const [{ data: inv }, { data: mov }] = await Promise.all([
           supabase.from("inventory_items").select("*").order("sku"),
           supabase.from("inventory_movements").select("*").order("created_at", { ascending: false }),
-          supabase.from("appointments").select("*").gte("date", fcFrom).lte("date", fcTo),
         ]);
+        // Paginate citas (server caps each page at 1000) to cover up to 30 days.
+        let apt: ApptRow[] = [];
+        for (let pageFrom = 0; ; pageFrom += 1000) {
+          const { data, error } = await supabase
+            .from("appointments").select("*")
+            .gte("date", fcFrom).lte("date", fcTo)
+            .order("date", { ascending: true })
+            .range(pageFrom, pageFrom + 999);
+          if (error) throw error;
+          const batch = (data as ApptRow[]) || [];
+          apt = apt.concat(batch);
+          if (batch.length < 1000) break;
+        }
         setInventory(inv || []);
         setMovements(mov || []);
-        setAppointments(apt || []);
+        setAppointments(apt);
       } catch (e) { console.error(e); }
       setLoading(false);
     })();
@@ -181,10 +194,10 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
 
   const forecast = useMemo(() => {
     const next7Days: { date: string; dayName: string; dayNum: number; clients: number }[] = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < horizon; i++) {
       const d = new Date(); d.setDate(d.getDate() + i);
       const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-      const apts = appointments.filter(a => a.date === ds && !a.cancelled);
+      const apts = appointments.filter(a => a.date === ds && !a.cancelled && !a.no_show);
       next7Days.push({ date: ds, dayName: DAYS_ES_SHORT[d.getDay()], dayNum: d.getDate(), clients: apts.length });
     }
     const totalClients = next7Days.reduce((s, d) => s + d.clients, 0);
@@ -192,11 +205,13 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
       const totalNeeded = totalClients * Number(item.per_client_rate || 0);
       const dailyNeeds = next7Days.map(d => d.clients * Number(item.per_client_rate || 0));
       const deficit = Number(item.stock) - totalNeeded;
+      // reorder when projected use + safety stock (min_stock) exceeds what's on hand
+      const shortfall = (totalNeeded + Number(item.min_stock || 0)) - Number(item.stock);
       const costNeeded = totalNeeded * Number(item.cost_per_unit || 0);
-      return { ...item, totalNeeded, dailyNeeds, deficit, costNeeded };
+      return { ...item, totalNeeded, dailyNeeds, deficit, shortfall, costNeeded };
     });
     return { next7Days, totalClients, byItem };
-  }, [inventory, appointments]);
+  }, [inventory, appointments, horizon]);
 
   const filtered = inventory
     .filter(i => !search || i.name.toLowerCase().includes(search.toLowerCase()) || (i.sku || "").toLowerCase().includes(search.toLowerCase()));
@@ -228,7 +243,7 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
     XLSX.utils.book_append_sheet(wb, ws1, "Inventario Actual");
 
     const fcRows: (string | number | null)[][] = [
-      [`PRONÓSTICO PRÓXIMOS 7 DÍAS (${forecast.totalClients} CLIENTES)`], [],
+      [`PRONÓSTICO PRÓXIMOS ${forecast.next7Days.length} DÍAS (${forecast.totalClients} CLIENTES)`], [],
       ["Clientes:", "", "", ...forecast.next7Days.map(d => `${d.dayName} ${d.dayNum}`), "Total", "Stock", "Saldo", "Costo", "Valor Stock"],
       ["Citas →", "", "", ...forecast.next7Days.map(d => d.clients), forecast.totalClients, "", "", "", ""],
       [],
@@ -246,12 +261,12 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
     const ws2 = XLSX.utils.aoa_to_sheet(fcRows);
     XLSX.utils.book_append_sheet(wb, ws2, "Pronóstico");
 
-    const deficits = forecast.byItem.filter(i => i.deficit < 0);
-    if (deficits.length > 0) {
+    const reorder = forecast.byItem.filter(i => i.shortfall > 0);
+    if (reorder.length > 0) {
       const reRows: (string | number | null)[][] = [["LISTA DE REORDEN"], [], ["SKU", "Producto", "Unidad", "Stock", "Necesario", "Comprar", "Costo/U", "Total", "Proveedor", "Tel"]];
       let total = 0;
-      deficits.forEach(it => {
-        const toBuy = Math.ceil(-it.deficit);
+      reorder.forEach(it => {
+        const toBuy = Math.ceil(it.shortfall);
         const cost = toBuy * Number(it.cost_per_unit);
         total += cost;
         reRows.push([it.sku, it.name, it.unit, it.stock, parseFloat(it.totalNeeded.toFixed(2)), toBuy, it.cost_per_unit, cost, it.supplier || "", it.supplier_phone || ""]);
@@ -276,6 +291,7 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
       <div className="flex gap-2 mb-6 flex-wrap">
         <SubNavBtn active={view === "list"} onClick={() => setView("list")}>Stock ({inventory.length})</SubNavBtn>
         <SubNavBtn active={view === "forecast"} onClick={() => setView("forecast")}>📊 Pronóstico</SubNavBtn>
+        <SubNavBtn active={view === "movements"} onClick={() => setView("movements")}>📋 Movimientos ({movements.length})</SubNavBtn>
       </div>
 
       {inventory.length === 0 && view === "list" && (
@@ -361,7 +377,8 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
         </>
       )}
 
-      {view === "forecast" && inventory.length > 0 && <ForecastView forecast={forecast} totalValue={totalValue} />}
+      {view === "forecast" && inventory.length > 0 && <ForecastView forecast={forecast} totalValue={totalValue} horizon={horizon} setHorizon={setHorizon} />}
+      {view === "movements" && <MovementsHistory movements={movements} />}
     </Section>
   );
 }
@@ -459,13 +476,13 @@ function MovementForm({ form, setForm, item, onSave, onCancel }: { form: MoveFor
   );
 }
 
-function ForecastView({ forecast, totalValue }: { forecast: Forecast; totalValue: number }) {
-  const deficits = forecast.byItem.filter((i) => i.deficit < 0);
-  const reorderTotal = deficits.reduce((s: number, i) => s + (Math.ceil(-i.deficit) * Number(i.cost_per_unit || 0)), 0);
+function ForecastView({ forecast, totalValue, horizon, setHorizon }: { forecast: Forecast; totalValue: number; horizon: 7 | 14 | 30; setHorizon: (h: 7 | 14 | 30) => void }) {
+  const reorder = forecast.byItem.filter((i) => i.shortfall > 0);
+  const reorderTotal = reorder.reduce((s: number, i) => s + (Math.ceil(i.shortfall) * Number(i.cost_per_unit || 0)), 0);
 
   const sendReorderWA = (item: ForecastItem) => {
     const phone = (item.supplier_phone || "").replace(/\D/g, "");
-    const toBuy = Math.ceil(-item.deficit);
+    const toBuy = Math.ceil(item.shortfall);
     const msg = `Hola, soy de Charm Clínica Estética. Necesito hacer un pedido:\n\n${item.name} (${item.sku}): ${toBuy} ${item.unit}\n\nGracias.`;
     const url = phone ? `https://wa.me/${phone.startsWith("1") ? phone : "1" + phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(url, "_blank");
@@ -473,15 +490,21 @@ function ForecastView({ forecast, totalValue }: { forecast: Forecast; totalValue
 
   return (
     <>
+      <div className="flex gap-2 mb-4 items-center flex-wrap">
+        <span className="text-xs tracking-[0.2em] uppercase" style={{ color: "#8A5A6E" }}>Horizonte:</span>
+        {[7, 14, 30].map((h) => (
+          <button key={h} onClick={() => setHorizon(h as 7 | 14 | 30)} className="px-3 py-1.5 text-xs tracking-[0.15em] uppercase border" style={{ backgroundColor: horizon === h ? "#2B2024" : "transparent", color: horizon === h ? "#FBF8F6" : "#2B2024", borderColor: "#2B2024" }}>{h} días</button>
+        ))}
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Stat label="Clientes Próx. 7 Días" value={forecast.totalClients} icon={<Users size={14} />} color="#2B2024" />
-        <Stat label="A Reordenar" value={deficits.length} icon={<AlertTriangle size={14} />} color="#C53A2D" />
+        <Stat label={`Clientes Próx. ${forecast.next7Days.length} Días`} value={forecast.totalClients} icon={<Users size={14} />} color="#2B2024" />
+        <Stat label="A Reordenar" value={reorder.length} icon={<AlertTriangle size={14} />} color="#C53A2D" />
         <Stat label="Costo Reorden" value={fmtMoney(reorderTotal)} icon={<Truck size={14} />} color="#C2566E" />
         <Stat label="Valor Inventario" value={fmtMoney(totalValue)} icon={<DollarSign size={14} />} color="#3A8769" />
       </div>
 
       <div className="border p-4 mb-6" style={{ borderColor: "#E8E0DB", backgroundColor: "#FFFFFF" }}>
-        <div className="text-xs tracking-[0.25em] mb-3" style={{ color: "#8A5A6E" }}>CITAS PRÓXIMOS 7 DÍAS</div>
+        <div className="text-xs tracking-[0.25em] mb-3" style={{ color: "#8A5A6E" }}>CITAS PRÓXIMOS {forecast.next7Days.length} DÍAS</div>
         <div className="grid grid-cols-7 gap-2">
           {forecast.next7Days.map((d) => (
             <div key={d.date} className="text-center">
@@ -493,14 +516,14 @@ function ForecastView({ forecast, totalValue }: { forecast: Forecast; totalValue
         </div>
       </div>
 
-      {deficits.length > 0 && (
+      {reorder.length > 0 && (
         <div className="border mb-6" style={{ borderColor: "#C53A2D", backgroundColor: "#FFFFFF", borderLeftWidth: "4px" }}>
           <div className="p-4 border-b" style={{ borderColor: "#E8E0DB" }}>
             <div className="text-xs tracking-[0.25em] flex items-center gap-2" style={{ color: "#C53A2D" }}><AlertTriangle size={12} /> LISTA DE REORDEN</div>
-            <div className="text-sm mt-1" style={{ color: "#2B2024" }}>{deficits.length} producto{deficits.length === 1 ? "" : "s"} no alcanza{deficits.length === 1 ? "" : "n"}</div>
+            <div className="text-sm mt-1" style={{ color: "#2B2024" }}>{reorder.length} producto{reorder.length === 1 ? "" : "s"} por reordenar</div>
           </div>
-          {deficits.map((item) => {
-            const toBuy = Math.ceil(-item.deficit);
+          {reorder.map((item) => {
+            const toBuy = Math.ceil(item.shortfall);
             const cost = toBuy * Number(item.cost_per_unit || 0);
             return (
               <div key={item.id} className="px-4 py-3 border-b flex items-center gap-3 flex-wrap" style={{ borderColor: "#EFE7E2" }}>
@@ -527,7 +550,7 @@ function ForecastView({ forecast, totalValue }: { forecast: Forecast; totalValue
           <div>SKU</div><div>Producto</div><div>Stock</div><div className="text-right">Necesario</div><div className="text-right">Saldo</div><div className="text-right">Costo</div>
         </div>
         {forecast.byItem.map((item, idx: number) => {
-          const isDeficit = item.deficit < 0;
+          const isDeficit = item.shortfall > 0;
           return (
             <div key={item.id} className="hidden md:grid gap-3 px-4 py-3 border-b items-center" style={{ borderColor: "#EFE7E2", backgroundColor: idx % 2 === 0 ? "transparent" : "#FBF8F6", gridTemplateColumns: "60px 1fr 90px 100px 100px 110px" }}>
               <div className="text-xs" style={{ color: "#8A5A6E" }}>{item.sku}</div>
