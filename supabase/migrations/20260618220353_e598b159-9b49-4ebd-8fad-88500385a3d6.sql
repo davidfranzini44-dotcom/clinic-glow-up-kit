@@ -1,0 +1,1 @@
+delete from public.inventory_movements;
