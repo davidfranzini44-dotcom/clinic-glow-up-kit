@@ -13,6 +13,7 @@ export type DaySchedule = {
 export type Employee = {
   name: string;
   cabin: number | null;
+  cabins: number[];
   color: string;
   maxClients: number | null;
   active: boolean;
@@ -55,14 +56,22 @@ function defaultSchedule(s: number, e: number, l: number): Record<number, DaySch
 }
 
 export const DEFAULT_EMPLOYEES: Employee[] = DEFAULT_DEF.map((d, i) => ({
-  name: d.name, cabin: d.cabin, color: d.color, maxClients: d.max, active: true, sortOrder: i + 1,
+  name: d.name, cabin: d.cabin, cabins: d.cabin != null ? [d.cabin] : [], color: d.color, maxClients: d.max, active: true, sortOrder: i + 1,
   schedule: defaultSchedule(d.s, d.e, d.l),
 }));
 
 // ─── DB row shapes ────────────────────────────────────────────────────
-type SettingRow = { name: string; cabin: number | null; color: string | null; max_clients: number | null; active: boolean; sort_order: number };
+type SettingRow = { name: string; cabin: number | null; cabins?: string | null; color: string | null; max_clients: number | null; active: boolean; sort_order: number };
 type SchedRow = { employee_name: string; weekday: number; works: boolean; start_min: number | null; end_min: number | null; lunch_start_min: number | null; lunch_minutes: number };
 type TimeOffRow = { employee_name: string; date: string };
+
+function parseCabins(cabins: string | null | undefined, fallback: number | null): number[] {
+  if (cabins && cabins.trim()) {
+    const arr = cabins.split(/[,\s]+/).map((x) => parseInt(x, 10)).filter((n) => !isNaN(n));
+    if (arr.length) return Array.from(new Set(arr));
+  }
+  return fallback != null ? [fallback] : [];
+}
 
 export function buildEmployees(settings: SettingRow[], scheds: SchedRow[]): Employee[] {
   const byName: Record<string, Employee> = {};
@@ -70,6 +79,7 @@ export function buildEmployees(settings: SettingRow[], scheds: SchedRow[]): Empl
     byName[s.name] = {
       name: s.name,
       cabin: s.cabin,
+      cabins: parseCabins(s.cabins, s.cabin),
       color: s.color || "hsl(var(--muted-foreground))",
       maxClients: s.max_clients,
       active: s.active,
@@ -327,6 +337,27 @@ export function autoAssign<T extends AssignableAppt>(
             B.employee = eB; B.cabin = byName[eB].cabin;
           }
         }
+      }
+    }
+  }
+
+  // Assign each cita a free cabina from its employee's set, so two people who
+  // share a cabina don't land in it at the same time, and an employee with
+  // several cabinas gets whichever is open.
+  {
+    const empCabs: Record<string, number[]> = {};
+    for (const e of roster) empCabs[e.name] = e.cabins && e.cabins.length ? e.cabins : (e.cabin != null ? [e.cabin] : []);
+    const bySlot: Record<number, number[]> = {};
+    result.forEach((r, i) => { if (r && !r.cancelled && r.employee) (bySlot[r.timeMins] ||= []).push(i); });
+    for (const k of Object.keys(bySlot)) {
+      const used = new Set<number>();
+      for (const i of bySlot[Number(k)]) {
+        const cabs = empCabs[result[i].employee as string] || [];
+        let cab: number | null = null;
+        for (const c of cabs) { if (!used.has(c)) { cab = c; break; } }
+        if (cab == null && cabs.length) cab = cabs[0];
+        if (cab != null) used.add(cab);
+        result[i].cabin = cab;
       }
     }
   }
