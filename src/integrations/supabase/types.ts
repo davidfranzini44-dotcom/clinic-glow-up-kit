@@ -704,6 +704,7 @@ export type Database = {
         Row: {
           active: boolean
           cabin: number | null
+          cabins: string | null
           color: string | null
           created_at: string
           max_clients: number | null
@@ -715,6 +716,7 @@ export type Database = {
         Insert: {
           active?: boolean
           cabin?: number | null
+          cabins?: string | null
           color?: string | null
           created_at?: string
           max_clients?: number | null
@@ -726,6 +728,7 @@ export type Database = {
         Update: {
           active?: boolean
           cabin?: number | null
+          cabins?: string | null
           color?: string | null
           created_at?: string
           max_clients?: number | null
