@@ -778,6 +778,16 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
   const sortedDates = useMemo(() => Object.keys(days).filter(d => d > HISTORY_CUTOFF).sort(), [days]);
   const currentAppts = useMemo(() => (activeDate ? (days[activeDate] || []) : []), [activeDate, days]);
+  const cabinClashIds = useMemo(() => {
+    const ids = new Set<string>();
+    const byKey: Record<string, string[]> = {};
+    for (const a of currentAppts) {
+      if (a.cancelled || a.cabin == null) continue;
+      (byKey[`${a.timeMins}:${a.cabin}`] ||= []).push(a.id);
+    }
+    for (const k of Object.keys(byKey)) if (byKey[k].length > 1) byKey[k].forEach((id) => ids.add(id));
+    return ids;
+  }, [currentAppts]);
   const activeWeekday = activeDate ? weekdayOf(activeDate) : 1;
   const chores = useDailyChores(activeDate || "", employees, timeOff, profile?.display_name || profile?.employee_name || "Equipo", currentAppts);
   const choreTargets = useMemo(
@@ -1475,7 +1485,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                       <select value={a.cabin ?? ""} onChange={(ev) => updateApt(a.id, { cabin: ev.target.value ? parseInt(ev.target.value) : null })} className="w-full px-1 py-1 text-sm bg-background text-foreground border border-border">
                         {(empMap[a.employee]?.cabins || []).map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
-                    ) : (a.cabin || "—")}</div>
+                    ) : (a.cabin || "—")}{cabinClashIds.has(a.id) && <span className="block text-[9px] font-label text-destructive whitespace-nowrap" title="Otra cita usa esta cabina a la misma hora">⚠ REPETIDA</span>}</div>
                     <div className="flex items-center justify-end gap-1">
                       {a.employee && !a.cancelled && (a.arrivedAt ? (
                         <span className="text-[9px] font-label px-1.5 py-0.5 rounded-full bg-success/15 text-success whitespace-nowrap" title={`Llegó ${new Date(a.arrivedAt).toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })}`}>✓ LLEGÓ</span>
@@ -1545,6 +1555,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                           {(empMap[a.employee]?.cabins || []).map((c) => <option key={c} value={c}>Cab. {c}</option>)}
                         </select>
                       ) : (<span className="text-xs px-2 py-2 border border-border text-muted-foreground">Cab. {a.cabin || "—"}</span>)}
+                      {cabinClashIds.has(a.id) && <span className="text-[9px] font-label text-destructive ml-1" title="Otra cita usa esta cabina a la misma hora">⚠ REPETIDA</span>}
                     </div>
                     <div className="flex gap-2">
                       <ToggleBtn active={a.noShow} onClick={() => updateApt(a.id, { noShow: !a.noShow, cancelled: false })} variant="destructive" className="flex-1">NO ASISTIÓ</ToggleBtn>
