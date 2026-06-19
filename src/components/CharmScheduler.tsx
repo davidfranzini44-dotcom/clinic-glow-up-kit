@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight, Menu, X, CalendarDays, UserRound, BarChart3, Users, ShoppingBag, Package, History, Settings, Wallet, Printer, PhoneCall, ListPlus, RefreshCw, StickyNote } from "lucide-react";
+import { Upload, UserPlus, RotateCcw, AlertCircle, FileSpreadsheet, Trash2, Copy, Check, Save, LogOut, Repeat, Lock, Unlock, ChevronLeft, ChevronRight, Menu, X, CalendarDays, UserRound, BarChart3, Users, ShoppingBag, Package, History, Settings, Wallet, Printer, PhoneCall, ListPlus, RefreshCw, StickyNote, MoreVertical } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
@@ -1165,7 +1165,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       <header className="border-b border-border sticky top-0 z-10 bg-card">
         <div className="max-w-7xl mx-auto px-3 md:px-6 py-3 md:py-4 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 border border-border text-primary" aria-label="Abrir menú"><Menu size={16} /></button>
+            <button onClick={() => setSidebarOpen(true)} className="hidden p-2 border border-border text-primary" aria-label="Abrir menú"><Menu size={16} /></button>
             <div className="flex items-baseline gap-3 flex-wrap">
               <span className="font-display text-primary md:hidden" style={{ fontSize: 26, fontWeight: 500, lineHeight: 1 }}>Charm</span>
               <span className="text-xs font-label text-accent hidden md:inline">{profile?.display_name || profile?.employee_name}</span>
@@ -1352,7 +1352,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         })()}
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-28 md:pb-6">
         {view === "schedule" && (isAdmin || perms.full_agenda) && (
           <>
             <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
@@ -1362,7 +1362,40 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   {dateLabelES(activeDate)}
                 </h2>
               </div>
-              {canEditAgenda && <div className="flex gap-2 flex-wrap">
+            {canEditAgenda && (
+              <div className="md:hidden mb-5">
+                <div className="grid gap-2" style={{ gridTemplateColumns: "1.3fr 1fr 1fr 46px" }}>
+                  <button onClick={() => setWalkInForm({ open: true, time: "", client: "" })} className="flex items-center justify-center gap-1.5 rounded-xl text-[11px] font-label text-primary-foreground bg-primary" style={{ minHeight: 46 }}>
+                    <UserPlus size={15} /> Sin cita
+                  </button>
+                  <button onClick={reAutoAssign} className="flex items-center justify-center gap-1.5 rounded-xl text-[11px] font-label border border-primary text-primary bg-card" style={{ minHeight: 46 }}>
+                    <RotateCcw size={15} /> Reasignar
+                  </button>
+                  <button onClick={() => void syncDnsuite()} disabled={syncing} className="flex items-center justify-center gap-1.5 rounded-xl text-[11px] font-label border border-accent text-accent bg-card disabled:opacity-50" style={{ minHeight: 46 }}>
+                    <RefreshCw size={15} className={syncing ? "animate-spin" : ""} /> {syncing ? "…" : "Sinc."}
+                  </button>
+                  <details className="relative">
+                    <summary className="list-none [&::-webkit-details-marker]:hidden flex items-center justify-center rounded-xl border border-border text-primary bg-card cursor-pointer" style={{ minHeight: 46 }} aria-label="Más acciones">
+                      <MoreVertical size={18} />
+                    </summary>
+                    <div className="absolute right-0 mt-2 w-56 z-30 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                      <button onClick={printDaySheet} className="w-full flex items-center gap-2 px-4 py-3 text-xs font-label text-primary hover:bg-background">
+                        <Printer size={15} /> Imprimir
+                      </button>
+                      <button onClick={() => setWlOpen(o => !o)} className="w-full flex items-center gap-2 px-4 py-3 text-xs font-label hover:bg-background" style={{ color: wlPending > 0 ? "hsl(var(--accent))" : "hsl(var(--primary))" }}>
+                        <ListPlus size={15} /> Lista de espera{wlPending > 0 ? ` (${wlPending})` : ""}
+                      </button>
+                      {isAdmin && (
+                        <button onClick={clearAllData} className="w-full flex items-center gap-2 px-4 py-3 text-xs font-label text-destructive border-t border-border hover:bg-background">
+                          <Trash2 size={15} /> Borrar todo
+                        </button>
+                      )}
+                    </div>
+                  </details>
+                </div>
+              </div>
+            )}
+              {canEditAgenda && <div className="hidden md:flex gap-2 flex-wrap">
                 <button onClick={() => setWalkInForm({ open: true, time: "", client: "" })}
                   className="px-4 py-2 text-xs font-label border border-primary text-primary bg-card flex items-center gap-2">
                   <UserPlus size={14} /> Sin Cita
@@ -1444,13 +1477,13 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
             <ChoreStrip strip={chores.strip} isDone={chores.isDone} toggle={chores.toggle} suggestions={chores.suggestions} />
             {/* Stats grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div className="flex md:grid md:grid-cols-4 gap-3 mb-6 overflow-x-auto md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0">
               {empNames.map(emp => {
                 const e = empMap[emp];
                 const s = employeeStats[emp];
                 const overCap = e.maxClients && s.attended > e.maxClients;
                 return (
-                  <div key={emp} className="border border-border bg-card p-4" style={{ borderLeft: `4px solid ${e.color}` }}>
+                  <div key={emp} className="border border-border bg-card p-4 rounded-xl md:rounded-none min-w-[150px] flex-shrink-0 md:min-w-0 md:flex-shrink" style={{ borderLeft: `4px solid ${e.color}` }}>
                     <div className="flex items-baseline justify-between">
                       <span className="font-display text-primary" style={{ fontSize: 24, fontWeight: 500 }}>{emp}</span>
                       <span className="text-xs font-label" style={{ color: e.color }}>C.{e.cabins?.length ? e.cabins.join("/") : (e.cabin ?? "—")}</span>
@@ -1466,7 +1499,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                       {s.cancelled > 0 && <span>{s.cancelled} canceló</span>}
                       {s.noShow === 0 && s.cancelled === 0 && <span>&nbsp;</span>}
                     </div>
-                    <ChoreChips items={chores.columns[emp] || []} isDone={chores.isDone} toggle={chores.toggle} color={e.color} suggestions={chores.suggestions} />
+                    <div className="hidden md:block"><ChoreChips items={chores.columns[emp] || []} isDone={chores.isDone} toggle={chores.toggle} color={e.color} suggestions={chores.suggestions} /></div>
                   </div>
                 );
               })}
@@ -1544,34 +1577,55 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             </div>
 
             {/* Mobile cards */}
-            <div className="md:hidden space-y-2">
-              {currentAppts.length === 0 && <div className="p-8 text-center text-sm italic border border-border bg-card text-muted-foreground">No hay citas para este día.</div>}
+            <div className="md:hidden space-y-2.5">
+              {currentAppts.length === 0 && <div className="p-8 text-center text-sm italic border border-border bg-card rounded-2xl text-muted-foreground">No hay citas para este día.</div>}
               {currentAppts.map((a) => {
                 const empColor = a.employee ? (empMap[a.employee]?.color ?? "hsl(var(--muted-foreground))") : "hsl(var(--muted-foreground))";
                 const dimmed = a.cancelled || a.noShow;
+                const clash = cabinClashIds.has(a.id);
+                const multiCab = !!a.employee && (empMap[a.employee]?.cabins?.length ?? 0) > 1;
+                const tparts = a.time.split(/[:\s]/).filter(Boolean);
+                const hh = tparts[0] || a.time;
+                const mm = tparts[1] && /^[0-9]+$/.test(tparts[1]) ? tparts[1] : "";
+                const ampm = /p/i.test(a.time) ? "p. m." : "a. m.";
                 return (
-                  <div key={a.id} id={`apt-m-${a.id}`} className="border border-border bg-card p-3" style={{ borderLeft: `4px solid ${empColor}`, opacity: dimmed ? 0.55 : 1, outline: highlightId === a.id ? "2px solid hsl(var(--accent))" : undefined }}>
-                    <div className="flex items-baseline justify-between gap-2 mb-2">
-                      <div className="flex items-baseline gap-2 flex-wrap min-w-0">
-                        <span className="text-sm font-medium text-primary">{a.time}</span>
-                        <button onClick={() => { setProfileClient(a.client); setProfileApt(a); }} className="text-sm text-primary hover:underline text-left" style={{ textDecoration: dimmed ? "line-through" : undefined }}>{a.client}</button>
-                        {noShowsOf(a.client) >= 2 && <span className="text-[9px] font-label px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive" title={`No asistió ${noShowsOf(a.client)} veces`}>⚠ {noShowsOf(a.client)}</span>}
+                  <div key={a.id} id={`apt-m-${a.id}`} className="relative rounded-2xl border border-border bg-card p-3.5"
+                    style={{ borderLeft: `4px solid ${empColor}`, opacity: dimmed ? 0.6 : 1, outline: highlightId === a.id ? "2px solid hsl(var(--accent))" : undefined }}>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 text-primary font-display leading-none" style={{ fontSize: 20, fontWeight: 600, minWidth: 46 }}>
+                        {hh}{mm ? `:${mm}` : ""}
+                        <span className="block mt-1 text-[9px] font-label text-muted-foreground" style={{ fontWeight: 400 }}>{ampm}</span>
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        {a.employee && !a.cancelled && (a.arrivedAt ? (
-                          <span className="text-[9px] font-label px-1.5 py-0.5 rounded-full bg-success/15 text-success">✓</span>
-                        ) : (canEditAgenda ? (
-                          <button onClick={() => setArriveDialog({ open: true, apt: a })} className="px-2 py-0.5 text-[10px] font-label border border-success text-success">LLEGÓ</button>
-                        ) : null))}
-                        {a.walkIn && <span className="text-[10px] px-2 py-0.5 font-label bg-chip-walkin-bg text-chip-walkin-fg">SIN CITA</span>}
-                        {canEditAgenda && <button onClick={() => removeApt(a.id)} className="p-1 opacity-50"><Trash2 size={14} className="text-destructive" /></button>}
+                      <div className="flex-1 min-w-0">
+                        <button onClick={() => { setProfileClient(a.client); setProfileApt(a); }} className="block max-w-full truncate text-[13px] font-semibold text-foreground text-left" style={{ textDecoration: dimmed ? "line-through" : undefined }}>{a.client}</button>
+                        {a.notes && <div className="mt-1 text-[11px] text-muted-foreground truncate">{a.notes}</div>}
+                        {noShowsOf(a.client) >= 2 && <span className="inline-block mt-1 text-[9px] font-label px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive" title={`No asistió ${noShowsOf(a.client)} veces`}>⚠ {noShowsOf(a.client)} FALTAS</span>}
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {a.arrivedAt && !a.cancelled && <span className="inline-flex items-center h-[22px] px-2 rounded-full text-[9px] font-label bg-success/15 text-success whitespace-nowrap">✓ Llegó</span>}
+                        {a.walkIn && <span className="inline-flex items-center h-[22px] px-2 rounded-full text-[9px] font-label bg-chip-walkin-bg text-chip-walkin-fg whitespace-nowrap">Sin cita</span>}
+                        {canEditAgenda && (
+                          <details className="relative">
+                            <summary className="list-none [&::-webkit-details-marker]:hidden grid place-items-center w-8 h-8 rounded-lg text-muted-foreground cursor-pointer" aria-label="Opciones de la cita"><MoreVertical size={16} /></summary>
+                            <div className="absolute right-0 mt-1 w-48 z-30 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                              {isAdmin && (
+                                <button onClick={() => updateApt(a.id, { swapLocked: !a.swapLocked })} className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs font-label text-primary hover:bg-background">
+                                  {a.swapLocked ? <><Unlock size={14} /> Desbloquear cambios</> : <><Lock size={14} /> Bloquear cambios</>}
+                                </button>
+                              )}
+                              <button onClick={() => removeApt(a.id)} className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs font-label text-destructive border-t border-border hover:bg-background">
+                                <Trash2 size={14} /> Eliminar cita
+                              </button>
+                            </div>
+                          </details>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="grid gap-2 mt-3" style={{ gridTemplateColumns: "1fr auto" }}>
                       <select value={a.employee || ""}
                         onChange={(e) => updateApt(a.id, { employee: (e.target.value || null) as EmpKey | null, cabin: e.target.value ? pickCabin(e.target.value, a.timeMins, a.id) : null })}
-                        className="flex-1 px-2 py-2 text-sm bg-background text-foreground"
-                        style={{ border: `1px solid hsl(var(--border))`, borderLeftWidth: 3, borderLeftColor: empColor }}>
+                        className="w-full px-3 text-[13px] bg-background text-foreground rounded-xl"
+                        style={{ minHeight: 44, border: `1px solid hsl(var(--border))`, borderLeftWidth: 3, borderLeftColor: empColor }}>
                         <option value="">— Sin asignar —</option>
                         {empNames.map(emp => {
                           const working = empMap[emp] ? isWorkingOn(empMap[emp], a.timeMins, activeWeekday, 0, activeDate ? overrides[emp]?.[activeDate] : null) : false;
@@ -1579,17 +1633,26 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                           return <option key={emp} value={emp}>{emp}{!working ? (lunch ? " (almuerzo)" : " (fuera)") : ""}</option>;
                         })}
                       </select>
-                      {a.employee && (empMap[a.employee]?.cabins?.length ?? 0) > 1 ? (
-                        <select value={a.cabin ?? ""} onChange={(ev) => updateApt(a.id, { cabin: ev.target.value ? parseInt(ev.target.value) : null })} className="text-xs px-2 py-2 border border-border bg-background text-foreground">
-                          {(empMap[a.employee]?.cabins || []).map((c) => <option key={c} value={c}>Cab. {c}</option>)}
+                      {multiCab ? (
+                        <select value={a.cabin ?? ""} onChange={(ev) => updateApt(a.id, { cabin: ev.target.value ? parseInt(ev.target.value) : null })} className="px-3 text-[13px] bg-background text-foreground rounded-xl" style={{ minHeight: 44, minWidth: 96, border: `1px solid ${clash ? "hsl(var(--destructive))" : "hsl(var(--border))"}` }}>
+                          {(empMap[a.employee!]?.cabins || []).map((c) => <option key={c} value={c}>Cab. {c}</option>)}
                         </select>
-                      ) : (<span className="text-xs px-2 py-2 border border-border text-muted-foreground">Cab. {a.cabin || "—"}</span>)}
-                      {cabinClashIds.has(a.id) && <span className="text-[9px] font-label text-destructive ml-1" title="Otra cita usa esta cabina a la misma hora">⚠ REPETIDA</span>}
+                      ) : (
+                        <div className="grid place-items-center px-3 text-[12px] font-label text-muted-foreground rounded-xl border bg-background" style={{ minHeight: 44, minWidth: 96, borderColor: clash ? "hsl(var(--destructive))" : "hsl(var(--border))" }}>Cab. {a.cabin || "—"}</div>
+                      )}
                     </div>
-                    <div className="flex gap-2">
-                      <ToggleBtn active={a.noShow} onClick={() => updateApt(a.id, { noShow: !a.noShow, cancelled: false })} variant="destructive" className="flex-1">NO ASISTIÓ</ToggleBtn>
-                      <ToggleBtn active={a.cancelled} onClick={() => updateApt(a.id, { cancelled: !a.cancelled, noShow: false })} variant="accent" className="flex-1">CANCELÓ</ToggleBtn>
-                    </div>
+                    {clash && <div className="flex items-center gap-2 mt-2 px-3 py-2 rounded-lg text-[10px] font-label uppercase tracking-wide" style={{ color: "hsl(var(--destructive))", backgroundColor: "hsl(var(--destructive) / 0.1)" }}>⚠ Repetida · otra cita usa esta cabina a esta hora</div>}
+                    {canEditAgenda && (
+                      <div className="grid grid-cols-3 gap-2 mt-2.5">
+                        {a.employee && !a.cancelled && !a.arrivedAt ? (
+                          <button onClick={() => setArriveDialog({ open: true, apt: a })} className="w-full rounded-xl text-[10px] font-label uppercase tracking-wide" style={{ minHeight: 44, color: "hsl(var(--success))", border: "1px solid hsl(var(--success))", backgroundColor: "hsl(var(--success) / 0.06)" }}>Llegó</button>
+                        ) : (
+                          <div className="w-full grid place-items-center rounded-xl text-[10px] font-label uppercase tracking-wide" style={{ minHeight: 44, color: a.arrivedAt ? "hsl(var(--success))" : "hsl(var(--muted-foreground))", border: `1px solid ${a.arrivedAt ? "hsl(var(--success))" : "hsl(var(--border))"}`, opacity: a.arrivedAt ? 1 : 0.5 }}>{a.arrivedAt ? "✓ Llegó" : "Llegó"}</div>
+                        )}
+                        <ToggleBtn active={a.noShow} onClick={() => updateApt(a.id, { noShow: !a.noShow, cancelled: false })} variant="destructive" className="min-h-[44px] w-full !text-[10px] !rounded-xl flex items-center justify-center uppercase tracking-wide">No asistió</ToggleBtn>
+                        <ToggleBtn active={a.cancelled} onClick={() => updateApt(a.id, { cancelled: !a.cancelled, noShow: false })} variant="accent" className="min-h-[44px] w-full !text-[10px] !rounded-xl flex items-center justify-center uppercase tracking-wide">Canceló</ToggleBtn>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1746,6 +1809,32 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         )}
       </main>
 
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card/95 backdrop-blur border-t border-border flex items-stretch px-1 pt-1" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6px)" }}>
+        {(() => {
+          const order: ViewKey[] = ["schedule", "individual", "reports", "swaps"];
+          const primary = order.map(k => navItems.find(it => it.key === k)).filter(Boolean) as typeof navItems;
+          const onMas = !primary.some(it => it.key === view);
+          return (
+            <>
+              {primary.map(it => {
+                const active = view === it.key;
+                return (
+                  <button key={it.key} onClick={() => goView(it.key)} className="relative flex-1 flex flex-col items-center justify-center gap-1 py-1 rounded-xl" style={{ minHeight: 52, color: active ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))", backgroundColor: active ? "hsl(var(--secondary))" : "transparent" }}>
+                    {it.badge && it.badge > 0 ? <span className="absolute top-0.5 right-[calc(50%-18px)] min-w-[15px] h-[15px] px-1 inline-flex items-center justify-center text-[8px] rounded-full bg-destructive text-destructive-foreground border-2 border-card">{it.badge}</span> : null}
+                    {it.icon}
+                    <span className="text-[9px] font-label leading-none text-center truncate max-w-full px-0.5">{it.label}</span>
+                  </button>
+                );
+              })}
+              <button onClick={() => setSidebarOpen(true)} className="flex-1 flex flex-col items-center justify-center gap-1 py-1 rounded-xl" style={{ minHeight: 52, color: onMas ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))", backgroundColor: onMas ? "hsl(var(--secondary))" : "transparent" }}>
+                <Menu size={16} />
+                <span className="text-[9px] font-label leading-none">Más</span>
+              </button>
+            </>
+          );
+        })()}
+      </nav>
+
       <SwapRequestDialog
         open={swapDialog.open}
         onClose={() => setSwapDialog({ open: false, apt: null, date: null })}
@@ -1795,7 +1884,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         </div>
       )}
 
-      <footer className="text-center py-8 text-xs font-label text-accent">
+      <footer className="text-center py-8 mb-16 md:mb-0 text-xs font-label text-accent">
         CHARM CLÍNICA ESTÉTICA · AGENDA DIARIA
       </footer>
       </div>
