@@ -784,6 +784,15 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     () => empNames.filter(n => n !== selectedEmployee && !!empMap[n]?.schedule[activeWeekday]?.works && !isOffOn(timeOff, n, activeDate)),
     [empNames, empMap, selectedEmployee, activeWeekday, timeOff, activeDate],
   );
+  // Pick a free cabina from an employee's set for a cita at a given time.
+  const pickCabin = (empName: string, timeMins: number, exceptId?: string): number | null => {
+    const e = empMap[empName];
+    const cabs = e?.cabins?.length ? e.cabins : (e?.cabin != null ? [e.cabin] : []);
+    if (!cabs.length) return null;
+    const used = new Set((days[activeDate] || []).filter(x => x.id !== exceptId && !x.cancelled && x.timeMins === timeMins && x.cabin != null).map(x => x.cabin as number));
+    for (const c of cabs) if (!used.has(c)) return c;
+    return cabs[0];
+  };
   useEffect(() => { if (activeDate) setWeekStart(mondayOf(activeDate)); }, [activeDate]);
 
   const updateApt = async (id: string, changes: Partial<Apt>) => {
@@ -924,7 +933,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
   const exportIndividualText = (emp: EmpKey) => {
     const list = currentAppts.filter(a => a.employee === emp && !a.cancelled).sort((a, b) => a.timeMins - b.timeMins);
-    const header = `📋 ${emp} — ${dateLabelES(activeDate)}\nCabina ${empMap[emp]?.cabin ?? "?"}\n\n`;
+    const header = `📋 ${emp} — ${dateLabelES(activeDate)}\nCabina ${empMap[emp]?.cabins?.length ? empMap[emp].cabins.join("/") : (empMap[emp]?.cabin ?? "?")}\n\n`;
     const lines = list.map(a => {
       const flag = a.noShow ? " ❌ NO ASISTIÓ" : (a.walkIn ? " ✨ SIN CITA" : "");
       return `${a.time}  —  ${a.client}${flag}`;
@@ -1405,7 +1414,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   <div key={emp} className="border border-border bg-card p-4" style={{ borderLeft: `4px solid ${e.color}` }}>
                     <div className="flex items-baseline justify-between">
                       <span className="font-display text-primary" style={{ fontSize: 24, fontWeight: 500 }}>{emp}</span>
-                      <span className="text-xs font-label" style={{ color: e.color }}>C.{e.cabin}</span>
+                      <span className="text-xs font-label" style={{ color: e.color }}>C.{e.cabins?.length ? e.cabins.join("/") : (e.cabin ?? "—")}</span>
                     </div>
                     <div className="flex items-baseline gap-2 mt-1">
                       <span className="font-display" style={{ fontSize: 36, fontWeight: 300, lineHeight: 1, color: overCap ? "hsl(var(--destructive))" : "hsl(var(--primary))" }}>
@@ -1451,7 +1460,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     </div>
                     <div>
                       <select value={a.employee || ""}
-                        onChange={(e) => updateApt(a.id, { employee: (e.target.value || null) as EmpKey | null, cabin: e.target.value ? (empMap[e.target.value]?.cabin ?? null) : null })}
+                        onChange={(e) => updateApt(a.id, { employee: (e.target.value || null) as EmpKey | null, cabin: e.target.value ? pickCabin(e.target.value, a.timeMins, a.id) : null })}
                         className="w-full px-2 py-1 text-sm bg-background text-foreground"
                         style={{ border: `1px solid hsl(var(--border))`, borderLeftWidth: 3, borderLeftColor: empColor }}>
                         <option value="">—</option>
@@ -1462,7 +1471,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                         })}
                       </select>
                     </div>
-                    <div className="text-sm text-muted-foreground">{a.cabin || "—"}</div>
+                    <div className="text-sm text-muted-foreground">{a.employee && (empMap[a.employee]?.cabins?.length ?? 0) > 1 ? (
+                      <select value={a.cabin ?? ""} onChange={(ev) => updateApt(a.id, { cabin: ev.target.value ? parseInt(ev.target.value) : null })} className="w-full px-1 py-1 text-sm bg-background text-foreground border border-border">
+                        {(empMap[a.employee]?.cabins || []).map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    ) : (a.cabin || "—")}</div>
                     <div className="flex items-center justify-end gap-1">
                       {a.employee && !a.cancelled && (a.arrivedAt ? (
                         <span className="text-[9px] font-label px-1.5 py-0.5 rounded-full bg-success/15 text-success whitespace-nowrap" title={`Llegó ${new Date(a.arrivedAt).toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })}`}>✓ LLEGÓ</span>
@@ -1517,7 +1530,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                     </div>
                     <div className="flex items-center gap-2 mb-2">
                       <select value={a.employee || ""}
-                        onChange={(e) => updateApt(a.id, { employee: (e.target.value || null) as EmpKey | null, cabin: e.target.value ? (empMap[e.target.value]?.cabin ?? null) : null })}
+                        onChange={(e) => updateApt(a.id, { employee: (e.target.value || null) as EmpKey | null, cabin: e.target.value ? pickCabin(e.target.value, a.timeMins, a.id) : null })}
                         className="flex-1 px-2 py-2 text-sm bg-background text-foreground"
                         style={{ border: `1px solid hsl(var(--border))`, borderLeftWidth: 3, borderLeftColor: empColor }}>
                         <option value="">— Sin asignar —</option>
@@ -1527,7 +1540,11 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                           return <option key={emp} value={emp}>{emp}{!working ? (lunch ? " (almuerzo)" : " (fuera)") : ""}</option>;
                         })}
                       </select>
-                      <span className="text-xs px-2 py-2 border border-border text-muted-foreground">Cab. {a.cabin || "—"}</span>
+                      {a.employee && (empMap[a.employee]?.cabins?.length ?? 0) > 1 ? (
+                        <select value={a.cabin ?? ""} onChange={(ev) => updateApt(a.id, { cabin: ev.target.value ? parseInt(ev.target.value) : null })} className="text-xs px-2 py-2 border border-border bg-background text-foreground">
+                          {(empMap[a.employee]?.cabins || []).map((c) => <option key={c} value={c}>Cab. {c}</option>)}
+                        </select>
+                      ) : (<span className="text-xs px-2 py-2 border border-border text-muted-foreground">Cab. {a.cabin || "—"}</span>)}
                     </div>
                     <div className="flex gap-2">
                       <ToggleBtn active={a.noShow} onClick={() => updateApt(a.id, { noShow: !a.noShow, cancelled: false })} variant="destructive" className="flex-1">NO ASISTIÓ</ToggleBtn>
@@ -1573,7 +1590,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
                   </div>
                   {empMap[selectedEmployee] && (
                     <div className="text-xs font-label mt-1 text-accent">
-                      CABINA {empMap[selectedEmployee].cabin ?? "—"}{empMap[selectedEmployee].schedule[activeWeekday]?.works
+                      CABINA {empMap[selectedEmployee].cabins?.length ? empMap[selectedEmployee].cabins.join("/") : (empMap[selectedEmployee].cabin ?? "—")}{empMap[selectedEmployee].schedule[activeWeekday]?.works
                         ? ` · ${formatTime(empMap[selectedEmployee].schedule[activeWeekday].startMin).replace(" a.m.","am").replace(" p.m.","pm")} – ${formatTime(empMap[selectedEmployee].schedule[activeWeekday].endMin).replace(" a.m.","am").replace(" p.m.","pm")}`
                         : " · Descansa hoy"}
                     </div>
