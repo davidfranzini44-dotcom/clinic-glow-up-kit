@@ -351,7 +351,12 @@ export function autoAssign<T extends AssignableAppt>(
     result.forEach((r, i) => { if (r && !r.cancelled && r.employee) (bySlot[r.timeMins] ||= []).push(i); });
     for (const k of Object.keys(bySlot)) {
       const used = new Set<number>();
-      for (const i of bySlot[Number(k)]) {
+      // Most-constrained first: whoever has the fewest cabina options is placed
+      // first, so a single-cabina person never gets blocked out by a flexible
+      // one who could have taken another cabina (avoids needless collisions).
+      const slotIdx = bySlot[Number(k)].slice().sort((a, b) =>
+        (empCabs[result[a].employee as string] || []).length - (empCabs[result[b].employee as string] || []).length);
+      for (const i of slotIdx) {
         const cabs = empCabs[result[i].employee as string] || [];
         let cab: number | null = null;
         for (const c of cabs) { if (!used.has(c)) { cab = c; break; } }
