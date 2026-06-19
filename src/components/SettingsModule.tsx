@@ -20,7 +20,8 @@ const todayISO = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-type EmpRow = { name: string; cabin: number | null; color: string | null; max_clients: number | null; active: boolean; sort_order: number; vacation_days: number };
+type EmpRow = { name: string; cabin: number | null; cabins: string | null; color: string | null; max_clients: number | null; active: boolean; sort_order: number; vacation_days: number };
+const firstCabin = (s: string | null): number | null => { const m = (s || "").match(/\d+/); return m ? parseInt(m[0], 10) : null; };
 type SchedRow = { employee_name: string; weekday: number; works: boolean; start_min: number | null; end_min: number | null; lunch_start_min: number | null; lunch_minutes: number };
 type OffRow = { id: string; employee_name: string; date: string; reason: string };
 type ProfileRow = { id: string; display_name: string | null; employee_name: string | null; phone: string | null; archived?: boolean | null };
@@ -168,7 +169,7 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
     if (!emp) return;
     try {
       const { error: e1 } = await supabase.from("employee_settings")
-        .update({ cabin: emp.cabin, color: emp.color, max_clients: emp.max_clients, active: emp.active, sort_order: emp.sort_order, vacation_days: emp.vacation_days ?? 14 })
+        .update({ cabin: firstCabin(emp.cabins) ?? emp.cabin, cabins: emp.cabins || null, color: emp.color, max_clients: emp.max_clients, active: emp.active, sort_order: emp.sort_order, vacation_days: emp.vacation_days ?? 14 })
         .eq("name", name);
       if (e1) throw e1;
       const rows = Object.values(scheds[name] || {}).map((r) => ({
@@ -191,7 +192,7 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
     if (!name) return;
     try {
       const sort = (emps.reduce((m, e) => Math.max(m, e.sort_order), 0)) + 1;
-      const { error: e1 } = await supabase.from("employee_settings").insert({ name, cabin: 1, color: "#8A5A6E", max_clients: null, active: true, sort_order: sort, vacation_days: 14 });
+      const { error: e1 } = await supabase.from("employee_settings").insert({ name, cabin: 1, cabins: "1", color: "#8A5A6E", max_clients: null, active: true, sort_order: sort, vacation_days: 14 });
       if (e1) throw e1;
       const rows = blankSchedule().map((r) => ({ ...r, employee_name: name }));
       const { error: e2 } = await supabase.from("employee_schedules").upsert(rows, { onConflict: "employee_name,weekday" });
@@ -367,9 +368,9 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
               <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
                 <span className="font-display text-primary" style={{ fontSize: 22, fontWeight: 500 }}>{emp.name}</span>
                 <div className="flex items-center gap-3 flex-wrap text-xs">
-                  <label className="flex items-center gap-1">Cabina
-                    <input type="number" value={emp.cabin ?? ""} onChange={(e) => updateEmpField(emp.name, "cabin", e.target.value ? parseInt(e.target.value) : null)}
-                      className="w-14 px-2 py-1 border border-border bg-background text-foreground" /></label>
+                  <label className="flex items-center gap-1">Cabinas
+                    <input type="text" value={emp.cabins ?? (emp.cabin != null ? String(emp.cabin) : "")} onChange={(e) => updateEmpField(emp.name, "cabins", e.target.value)}
+                      placeholder="2,3" title="Una o más cabinas, separadas por coma" className="w-20 px-2 py-1 border border-border bg-background text-foreground" /></label>
                   <span className="flex items-center gap-1.5 flex-wrap">Color
                     {COLOR_OPTIONS.map((c) => {
                       const mine = (emp.color || "").toUpperCase() === c.toUpperCase();
