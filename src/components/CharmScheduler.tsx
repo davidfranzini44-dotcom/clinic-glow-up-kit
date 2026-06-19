@@ -401,15 +401,29 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchAll<ApptRow>("appointments", "*", { column: "time_mins", ascending: true });
+        const fetchWindow = async (op: "gt" | "lte", boundary: string): Promise<ApptRow[]> => {
+          const out: ApptRow[] = [];
+          for (let from = 0; ; from += 1000) {
+            const base = supabase.from("appointments").select("*").order("time_mins", { ascending: true }).range(from, from + 999);
+            const { data, error } = await (op === "gt" ? base.gt("date", boundary) : base.lte("date", boundary));
+            if (error) throw error;
+            const batch = (data as ApptRow[]) || [];
+            out.push(...batch);
+            if (batch.length < 1000) break;
+          }
+          return out;
+        };
+        // Phase 1 — load the agenda window (after the history cutoff) first so the
+        // day view appears fast instead of waiting for years of past citas.
+        const data = await fetchWindow("gt", HISTORY_CUTOFF);
         let maxSync: string | null = null;
-        (data || []).forEach((row) => {
+        data.forEach((row) => {
           const ds = (row as { dnsuite_synced_at?: string | null }).dnsuite_synced_at;
           if (ds && (!maxSync || ds > maxSync)) maxSync = ds;
         });
         if (maxSync) setLastSyncAt(maxSync);
         const grouped: Record<string, Apt[]> = {};
-        (data || []).forEach((row) => {
+        data.forEach((row) => {
           if (!grouped[row.date]) grouped[row.date] = [];
           grouped[row.date].push(rowToApt(row));
         });
@@ -423,9 +437,24 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             : (allDates.find((d) => d > today) ?? allDates[allDates.length - 1]);
           setActiveDate(pick);
         }
+        setHasLoaded(true);
+        // Phase 2 — backfill historical citas in the background for the Historial tab.
+        void (async () => {
+          try {
+            const old = await fetchWindow("lte", HISTORY_CUTOFF);
+            if (old.length) {
+              const oldByDate: Record<string, Apt[]> = {};
+              old.forEach((row) => { (oldByDate[row.date] ??= []).push(rowToApt(row)); });
+              setDays((prev) => {
+                const merged = { ...prev };
+                for (const k of Object.keys(oldByDate)) if (!merged[k]) merged[k] = oldByDate[k];
+                return merged;
+              });
+            }
+          } catch (e) { console.error("History backfill error:", e); }
+        })();
       } catch (e) {
         console.error("Load error:", e);
-      } finally {
         setHasLoaded(true);
       }
     })();
