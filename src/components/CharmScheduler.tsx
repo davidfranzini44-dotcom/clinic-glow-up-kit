@@ -21,6 +21,7 @@ import ClientProfileModal from "./ClientProfileModal";
 import HistoryView from "./HistoryView";
 import SettingsModule from "./SettingsModule";
 import ProfileModule from "./ProfileModule";
+import { setActivityActor, logActivity, VIEW_LABELS } from "@/lib/activity";
 
 // ─── History cutoff: dates on or before this are hidden from the main agenda ─
 const HISTORY_CUTOFF = "2026-04-26";
@@ -764,6 +765,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     try {
       const { error } = await supabase.from("appointments").delete().neq("id", "never");
       if (error) throw error;
+      logActivity("delete", "appointments", "Borró TODA la agenda");
       setDays({});
       setActiveDate(null);
     } catch (e) {
@@ -811,6 +813,18 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
   const sortedDates = useMemo(() => Object.keys(days).filter(d => d > HISTORY_CUTOFF).sort(), [days]);
   const currentAppts = useMemo(() => (activeDate ? (days[activeDate] || []) : []), [activeDate, days]);
+  // Activity logging: identify the actor, log app open + section views (once/session).
+  useEffect(() => {
+    const name = profile?.display_name || profile?.employee_name || (isAdmin ? "Admin" : "");
+    if (!name) return;
+    setActivityActor(session.user.id, name);
+    logActivity("login", "auth", "Inició sesión / abrió la app", { once: "open" });
+  }, [profile, isAdmin, session.user.id]);
+  useEffect(() => {
+    if (!view) return;
+    if (!(profile?.display_name || profile?.employee_name || isAdmin)) return;
+    logActivity("view", view, "Vió " + (VIEW_LABELS[view] || view), { once: "view:" + view });
+  }, [view, profile, isAdmin]);
   const cabinClashIds = useMemo(() => {
     const ids = new Set<string>();
     const byKey: Record<string, string[]> = {};
@@ -840,6 +854,16 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
   const updateApt = async (id: string, changes: Partial<Apt>) => {
     if (!activeDate) return;
+    const before = (days[activeDate] || []).find(a => a.id === id);
+    const cli = before?.client || "cita";
+    let actSum = "";
+    if ("employee" in changes) actSum = changes.employee ? `Asignó ${cli} a ${changes.employee}` : `Quitó la asignación de ${cli}`;
+    else if ("cabin" in changes) actSum = `Cambió ${cli} a cabina ${changes.cabin ?? "—"}`;
+    if ("noShow" in changes) actSum = changes.noShow ? `Marcó NO ASISTIÓ: ${cli}` : `Quitó NO ASISTIÓ: ${cli}`;
+    if ("cancelled" in changes) actSum = changes.cancelled ? `Canceló: ${cli}` : `Reactivó: ${cli}`;
+    if ("swapLocked" in changes) actSum = changes.swapLocked ? `Bloqueó cambios: ${cli}` : `Desbloqueó cambios: ${cli}`;
+    if ("notes" in changes) actSum = `Editó la nota de ${cli}`;
+    if (actSum) logActivity("update", "appointments", actSum);
     let updated: Apt | undefined;
     setDays(prev => {
       const out = { ...prev };
@@ -859,6 +883,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
   const removeApt = async (id: string) => {
     if (!canEditAgenda || !activeDate) return;
+    logActivity("delete", "appointments", `Eliminó cita: ${(days[activeDate] || []).find(a => a.id === id)?.client || id}`);
     setDays(prev => ({
       ...prev,
       [activeDate]: prev[activeDate].filter(a => a.id !== id),
@@ -911,6 +936,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       [activeDate]: [...(prev[activeDate] || []), newApt].sort((a, b) => a.timeMins - b.timeMins),
     }));
     await saveApt(newApt, activeDate);
+    logActivity("insert", "appointments", `Agregó sin cita: ${newApt.client} (${newApt.time}) → ${chosen.name}`);
     setWalkInForm({ open: false, time: "", client: "" });
   };
 
@@ -925,7 +951,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       const { data, error } = await supabase.functions.invoke("dnsuite-sync", { body: { trigger: "manual" }, headers: { "x-sync-secret": secret } });
       if (error) throw error;
       const r = (data as { ok?: boolean; result?: string; error?: string });
-      if (r?.ok) { toast.success("Sincronizado con DNSuite — " + (r.result || "")); setLastSyncAt(new Date().toISOString()); }
+      if (r?.ok) { toast.success("Sincronizado con DNSuite — " + (r.result || "")); setLastSyncAt(new Date().toISOString()); logActivity("sync", "appointments", "Sincronizó con DNSuite"); }
       else toast.error("DNSuite: " + (r?.error || "error desconocido"));
     } catch (e) {
       toast.error("No se pudo sincronizar: " + (e instanceof Error ? e.message : String(e)));
@@ -940,7 +966,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     setArriveDialog({ open: false, apt: null });
     const { error } = await supabase.from("appointments").update({ cabin, arrived_at: arrivedAt }).eq("id", apt.id);
     if (error) toast.error(error.message || "No se pudo confirmar la llegada");
-    else toast.success("Llegada confirmada — empleada notificada");
+    else { toast.success("Llegada confirmada — empleada notificada"); logActivity("update", "appointments", `Marcó llegada: ${apt.client}${cabin ? ` (cabina ${cabin})` : ""}`); }
   };
 
   const reAutoAssign = async () => {
@@ -948,6 +974,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     if (!confirm("¿Volver a asignar todo el día?")) return;
     const reset = (days[activeDate] || []).map(a => a.arrivedAt ? { ...a } : ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
     const assigned = autoAssign(reset, activeDate, employees, timeOff, getEndBuffer(), overrides);
+    logActivity("reassign", "appointments", `Reasignó manualmente todo el día (${dateLabelES(activeDate)})`);
     setDays(prev => ({ ...prev, [activeDate]: assigned }));
     const rows = assigned.map(a => aptToRow(a, activeDate));
     try {
@@ -991,6 +1018,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     for (const a of day) byId[a.id] = a;
     const changed = assigned.filter(a => { const o = byId[a.id]; return o && (o.employee !== a.employee || o.cabin !== a.cabin); });
     if (changed.length === 0) return;
+    logActivity("reassign", "appointments", `Balance automático de la agenda (${date})`, { once: "autobal:" + date });
     setDays(prev => ({ ...prev, [date]: assigned }));
     const rows = changed.map(a => aptToRow(a, date));
     try {
