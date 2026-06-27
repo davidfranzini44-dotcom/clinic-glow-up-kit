@@ -117,6 +117,7 @@ export default function InventoryModule({ isAdmin }: { isAdmin: boolean }) {
             .from("appointments").select("*")
             .gte("date", fcFrom).lte("date", fcTo)
             .order("date", { ascending: true })
+            .order("id", { ascending: true })
             .range(pageFrom, pageFrom + 999);
           if (error) throw error;
           const batch = (data as ApptRow[]) || [];

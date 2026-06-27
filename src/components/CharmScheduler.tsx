@@ -404,7 +404,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         const fetchWindow = async (op: "gt" | "lte", boundary: string): Promise<ApptRow[]> => {
           const out: ApptRow[] = [];
           for (let from = 0; ; from += 1000) {
-            const base = supabase.from("appointments").select("*").order("time_mins", { ascending: true }).range(from, from + 999);
+            const base = supabase.from("appointments").select("*").order("time_mins", { ascending: true }).order("id", { ascending: true }).range(from, from + 999);
             const { data, error } = await (op === "gt" ? base.gt("date", boundary) : base.lte("date", boundary));
             if (error) throw error;
             const batch = (data as ApptRow[]) || [];
@@ -423,7 +423,10 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
         });
         if (maxSync) setLastSyncAt(maxSync);
         const grouped: Record<string, Apt[]> = {};
+        const seenIds = new Set<string>();
         data.forEach((row) => {
+          if (seenIds.has(row.id)) return;
+          seenIds.add(row.id);
           if (!grouped[row.date]) grouped[row.date] = [];
           grouped[row.date].push(rowToApt(row));
         });
@@ -444,7 +447,8 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
             const old = await fetchWindow("lte", HISTORY_CUTOFF);
             if (old.length) {
               const oldByDate: Record<string, Apt[]> = {};
-              old.forEach((row) => { (oldByDate[row.date] ??= []).push(rowToApt(row)); });
+              const seenOld = new Set<string>();
+              old.forEach((row) => { if (seenOld.has(row.id)) return; seenOld.add(row.id); (oldByDate[row.date] ??= []).push(rowToApt(row)); });
               setDays((prev) => {
                 const merged = { ...prev };
                 for (const k of Object.keys(oldByDate)) if (!merged[k]) merged[k] = oldByDate[k];

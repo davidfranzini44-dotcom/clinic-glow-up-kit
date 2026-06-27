@@ -138,6 +138,7 @@ export default function Dashboard({ profile, isAdmin, viewAll = false }: { profi
           .gte("date", from)
           .lte("date", to)
           .order("date", { ascending: true })
+          .order("id", { ascending: true })
           .range(pageFrom, pageFrom + PAGE - 1);
         if (error) throw error;
         const batch = (data as Apt[]) || [];
