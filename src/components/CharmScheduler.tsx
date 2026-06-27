@@ -290,7 +290,7 @@ const DEFAULT_PERMS: Perms = { full_agenda: true, clients_access: "read", sales:
 type Props = { session: Session; profile: Profile; isAdmin: boolean; onSignOut: () => void };
 
 export default function CharmScheduler({ session, profile, isAdmin, onSignOut }: Props) {
-  const { employees, timeOff, overrides, reload: reloadRoster } = useRoster();
+  const { employees, timeOff, overrides, loading: rosterLoading, reload: reloadRoster } = useRoster();
   const empMap = useMemo<Record<string, Employee>>(() => Object.fromEntries(employees.map((e) => [e.name, e])), [employees]);
   const empNames = useMemo(() => employees.map((e) => e.name), [employees]);
   const myEmployee = (profile?.employee_name || "Yaira") as EmpKey;
@@ -942,7 +942,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const reAutoAssign = async () => {
     if (!canEditAgenda || !activeDate) return;
     if (!confirm("¿Volver a asignar todo el día?")) return;
-    const reset = (days[activeDate] || []).map(a => ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
+    const reset = (days[activeDate] || []).map(a => a.arrivedAt ? { ...a } : ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
     const assigned = autoAssign(reset, activeDate, employees, timeOff, getEndBuffer(), overrides);
     setDays(prev => ({ ...prev, [activeDate]: assigned }));
     const rows = assigned.map(a => aptToRow(a, activeDate));
@@ -956,6 +956,57 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
       console.error(e);
     }
   };
+
+  // Auto-balance days that arrive raw from the DNsuite sync (or an old import).
+  // A day "needs balancing" when the same person is double-booked in one slot,
+  // or someone is assigned outside their working hours — signatures of data
+  // that never went through the balancer. Arrived (Llegó) citas are never moved.
+  const autoBalancedRef = useRef<Set<string>>(new Set());
+  const dayNeedsBalance = (date: string, day: Apt[]): boolean => {
+    const wd = weekdayOf(date);
+    const slot: Record<number, Set<string>> = {};
+    for (const a of day) {
+      if (a.cancelled || !a.employee) continue;
+      const set = (slot[a.timeMins] ??= new Set<string>());
+      if (set.has(a.employee)) return true; // same person twice in one slot
+      set.add(a.employee);
+    }
+    for (const a of day) {
+      if (a.cancelled || !a.employee || a.arrivedAt) continue;
+      const e = empMap[a.employee];
+      if (e && !isWorkingOn(e, a.timeMins, wd, 0, overrides[a.employee]?.[date])) return true; // out of hours
+    }
+    return false;
+  };
+  const autoBalanceDate = async (date: string) => {
+    const day = days[date];
+    if (!day || day.length === 0 || !canEditAgenda) return;
+    const reset = day.map(a => a.arrivedAt ? { ...a } : ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
+    const assigned = autoAssign(reset, date, employees, timeOff, getEndBuffer(), overrides);
+    const byId: Record<string, Apt> = {};
+    for (const a of day) byId[a.id] = a;
+    const changed = assigned.filter(a => { const o = byId[a.id]; return o && (o.employee !== a.employee || o.cabin !== a.cabin); });
+    if (changed.length === 0) return;
+    setDays(prev => ({ ...prev, [date]: assigned }));
+    const rows = changed.map(a => aptToRow(a, date));
+    try {
+      markSaveStart();
+      const { error, data } = await supabase.from("appointments").upsert(rows).select("updated_at");
+      if (error) throw error;
+      markSaveSuccess(Array.isArray(data) ? data[data.length - 1]?.updated_at ?? null : null);
+    } catch (e) { markSaveError(e); console.error(e); }
+  };
+  useEffect(() => {
+    if (rosterLoading || !canEditAgenda || !activeDate) return;
+    if (activeDate <= HISTORY_CUTOFF) return;
+    const day = days[activeDate];
+    if (!day || day.length === 0) return;
+    if (autoBalancedRef.current.has(activeDate)) return;
+    if (!dayNeedsBalance(activeDate, day)) return;
+    autoBalancedRef.current.add(activeDate);
+    void autoBalanceDate(activeDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDate, days, rosterLoading, canEditAgenda, employees]);
 
   const employeeStats = useMemo(() => {
     const stats: Record<string, { total: number; attended: number; noShow: number; cancelled: number }> = {};
