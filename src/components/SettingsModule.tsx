@@ -90,8 +90,11 @@ export default function SettingsModule({ isAdmin, onChanged }: { isAdmin: boolea
   type ActRow = { id: string; user_id: string; user_name: string; summary: string; created_at: string };
   const [activity, setActivity] = useState<ActRow[]>([]);
   const [actUser, setActUser] = useState("");
+  // Hide the owner's own activity from the log (David Franzini).
+  const HIDDEN_ACTORS = ["f0edf4df-8554-4bc6-847d-be91d2ec71aa"];
   const loadActivity = useCallback(async () => {
     const { data } = await supabase.from("activity_log").select("id,user_id,user_name,summary,created_at")
+      .not("user_id", "in", `(${HIDDEN_ACTORS.join(",")})`)
       .order("created_at", { ascending: false }).limit(150);
     setActivity((data as ActRow[]) || []);
   }, []);
