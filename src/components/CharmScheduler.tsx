@@ -854,16 +854,6 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
 
   const updateApt = async (id: string, changes: Partial<Apt>) => {
     if (!activeDate) return;
-    const before = (days[activeDate] || []).find(a => a.id === id);
-    const cli = before?.client || "cita";
-    let actSum = "";
-    if ("employee" in changes) actSum = changes.employee ? `Asignó ${cli} a ${changes.employee}` : `Quitó la asignación de ${cli}`;
-    else if ("cabin" in changes) actSum = `Cambió ${cli} a cabina ${changes.cabin ?? "—"}`;
-    if ("noShow" in changes) actSum = changes.noShow ? `Marcó NO ASISTIÓ: ${cli}` : `Quitó NO ASISTIÓ: ${cli}`;
-    if ("cancelled" in changes) actSum = changes.cancelled ? `Canceló: ${cli}` : `Reactivó: ${cli}`;
-    if ("swapLocked" in changes) actSum = changes.swapLocked ? `Bloqueó cambios: ${cli}` : `Desbloqueó cambios: ${cli}`;
-    if ("notes" in changes) actSum = `Editó la nota de ${cli}`;
-    if (actSum) logActivity("update", "appointments", actSum);
     let updated: Apt | undefined;
     setDays(prev => {
       const out = { ...prev };
@@ -966,7 +956,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
     setArriveDialog({ open: false, apt: null });
     const { error } = await supabase.from("appointments").update({ cabin, arrived_at: arrivedAt }).eq("id", apt.id);
     if (error) toast.error(error.message || "No se pudo confirmar la llegada");
-    else { toast.success("Llegada confirmada — empleada notificada"); logActivity("update", "appointments", `Marcó llegada: ${apt.client}${cabin ? ` (cabina ${cabin})` : ""}`); }
+    else toast.success("Llegada confirmada — empleada notificada");
   };
 
   const reAutoAssign = async () => {
