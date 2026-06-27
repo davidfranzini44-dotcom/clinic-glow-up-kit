@@ -186,6 +186,7 @@ export type AssignableAppt = {
   cancelled: boolean;
   employee: string | null;
   cabin: number | null;
+  arrivedAt?: string | null;
 };
 
 export function autoAssign<T extends AssignableAppt>(
@@ -228,6 +229,7 @@ export function autoAssign<T extends AssignableAppt>(
   const shiftStart = (e: Employee): number =>
     overrides[e.name]?.[dateStr]?.start_min ?? e.schedule[wd]?.startMin ?? 0;
   const usedAtSlot: Record<number, Set<string>> = {};
+  const slotCnt: Record<number, Record<string, number>> = {};
 
   // Assign the hardest-to-cover hours first (slots with the fewest available
   // employees), so scarce evening/morning capacity is reserved before the
@@ -241,7 +243,22 @@ export function autoAssign<T extends AssignableAppt>(
     return sorted[a].timeMins - sorted[b].timeMins;
   });
   const result: T[] = new Array(sorted.length);
+  // Pre-place locked citas (already arrived): never move them; count them so
+  // the rest of the day balances around them.
+  const lockedIdx = new Set<number>();
+  sorted.forEach((apt, i) => {
+    if (apt.cancelled || !apt.arrivedAt || !apt.employee) return;
+    lockedIdx.add(i);
+    const t = apt.timeMins;
+    (usedAtSlot[t] ??= new Set<string>()).add(apt.employee);
+    (slotCnt[t] ??= {})[apt.employee] = (slotCnt[t][apt.employee] ?? 0) + 1;
+    counts[apt.employee] = (counts[apt.employee] ?? 0) + 1;
+    if (t > (lastSeen[apt.employee] ?? -999)) lastSeen[apt.employee] = t;
+    if (t < (firstAssigned[apt.employee] ?? Number.POSITIVE_INFINITY)) firstAssigned[apt.employee] = t;
+    result[i] = { ...apt };
+  });
   for (const idx of order) {
+    if (lockedIdx.has(idx)) continue;
     const apt = sorted[idx];
     if (apt.cancelled) { result[idx] = { ...apt }; continue; }
     const t = apt.timeMins;
@@ -268,6 +285,9 @@ export function autoAssign<T extends AssignableAppt>(
     }
 
     pool.sort((a, b) => {
+      // Spread forced over-capacity: fewer citas already in THIS slot first
+      const sa = slotCnt[t]?.[a.name] ?? 0, sb = slotCnt[t]?.[b.name] ?? 0;
+      if (sa !== sb) return sa - sb;
       // Whoever just started her shift and has nothing yet works first
       const stA = shiftStart(a), stB = shiftStart(b);
       const startA = t >= stA && t - stA <= 60 && firstAssigned[a.name] > t ? 1 : 0;
@@ -281,6 +301,7 @@ export function autoAssign<T extends AssignableAppt>(
 
     const chosen = pool[0];
     counts[chosen.name]++;
+    (slotCnt[t] ??= {})[chosen.name] = (slotCnt[t][chosen.name] ?? 0) + 1;
     lastSeen[chosen.name] = t;
     if (t < firstAssigned[chosen.name]) firstAssigned[chosen.name] = t;
     slotUsed.add(chosen.name);
@@ -301,7 +322,7 @@ export function autoAssign<T extends AssignableAppt>(
     };
     const aIdx = result
       .map((_, i) => i)
-      .filter(i => result[i] && !result[i].cancelled && !!result[i].employee && result[i].timeMins >= AFTER);
+      .filter(i => result[i] && !result[i].cancelled && !result[i].arrivedAt && !!result[i].employee && result[i].timeMins >= AFTER);
     if (aIdx.length >= 3) {
       const times = Array.from(new Set(aIdx.map(i => result[i].timeMins))).sort((a, b) => a - b);
       const setAt = (tt: number): Set<string> => {
@@ -351,10 +372,13 @@ export function autoAssign<T extends AssignableAppt>(
     result.forEach((r, i) => { if (r && !r.cancelled && r.employee) (bySlot[r.timeMins] ||= []).push(i); });
     for (const k of Object.keys(bySlot)) {
       const used = new Set<number>();
+      const idxs = bySlot[Number(k)];
+      // Arrived citas keep their cabina; reserve it so others avoid it.
+      for (const i of idxs) { if (result[i].arrivedAt && result[i].cabin != null) used.add(result[i].cabin as number); }
       // Most-constrained first: whoever has the fewest cabina options is placed
       // first, so a single-cabina person never gets blocked out by a flexible
       // one who could have taken another cabina (avoids needless collisions).
-      const slotIdx = bySlot[Number(k)].slice().sort((a, b) =>
+      const slotIdx = idxs.filter(i => !result[i].arrivedAt).sort((a, b) =>
         (empCabs[result[a].employee as string] || []).length - (empCabs[result[b].employee as string] || []).length);
       for (const i of slotIdx) {
         const cabs = empCabs[result[i].employee as string] || [];
