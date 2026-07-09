@@ -187,6 +187,7 @@ export type AssignableAppt = {
   employee: string | null;
   cabin: number | null;
   arrivedAt?: string | null;
+  swapLocked?: boolean;
 };
 
 export function autoAssign<T extends AssignableAppt>(
@@ -247,7 +248,7 @@ export function autoAssign<T extends AssignableAppt>(
   // the rest of the day balances around them.
   const lockedIdx = new Set<number>();
   sorted.forEach((apt, i) => {
-    if (apt.cancelled || !apt.arrivedAt || !apt.employee) return;
+    if (apt.cancelled || (!apt.arrivedAt && !apt.swapLocked) || !apt.employee) return;
     lockedIdx.add(i);
     const t = apt.timeMins;
     (usedAtSlot[t] ??= new Set<string>()).add(apt.employee);
@@ -322,7 +323,7 @@ export function autoAssign<T extends AssignableAppt>(
     };
     const aIdx = result
       .map((_, i) => i)
-      .filter(i => result[i] && !result[i].cancelled && !result[i].arrivedAt && !!result[i].employee && result[i].timeMins >= AFTER);
+      .filter(i => result[i] && !result[i].cancelled && !result[i].arrivedAt && !result[i].swapLocked && !!result[i].employee && result[i].timeMins >= AFTER);
     if (aIdx.length >= 3) {
       const times = Array.from(new Set(aIdx.map(i => result[i].timeMins))).sort((a, b) => a - b);
       const setAt = (tt: number): Set<string> => {
@@ -374,11 +375,11 @@ export function autoAssign<T extends AssignableAppt>(
       const used = new Set<number>();
       const idxs = bySlot[Number(k)];
       // Arrived citas keep their cabina; reserve it so others avoid it.
-      for (const i of idxs) { if (result[i].arrivedAt && result[i].cabin != null) used.add(result[i].cabin as number); }
+      for (const i of idxs) { if ((result[i].arrivedAt || result[i].swapLocked) && result[i].cabin != null) used.add(result[i].cabin as number); }
       // Most-constrained first: whoever has the fewest cabina options is placed
       // first, so a single-cabina person never gets blocked out by a flexible
       // one who could have taken another cabina (avoids needless collisions).
-      const slotIdx = idxs.filter(i => !result[i].arrivedAt).sort((a, b) =>
+      const slotIdx = idxs.filter(i => !result[i].arrivedAt && !result[i].swapLocked).sort((a, b) =>
         (empCabs[result[a].employee as string] || []).length - (empCabs[result[b].employee as string] || []).length);
       for (const i of slotIdx) {
         const cabs = empCabs[result[i].employee as string] || [];
