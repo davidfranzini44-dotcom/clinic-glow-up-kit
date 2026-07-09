@@ -962,7 +962,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const reAutoAssign = async () => {
     if (!canEditAgenda || !activeDate) return;
     if (!confirm("¿Volver a asignar todo el día?")) return;
-    const reset = (days[activeDate] || []).map(a => a.arrivedAt ? { ...a } : ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
+    const reset = (days[activeDate] || []).map(a => (a.arrivedAt || a.swapLocked) ? { ...a } : ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
     const assigned = autoAssign(reset, activeDate, employees, timeOff, getEndBuffer(), overrides);
     logActivity("reassign", "appointments", `Reasignó manualmente todo el día (${dateLabelES(activeDate)})`);
     setDays(prev => ({ ...prev, [activeDate]: assigned }));
@@ -985,15 +985,16 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const autoBalancedRef = useRef<Set<string>>(new Set());
   const dayNeedsBalance = (date: string, day: Apt[]): boolean => {
     const wd = weekdayOf(date);
-    const slot: Record<number, Set<string>> = {};
+    const grp: Record<string, { total: number; movable: number }> = {};
     for (const a of day) {
       if (a.cancelled || !a.employee) continue;
-      const set = (slot[a.timeMins] ??= new Set<string>());
-      if (set.has(a.employee)) return true; // same person twice in one slot
-      set.add(a.employee);
+      const k = a.timeMins + "|" + a.employee;
+      const g = (grp[k] ??= { total: 0, movable: 0 });
+      g.total++; if (!a.swapLocked) g.movable++;
     }
+    for (const k of Object.keys(grp)) { if (grp[k].total > 1 && grp[k].movable > 0) return true; } // a movable cita is double-booked
     for (const a of day) {
-      if (a.cancelled || !a.employee || a.arrivedAt) continue;
+      if (a.cancelled || !a.employee || a.arrivedAt || a.swapLocked) continue;
       const e = empMap[a.employee];
       if (e && !isWorkingOn(e, a.timeMins, wd, 0, overrides[a.employee]?.[date])) return true; // out of hours
     }
@@ -1002,7 +1003,7 @@ export default function CharmScheduler({ session, profile, isAdmin, onSignOut }:
   const autoBalanceDate = async (date: string) => {
     const day = days[date];
     if (!day || day.length === 0 || !canEditAgenda) return;
-    const reset = day.map(a => a.arrivedAt ? { ...a } : ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
+    const reset = day.map(a => (a.arrivedAt || a.swapLocked) ? { ...a } : ({ ...a, employee: null as EmpKey | null, cabin: null as number | null }));
     const assigned = autoAssign(reset, date, employees, timeOff, getEndBuffer(), overrides);
     const byId: Record<string, Apt> = {};
     for (const a of day) byId[a.id] = a;
