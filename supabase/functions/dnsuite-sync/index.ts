@@ -201,7 +201,7 @@ Deno.serve(async (req: Request) => {
     };
 
     // existing synced rows from today onward
-    const { data: existing } = await sb.from("appointments").select("id,dnsuite_id,date,employee,cabin,client,time_mins,cancelled").gte("date", today).eq("source", "dnsuite");
+    const { data: existing } = await sb.from("appointments").select("id,dnsuite_id,date,employee,cabin,client,time_mins,cancelled,arrived_at").gte("date", today).eq("source", "dnsuite");
     const exByDn = new Map((existing ?? []).map((r: Record<string, unknown>) => [r.dnsuite_id as string, r]));
     const pulledIds = new Set(citas.map(c => c.id));
 
@@ -218,6 +218,7 @@ Deno.serve(async (req: Request) => {
       affectedDates.add(c.date);
       const isCancelled = (c.status || "").toLowerCase().startsWith("cancel");
       const ex = exByDn.get(c.id);
+      const dnEmp = mapDnEmployee(c.employeeName);
       const base = {
         date: c.date, client: c.clientName, time: fmt(toMins(c.time)), time_mins: toMins(c.time),
         client_phone: c.clientPhone ?? null, service_name: c.serviceName ?? null,
@@ -225,8 +226,9 @@ Deno.serve(async (req: Request) => {
         cancelled: isCancelled, source: "dnsuite", dnsuite_id: c.id, dnsuite_synced_at: new Date().toISOString(),
       };
       if (ex) {
-        const exr = ex as { id: string; employee: string | null; date: string; time_mins: number; cancelled: boolean };
-        const { error } = await sb.from("appointments").update(base).eq("id", exr.id);
+        const exr = ex as { id: string; employee: string | null; date: string; time_mins: number; cancelled: boolean; arrived_at: string | null };
+        const upd = (dnEmp && !exr.arrived_at) ? { ...base, employee: dnEmp.name, cabin: dnEmp.cabin, swap_locked: true } : base;
+        const { error } = await sb.from("appointments").update(upd).eq("id", exr.id);
         if (error) { if (!firstErr) firstErr = "update: " + error.message; }
         else {
           updated++;
@@ -238,7 +240,6 @@ Deno.serve(async (req: Request) => {
           }
         }
       } else {
-        const dnEmp = mapDnEmployee(c.employeeName);
         const { error } = await sb.from("appointments").insert({ ...base, id: "dn_" + c.id, notes: c.notes || null, employee: dnEmp ? dnEmp.name : null, cabin: dnEmp ? dnEmp.cabin : null, swap_locked: !!dnEmp, no_show: false, walk_in: false, changed: "" });
         if (error) { if (!firstErr) firstErr = "insert: " + error.message; }
         else { inserted++; if (!isCancelled) insertedIds.push("dn_" + c.id); }
