@@ -16,6 +16,7 @@ const FB_PROJECT = Deno.env.get("DNSUITE_PROJECT") ?? "dnsuite-66175";
 type Cita = {
   id: string; date: string; time: string; clientName: string; clientPhone?: string;
   serviceName?: string; status?: string; pendingAmount?: string; notes?: string;
+  employeeName?: string;
 };
 
 const fv = (v: Record<string, unknown>): unknown => {
@@ -73,6 +74,7 @@ async function pullDay(token: string, tenantId: string, sucursalId: string, date
         clientName: g("clientName") ?? "", clientPhone: g("clientPhone"),
         serviceName: g("serviceName"), status: g("status"),
         pendingAmount: g("pendingAmount"), notes: g("notes"),
+        employeeName: g("employeeName"),
       } as Cita);
     }
   }
@@ -184,6 +186,20 @@ Deno.serve(async (req: Request) => {
     const ovByDate: Record<string, Record<string, { s?: number; e?: number }>> = {};
     for (const r of (ov ?? []) as Record<string, unknown>[]) ((ovByDate[r.date as string] ??= {}))[r.employee_name as string] = { s: (r.start_min as number) ?? undefined, e: (r.end_min as number) ?? undefined };
 
+    // Map a DNSuite tech name to a Charm employee (alias + first-name match).
+    const normName = (x: string) => x.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const EMP_ALIAS: Record<string, string> = { fiordaliza: "Lisa", fior: "Lisa" };
+    const mapDnEmployee = (dnName: string | undefined): { name: string; cabin: number | null } | null => {
+      if (!dnName || !dnName.trim()) return null;
+      const norm = normName(dnName);
+      for (const [alias, charm] of Object.entries(EMP_ALIAS)) {
+        if (norm.includes(alias)) { const e = byName.get(charm); if (e) return { name: charm, cabin: e.cabin }; }
+      }
+      const words = norm.split(/\s+/);
+      for (const e of emps) { if (words.includes(normName(e.name))) return { name: e.name, cabin: e.cabin }; }
+      return null;
+    };
+
     // existing synced rows from today onward
     const { data: existing } = await sb.from("appointments").select("id,dnsuite_id,date,employee,cabin,client,time_mins,cancelled").gte("date", today).eq("source", "dnsuite");
     const exByDn = new Map((existing ?? []).map((r: Record<string, unknown>) => [r.dnsuite_id as string, r]));
@@ -222,7 +238,8 @@ Deno.serve(async (req: Request) => {
           }
         }
       } else {
-        const { error } = await sb.from("appointments").insert({ ...base, id: "dn_" + c.id, notes: c.notes || null, employee: null, cabin: null, no_show: false, walk_in: false, changed: "", swap_locked: false });
+        const dnEmp = mapDnEmployee(c.employeeName);
+        const { error } = await sb.from("appointments").insert({ ...base, id: "dn_" + c.id, notes: c.notes || null, employee: dnEmp ? dnEmp.name : null, cabin: dnEmp ? dnEmp.cabin : null, swap_locked: !!dnEmp, no_show: false, walk_in: false, changed: "" });
         if (error) { if (!firstErr) firstErr = "insert: " + error.message; }
         else { inserted++; if (!isCancelled) insertedIds.push("dn_" + c.id); }
       }
